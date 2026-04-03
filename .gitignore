@@ -1,0 +1,28 @@
+# ─── Node-RED ───────────────────────────────────────────────
+# File di configurazione locali (generati da Node-RED, non condivisi)
+node-red/data/.config.*.json
+node-red/data/.sessions.db
+node-red/data/node_modules/
+
+# Credenziali cifrate (ogni sviluppatore ha le sue)
+node-red/data/flows_cred.json
+
+# ─── Mosquitto ───────────────────────────────────────────────
+# Dati di persistenza e log (generati a runtime)
+mosquitto/data/
+mosquitto/log/
+
+# ─── MongoDB ─────────────────────────────────────────────────
+# I dati del DB sono nel volume Docker gestito, non in cartella locale
+mongo/data/
+
+# ─── Sistema operativo ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor ──────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo

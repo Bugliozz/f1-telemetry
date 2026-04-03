@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+
+  node-red:
+    image: nodered/node-red:latest
+    container_name: f1-node-red
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./node-red/data:/data
+    environment:
+      - TZ=Europe/Rome
+    depends_on:
+      - mosquitto
+      - mongo
+    networks:
+      - f1-net
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: f1-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - f1-net
+
+  mongo:
+    image: mongo:latest
+    container_name: f1-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d
+    environment:
+      - MONGO_INITDB_DATABASE=f1_telemetry
+    networks:
+      - f1-net
+
+volumes:
+  mongo-data:
+
+networks:
+  f1-net:
+    driver: bridge
