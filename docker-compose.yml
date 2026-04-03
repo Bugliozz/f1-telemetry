@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   simulator:
@@ -40,6 +38,8 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+    environment:
+      - TZ=Europe/Rome
     networks:
       - f1-net
 
@@ -54,6 +54,7 @@ services:
       - ./mongo/init:/docker-entrypoint-initdb.d
     environment:
       - MONGO_INITDB_DATABASE=f1_telemetry
+      - TZ=Europe/Rome
     networks:
       - f1-net
 
