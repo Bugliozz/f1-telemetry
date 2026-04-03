@@ -58,6 +58,24 @@ services:
     networks:
       - f1-net
 
+  smoke-test:
+    build: ./simulator
+    container_name: f1-smoke-test
+    command: node scripts/smoke-test.js
+    depends_on:
+      - mosquitto
+      - mongo
+      - node-red
+    networks:
+      - f1-net
+    environment:
+      - MQTT_URL=mqtt://mosquitto:1883
+      - MONGO_URL=mongodb://mongo:27017
+      - NODE_RED_URL=http://node-red:1880/admin
+      - TZ=Europe/Rome
+    profiles:
+      - test
+
 volumes:
   mongo-data:
 

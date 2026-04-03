@@ -6,9 +6,9 @@
 const mqtt = require('mqtt');
 const { MongoClient } = require('mongodb');
 
-const MQTT_URL = 'mqtt://localhost:1883';
-const MONGO_URL = 'mongodb://localhost:27017';
-const NODE_RED_URL = 'http://localhost:1880/admin';
+const MQTT_URL = process.env.MQTT_URL || 'mqtt://localhost:1883';
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017';
+const NODE_RED_URL = process.env.NODE_RED_URL || 'http://localhost:1880/admin';
 
 let passed = 0;
 let failed = 0;
