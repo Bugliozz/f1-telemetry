@@ -1,9 +1,1 @@
-[
-    {
-        "id": "f1-telemetry-tab",
-        "type": "tab",
-        "label": "F1 Telemetry",
-        "disabled": false,
-        "info": "Flow principale del sistema di telemetria F1"
-    }
-]
+[{"id":"f1-telemetry-tab","type":"tab","label":"F1 Telemetry","disabled":false,"info":"Flow principale del sistema di telemetria F1"},{"id":"368c2ee9d9edf8a3","type":"inject","z":"f1-telemetry-tab","name":"","props":[{"p":"payload"},{"p":"topic","vt":"str"}],"repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":60,"y":140,"wires":[[]]}]
