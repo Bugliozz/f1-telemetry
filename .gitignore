@@ -1,5 +1,6 @@
 # ─── Node.js ─────────────────────────────────────────────────
 simulator/node_modules/
+simulator/.env
 
 # ─── Node-RED ───────────────────────────────────────────────
 # File di configurazione locali (generati da Node-RED, non condivisi)

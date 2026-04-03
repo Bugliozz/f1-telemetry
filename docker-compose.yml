@@ -2,6 +2,18 @@ version: '3.8'
 
 services:
 
+  simulator:
+    build: ./simulator
+    container_name: f1-simulator
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    networks:
+      - f1-net
+    environment:
+      - MQTT_URL=mqtt://mosquitto:1883
+      - TZ=Europe/Rome
+
   node-red:
     image: nodered/node-red:latest
     container_name: f1-node-red

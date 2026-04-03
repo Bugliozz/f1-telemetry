@@ -5,11 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "simulate": "node src/simulator/index.js",
     "dev": "nodemon src/index.js",
-    "docker:up": "docker-compose -f ../docker-compose.yml up -d",
-    "docker:down": "docker-compose -f ../docker-compose.yml down",
-    "docker:logs": "docker-compose -f ../docker-compose.yml logs -f",
     "smoke-test": "node scripts/smoke-test.js"
   },
   "dependencies": {
