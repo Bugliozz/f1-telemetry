@@ -1,9 +1,0 @@
-[
-    {
-        "id": "f1-telemetry-tab",
-        "type": "tab",
-        "label": "F1 Telemetry",
-        "disabled": false,
-        "info": "Flow principale del sistema di telemetria F1"
-    }
-]

@@ -1,0 +1,26 @@
+{
+  "name": "f1-telemetry",
+  "version": "1.0.0",
+  "description": "F1 Telemetry System — simulazione real-time con MQTT, Node-RED e MongoDB",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "simulate": "node src/simulator/index.js",
+    "dev": "nodemon src/index.js",
+    "docker:up": "docker-compose -f ../docker-compose.yml up -d",
+    "docker:down": "docker-compose -f ../docker-compose.yml down",
+    "docker:logs": "docker-compose -f ../docker-compose.yml logs -f",
+    "smoke-test": "node scripts/smoke-test.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.1",
+    "mongodb": "^6.12.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

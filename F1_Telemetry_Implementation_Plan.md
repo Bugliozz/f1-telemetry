@@ -6,12 +6,12 @@
 
 ## Fase 0 — Setup Ambiente
 
-- [ ] Inizializzare il progetto Node.js (`package.json`, dipendenze base) 🟢
-- [ ] Installare e configurare **Eclipse Mosquitto** (broker MQTT locale) 🟢
-- [ ] Installare e configurare **MongoDB** (database locale o container Docker) 🟢
-- [ ] Installare **Node-RED** e verificare il funzionamento base 🟢
-- [ ] Creare il `docker-compose.yml` per orchestrare Mosquitto + MongoDB + Node-RED 🟠
-- [ ] Verificare la connettività tra i tre servizi (smoke test) 🟢
+- [x] Inizializzare il progetto Node.js (`package.json`, dipendenze base) 🟢
+- [x] Installare e configurare **Eclipse Mosquitto** (broker MQTT locale) 🟢
+- [x] Installare e configurare **MongoDB** (database locale o container Docker) 🟢
+- [x] Installare **Node-RED** e verificare il funzionamento base 🟢
+- [x] Creare il `docker-compose.yml` per orchestrare Mosquitto + MongoDB + Node-RED 🟠
+- [x] Verificare la connettività tra i tre servizi (smoke test) 🟢
 
 ---
 
