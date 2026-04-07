@@ -1,10 +1,11 @@
-FROM node:18-alpine
+FROM node:20.11-alpine
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm install --omit=dev
+
+RUN npm install
 
 COPY . .
 
-CMD ["node", "src/index.js"]
+CMD ["node", "index.js"]

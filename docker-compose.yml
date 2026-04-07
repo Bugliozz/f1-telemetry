@@ -1,84 +1,54 @@
 services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: f1-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 1883 -t '$$SYS/#' -C 1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  simulator:
-    build: ./simulator
-    container_name: f1-simulator
-    restart: unless-stopped
-    depends_on:
-      - mosquitto
-    networks:
-      - f1-net
-    environment:
-      - MQTT_URL=mqtt://mosquitto:1883
-      - TZ=Europe/Rome
+  mongodb:
+    image: mongo:7.0
+    container_name: f1-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  node-red:
-    image: nodered/node-red:latest
-    container_name: f1-node-red
-    restart: unless-stopped
+  nodered:
+    image: nodered/node-red:3.1.5
+    container_name: f1-nodered
     ports:
       - "1880:1880"
     volumes:
       - ./node-red/data:/data
-    environment:
-      - TZ=Europe/Rome
     depends_on:
-      - mosquitto
-      - mongo
-    networks:
-      - f1-net
+      mosquitto:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
 
-  mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: f1-mosquitto
-    restart: unless-stopped
-    ports:
-      - "1883:1883"
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
+  simulator:
+    build:
+      context: ./simulator
+    container_name: f1-simulator
     environment:
-      - TZ=Europe/Rome
-    networks:
-      - f1-net
-
-  mongo:
-    image: mongo:latest
-    container_name: f1-mongo
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-      - ./mongo/init:/docker-entrypoint-initdb.d
-    environment:
-      - MONGO_INITDB_DATABASE=f1_telemetry
-      - TZ=Europe/Rome
-    networks:
-      - f1-net
-
-  smoke-test:
-    build: ./simulator
-    container_name: f1-smoke-test
-    command: node scripts/smoke-test.js
+      - MQTT_BROKER=mqtt://mosquitto:1883
     depends_on:
-      - mosquitto
-      - mongo
-      - node-red
-    networks:
-      - f1-net
-    environment:
-      - MQTT_URL=mqtt://mosquitto:1883
-      - MONGO_URL=mongodb://mongo:27017
-      - NODE_RED_URL=http://node-red:1880/admin
-      - TZ=Europe/Rome
-    profiles:
-      - test
+      mosquitto:
+        condition: service_healthy
 
 volumes:
-  mongo-data:
-
-networks:
-  f1-net:
-    driver: bridge
+  mongodb_data:

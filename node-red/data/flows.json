@@ -1,1 +1,72 @@
-[{"id":"f1-telemetry-tab","type":"tab","label":"F1 Telemetry","disabled":false,"info":"Flow principale del sistema di telemetria F1"}]
+[
+    {
+        "id": "f1-telemetry-tab",
+        "type": "tab",
+        "label": "F1 Telemetry",
+        "disabled": false,
+        "info": "Flow principale del sistema di telemetria F1"
+    },
+    {
+        "id": "mqtt-broker-config",
+        "type": "mqtt-broker",
+        "name": "Mosquitto",
+        "broker": "mosquitto",
+        "port": "1883",
+        "clientid": "nodered-f1",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    },
+    {
+        "id": "mqtt-in-telemetry",
+        "type": "mqtt in",
+        "z": "f1-telemetry-tab",
+        "name": "Telemetria F1",
+        "topic": "f1/simulation/#",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "mqtt-broker-config",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 120,
+        "wires": [
+            ["debug-telemetry"]
+        ]
+    },
+    {
+        "id": "debug-telemetry",
+        "type": "debug",
+        "z": "f1-telemetry-tab",
+        "name": "Hello World - Telemetria",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.speed",
+        "statusType": "auto",
+        "x": 430,
+        "y": 120,
+        "wires": []
+    }
+]

@@ -1,22 +1,13 @@
 {
-  "name": "f1-telemetry",
+  "name": "f1-simulator",
   "version": "1.0.0",
-  "description": "F1 Telemetry System — simulazione real-time con MQTT, Node-RED e MongoDB",
-  "main": "src/index.js",
+  "description": "F1 Telemetry Simulator",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "smoke-test": "node scripts/smoke-test.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "mqtt": "^5.10.1",
-    "mongodb": "^6.12.0",
-    "dotenv": "^16.4.7"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.9"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "mqtt": "^5.3.5",
+    "mongodb": "^6.12.0"
   }
 }
