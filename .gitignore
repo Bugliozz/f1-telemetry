@@ -9,6 +9,7 @@ node-red/data/.config.*.json.backup
 node-red/data/.flows.json.backup
 node-red/data/.sessions.db
 node-red/data/node_modules/
+node-red/data/.npm/
 
 # Credenziali cifrate (ogni sviluppatore ha le sue)
 node-red/data/flows_cred.json
