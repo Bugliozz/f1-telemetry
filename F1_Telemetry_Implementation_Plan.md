@@ -47,17 +47,17 @@
 - [x] Progettare l'architettura del simulatore multi-car (10 auto, 5 team) 🔴 — vedi [docs/simulator-architecture.md](docs/simulator-architecture.md)
 - [x] Implementare il modello base di avanzamento lungo il circuito (`trackPos ∈ [0,1]`, gestione giri) 🔴
 - [x] Implementare la variazione realistica della velocità (accelerazione, frenata, curve di Monza) 🔴
-- [ ] Implementare il degrado progressivo delle gomme (`tireTemp`) 🟠
-- [ ] Implementare il consumo carburante (`fuel`) 🟠
-- [ ] Implementare la generazione RPM correlata alla velocità 🟠
-- [ ] Implementare la **macchina a stati finiti** per ogni auto (INIT → RUNNING → PIT / FAULT / RETIRED / FINISHED) 🔴
-- [ ] Definire le condizioni di transizione di stato (temperatura alta → FAULT, fuel basso → PIT, ecc.) 🔴
+- [x] Implementare il degrado progressivo delle gomme (`tireTemp`) 🟠
+- [x] Implementare il consumo carburante (`fuel`) 🟠
+- [x] Implementare la generazione RPM correlata alla velocità 🟠
+- [x] Implementare la **macchina a stati finiti** per ogni auto (INIT → RUNNING → PIT / FAULT / RETIRED / FINISHED) 🔴
+- [x] Definire le condizioni di transizione di stato (temperatura alta → FAULT, fuel basso → PIT, ecc.) 🔴
 - [ ] Implementare il loop di publish MQTT a 2–5 Hz per ogni auto 🟠
 - [ ] Aggiungere variabilità e randomness realistica ai dati generati 🟠
 - [ ] Testare il simulatore con 1 auto, poi scalare a 10 🟢
 
 ---
-
+    
 ## Fase 4 — Race Control
 
 - [ ] Progettare la logica di Race Control (trigger e gestione flag globali) 🔴
@@ -180,4 +180,3 @@
 
 ---
 
-> **Nota:** Le assegnazioni ai modelli sono indicative. Task 🟠 con contesto molto ampio possono beneficiare di 🔴. Task 🟠 molto ripetitivi possono scendere a 🟢 se ben promptati.

@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker rm *)",
+      "Bash(git commit -m ' *)",
+      "Bash(docker restart *)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec -d f1-mosquitto sh -c 'mosquitto_sub -h localhost -p 1883 -t \"f1/simulation/1/teams/+/cars/+/telemetry\" -v -C 3 > /tmp/sub_out.log 2>&1')",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'f1/simulation/1/teams/ferrari/cars/16/telemetry' -m '{\"speed\":287.4,\"rpm\":11800}' -q 0)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'f1/simulation/1/teams/mercedes/cars/44/telemetry' -m '{\"speed\":291.1,\"rpm\":12100}' -q 0)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'f1/simulation/1/teams/redbull/cars/1/telemetry' -m '{\"speed\":295.0,\"rpm\":12500}' -q 0)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto cat /tmp/sub_out.log)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'f1/simulation/1/race-control/flags' -m '{\"flag\":\"SC\",\"active\":true,\"reason\":\"debris\"}' -q 1 -r)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto sh -c 'mosquitto_sub -h localhost -p 1883 -t \"f1/simulation/1/race-control/#\" -v -C 1 -W 3')",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto sh -c 'mosquitto_sub -h localhost -p 1883 -t \"forbidden/topic\" -v -C 1 -W 2 > /tmp/acl_out.log 2>&1 &')",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'forbidden/topic' -m 'should-not-pass')",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto cat /tmp/acl_out.log)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec f1-mosquitto mosquitto_pub -h localhost -p 1883 -t 'f1/simulation/1/race-control/flags' -m '' -r -q 1)",
+      "Bash(node --check scripts/seed.js)",
+      "Bash(node --check scripts/smoke-test.js)",
+      "Bash(node --check ../mongo/init/01-init.js)",
+      "Bash(node scripts/seed.js)",
+      "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" status)",
+      "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" log --oneline -5)",
+      "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" diff F1_Telemetry_Implementation_Plan.md mongo/init/01-init.js)"
+    ]
+  }
+}

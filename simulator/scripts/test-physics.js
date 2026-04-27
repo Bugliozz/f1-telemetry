@@ -2,8 +2,15 @@ const assert = require('node:assert/strict');
 const {
   advance,
   updateSpeed,
+  gearForSpeed,
+  rpmForSpeed,
   MAX_ACCEL_MS2,
   MAX_BRAKE_MS2,
+  GEAR_MIN,
+  GEAR_MAX,
+  RPM_IDLE,
+  RPM_PER_KMH,
+  RPM_MAX,
 } = require('../src/car/physics');
 const { LENGTH_M, SPEED_PROFILE, targetSpeed } = require('../src/track/monza');
 
@@ -240,6 +247,84 @@ test('giro completo a Monza in finestra di lap-time realistico', () => {
     t += dt;
   }
   assert.ok(t >= 95 && t <= 130, `lap time fuori range realistico: ${t}s`);
+});
+
+console.log('\nphysics.gearForSpeed');
+
+test('velocita zero -> marcia minima (1)', () => {
+  assert.equal(gearForSpeed(0), GEAR_MIN);
+});
+
+test('velocita molto bassa -> marcia 1 (clamp inferiore)', () => {
+  assert.equal(gearForSpeed(20), GEAR_MIN);
+  assert.equal(gearForSpeed(40), GEAR_MIN);
+});
+
+test('arrotondamento a meta intervallo', () => {
+  assert.equal(gearForSpeed(75), 2);
+  assert.equal(gearForSpeed(125), 3);
+});
+
+test('velocita tipiche di Monza', () => {
+  assert.equal(gearForSpeed(95), 2);
+  assert.equal(gearForSpeed(200), 4);
+  assert.equal(gearForSpeed(290), 6);
+  assert.equal(gearForSpeed(340), 7);
+});
+
+test('velocita oltre il top di scala -> clamp a GEAR_MAX', () => {
+  assert.equal(gearForSpeed(400), GEAR_MAX);
+  assert.equal(gearForSpeed(1000), GEAR_MAX);
+});
+
+test('input non finito o negativo -> 1', () => {
+  assert.equal(gearForSpeed(-50), GEAR_MIN);
+  assert.equal(gearForSpeed(NaN), GEAR_MIN);
+  assert.equal(gearForSpeed(undefined), GEAR_MIN);
+});
+
+console.log('\nphysics.rpmForSpeed');
+
+test('idle: speed 0 -> RPM_IDLE', () => {
+  assert.equal(rpmForSpeed(0), RPM_IDLE);
+});
+
+test('formula lineare: rpm = 7000 + speed * 22 (senza jitter)', () => {
+  assert.equal(rpmForSpeed(100), RPM_IDLE + 100 * RPM_PER_KMH);
+  assert.equal(rpmForSpeed(200), RPM_IDLE + 200 * RPM_PER_KMH);
+  assert.equal(rpmForSpeed(340), RPM_IDLE + 340 * RPM_PER_KMH);
+});
+
+test('jitter additivo, intero in uscita', () => {
+  assert.equal(rpmForSpeed(200, 50), RPM_IDLE + 200 * RPM_PER_KMH + 50);
+  assert.equal(rpmForSpeed(200, -50), RPM_IDLE + 200 * RPM_PER_KMH - 50);
+});
+
+test('output sempre intero anche con jitter frazionario', () => {
+  const v = rpmForSpeed(150, 12.7);
+  assert.ok(Number.isInteger(v), `rpm non intero: ${v}`);
+});
+
+test('rpm clampato sotto RPM_MAX anche con jitter alto', () => {
+  // 7000 + 400*22 = 15800; jitter +500 -> 16300, deve essere clampato
+  assert.equal(rpmForSpeed(400, 500), RPM_MAX);
+});
+
+test('rpm correlato monotonicamente alla velocita', () => {
+  const speeds = [0, 50, 100, 150, 200, 250, 300, 340];
+  for (let i = 1; i < speeds.length; i += 1) {
+    assert.ok(
+      rpmForSpeed(speeds[i]) > rpmForSpeed(speeds[i - 1]),
+      `rpm non crescente fra ${speeds[i - 1]} e ${speeds[i]}`
+    );
+  }
+});
+
+test('rpm rispetta i limiti dello schema telemetry [0, 16000]', () => {
+  for (const v of [0, 100, 200, 300, 340, 400]) {
+    const r = rpmForSpeed(v);
+    assert.ok(r >= 0 && r <= RPM_MAX, `rpm ${r} fuori range a speed ${v}`);
+  }
 });
 
 console.log(`\n${passed} test passati`);

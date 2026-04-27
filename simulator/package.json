@@ -4,7 +4,13 @@
   "description": "F1 Telemetry Simulator",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test:physics": "node scripts/test-physics.js",
+    "test:tire-fuel": "node scripts/test-tire-fuel.js",
+    "test:fsm": "node scripts/test-fsm.js",
+    "test:conditions": "node scripts/test-conditions.js",
+    "test:mqtt-sim": "node scripts/test-mqtt-sim.js",
+    "test": "npm run test:physics && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:mqtt-sim"
   },
   "dependencies": {
     "mqtt": "^5.3.5",

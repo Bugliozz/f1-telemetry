@@ -1,34 +1,71 @@
+// Bootstrap del simulatore F1 — entry point.
+//
+// Legge configurazione, crea le dipendenze, avvia l'Orchestrator.
+// Cfr. docs/simulator-architecture.md §12.1.
+
 const mqtt = require('mqtt');
+const config = require('./config/default');
+const roster = require('./config/roster.json');
+const MqttPublisher = require('./src/mqtt/publisher');
+const Orchestrator = require('./src/orchestrator');
+const { createLogger } = require('./src/util/log');
 
-// Connessione al broker sfruttando la variabile definita in docker-compose
-const brokerUrl = process.env.MQTT_BROKER || 'mqtt://localhost:1883';
-console.log(`Connessione in corso al broker MQTT: ${brokerUrl}...`);
+const log = createLogger(config.logLevel);
 
-const client = mqtt.connect(brokerUrl);
+// --- Avvio ---
 
+log.info('╔══════════════════════════════════════════════════╗');
+log.info('║         🏎️  F1 Telemetry Simulator  🏎️          ║');
+log.info('╚══════════════════════════════════════════════════╝');
+log.info(`Broker: ${config.mqttBroker}`);
+log.info(`Race ID: ${config.raceId}`);
+log.info(`Tick rate: ${1000 / config.tickMs} Hz (${config.tickMs} ms)`);
+log.info(`Auto: ${roster.length}`);
+log.info(`Giri totali: ${config.totalLaps}`);
+log.info(`Seed: ${config.seed != null ? config.seed : 'random'}`);
+
+const client = mqtt.connect(config.mqttBroker, {
+  reconnectPeriod: 2000,
+  connectTimeout: 10000,
+  clientId: `f1-simulator-${config.raceId}-${Date.now()}`,
+});
+
+const publisher = new MqttPublisher(client, config.raceId, log);
+
+// Aspetta la connessione prima di avviare
 client.on('connect', () => {
-  console.log('Connesso al broker MQTT con successo!');
-  
-  // Mantiene vivo il processo Node.js e fa da base per il simulatore (Fase 3)
-  setInterval(() => {
-    const telemetry = {
-      timestamp: new Date().toISOString(),
-      speed: Math.floor(Math.random() * 350),
-      rpm: Math.floor(Math.random() * 15000)
-    };
-    
-    // Invio dei dati nel formato gerarchico definito nel piano d'implementazione
-    client.publish('f1/simulation/1/teams/ferrari/cars/16/telemetry', JSON.stringify(telemetry));
-    console.log('Inviati dati di telemetria:', telemetry);
-  }, 1000); // Impostato provvisoriamente a 1 Hz
+  log.info('[main] Connesso al broker MQTT — avvio simulazione...');
+
+  const orchestrator = new Orchestrator({
+    roster,
+    config,
+    publisher,
+    logger: log,
+  });
+
+  orchestrator.start();
+
+  // Shutdown ordinato (§12.2)
+  const shutdown = async (signal) => {
+    log.info(`[main] Ricevuto ${signal}, shutdown in corso...`);
+    orchestrator.stop();
+    await publisher.end();
+    log.info('[main] Disconnesso. Bye! 👋');
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 });
 
 client.on('error', (err) => {
-  console.error('Errore di connessione MQTT:', err);
+  log.error('[main] Errore connessione MQTT:', err.message);
 });
 
-process.on('SIGTERM', () => {
-  console.log('[simulator] Shutdown...');
-  client.end();
-  process.exit(0);
-});
+// Timeout connessione
+setTimeout(() => {
+  if (!publisher.connected) {
+    log.error('[main] Timeout connessione al broker dopo 10s. Uscita.');
+    process.exit(1);
+  }
+}, 10000);

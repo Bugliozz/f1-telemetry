@@ -48,6 +48,10 @@ services:
     container_name: f1-simulator
     environment:
       - MQTT_BROKER=mqtt://mosquitto:1883
+      - RACE_ID=1
+      - TOTAL_LAPS=15
+      - TICK_MS=250
+      - LOG_LEVEL=info
     depends_on:
       mosquitto:
         condition: service_healthy

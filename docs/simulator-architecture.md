@@ -514,15 +514,16 @@ in JavaScript "vanilla" coerentemente con la scala del progetto.
 
 ## 14. Open points (da chiudere nelle sotto-task della Fase 3)
 
-- [ ] **Pit strategy**: valori per la prima implementazione lap-based
-  (ferrari 16 → lap 8, mercedes 44 → lap 10, ...). Valutare in seguito
-  una strategia adattiva basata sul fuel.
-- [ ] **Coefficiente degrado gomme**: scegliere curva `tireWear(lap, compound)`
-  realistica ma percepibile in 15 giri.
-- [ ] **Probabilita' guasto**: bilanciare per avere ~1 ritiro su 10 auto
-  in una gara di 15 giri.
+- [x] **Pit strategy**: implementata lap-based in `config/roster.json`.
+  Verstappen lap 7, Ferrari 16 lap 8, Perez lap 8, Sainz/McLaren lap 9,
+  Mercedes lap 10, Alpine lap 11. Strategia adattiva rinviata.
+- [x] **Coefficiente degrado gomme**: `wearPerLap = 0.03` in
+  `config/default.js`. `wearFactor = 1 + lap * 0.03` → a lap 15 vale
+  1.45 (+45% riscaldamento). Percepibile: la temperatura sale sensibilmente
+  nella seconda meta' di gara.
+- [x] **Probabilita' guasto**: `engineFailureProbPerTick = 1e-4` in
+  `config/default.js`. Con 10 auto × ~2400 tick (15 giri a 4 Hz) →
+  E[ritiri] ≈ 2.4, mediana ~1-2 per gara. Bilanciato.
 - [ ] **Compattamento Safety Car**: definire algoritmo (gap target 0.5 s)
   in collaborazione con la Fase 4.
 
-Queste decisioni non bloccano l'architettura: vengono cablate dentro
-`config/default.js` quando si arrivera' al rispettivo task del piano.

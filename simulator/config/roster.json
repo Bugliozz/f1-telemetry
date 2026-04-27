@@ -1,0 +1,12 @@
+[
+  { "teamId": "ferrari",  "carId": 16, "driver": "C. Leclerc",    "pitStrategy": [8]  },
+  { "teamId": "ferrari",  "carId": 55, "driver": "C. Sainz",      "pitStrategy": [9]  },
+  { "teamId": "mercedes", "carId": 44, "driver": "L. Hamilton",   "pitStrategy": [10] },
+  { "teamId": "mercedes", "carId": 63, "driver": "G. Russell",    "pitStrategy": [10] },
+  { "teamId": "redbull",  "carId": 1,  "driver": "M. Verstappen", "pitStrategy": [7]  },
+  { "teamId": "redbull",  "carId": 11, "driver": "S. Perez",      "pitStrategy": [8]  },
+  { "teamId": "mclaren",  "carId": 4,  "driver": "L. Norris",     "pitStrategy": [9]  },
+  { "teamId": "mclaren",  "carId": 81, "driver": "O. Piastri",    "pitStrategy": [9]  },
+  { "teamId": "alpine",   "carId": 10, "driver": "P. Gasly",      "pitStrategy": [11] },
+  { "teamId": "alpine",   "carId": 31, "driver": "E. Ocon",       "pitStrategy": [11] }
+]
