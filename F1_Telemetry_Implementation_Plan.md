@@ -17,7 +17,7 @@
 
 ## Fase 1 — Struttura MQTT e Comunicazione
 
-- [ ] Definire la struttura completa dei topic MQTT secondo lo schema gerarchico 🟠
+- [x] Definire la struttura completa dei topic MQTT secondo lo schema gerarchico 🟠
   ```
   f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/telemetry
   f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/state
@@ -25,9 +25,9 @@
   f1/simulation/{raceId}/race-control/flags
   f1/simulation/{raceId}/race-control/classification
   ```
-- [ ] Configurare Mosquitto (listener, ACL, QoS policy) 🟢
-- [ ] Testare publish/subscribe manuale con `mosquitto_pub` / `mosquitto_sub` 🟢
-- [ ] Documentare la topic structure con esempi di payload JSON 🟢
+- [x] Configurare Mosquitto (listener, ACL, QoS policy) 🟢
+- [x] Testare publish/subscribe manuale con `mosquitto_pub` / `mosquitto_sub` 🟢
+- [x] Documentare la topic structure con esempi di payload JSON 🟢
 
 ---
 
