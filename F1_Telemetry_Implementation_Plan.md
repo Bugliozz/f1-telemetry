@@ -87,6 +87,19 @@
 - [ ] Ottimizzare i flow per gestire il throughput di 10 auto a 2–5 Hz 🔴
 - [ ] Testare end-to-end: simulatore → MQTT → Node-RED → MongoDB 🟠
 
+### Fase 5.bis — Crittografia (opzionale, requisito di consegna)
+
+> Requisito: alcune regole Node-RED devono trasmettere dati cifrati con operazioni di encrypt/decrypt. Sotto-flow da innestare nei flow esistenti.
+
+- [ ] Scegliere il payload sensibile da cifrare (es. eventi `race-control/flags`, comandi PIT, classifica finale) 🟠
+- [ ] Definire algoritmo e modalità (consigliato **AES-256-GCM** con IV random per messaggio) 🟠
+- [ ] Gestire la chiave simmetrica via env var del container Node-RED (no hardcoding) 🟢
+- [ ] Implementare il nodo `function` di **encrypt** lato publisher (output: `{iv, ciphertext, tag}` base64) 🟠
+- [ ] Implementare il nodo `function` di **decrypt** lato subscriber con verifica del tag GCM 🟠
+- [ ] Aggiungere un topic dedicato per i payload cifrati (es. `f1/simulation/{raceId}/secure/...`) 🟢
+- [ ] Testare round-trip encrypt → MQTT → decrypt e fallimento controllato con chiave errata 🟢
+- [ ] Documentare nel report quali flow usano crittografia e perché 🟢
+
 ---
 
 ## Fase 6 — Persistence Layer (MongoDB)
@@ -127,10 +140,31 @@
 
 ## Fase 9 — Documentazione e Delivery
 
-- [ ] Scrivere il README del progetto con istruzioni di setup e avvio 🟢
-- [ ] Documentare l'architettura con diagrammi (C4 / componenti) 🟠
-- [ ] Documentare la struttura MQTT con esempi 🟢
-- [ ] Documentare il data model MongoDB 🟢
+### Report PDF (in inglese, richiesto dalla consegna)
+
+- [ ] Scrivere il **report PDF in inglese** con: scenario, architettura, protocolli, flow Node-RED, funzioni, motivazioni di ogni scelta 🟠
+- [ ] Nel report, dichiarare esplicitamente l'**eterogeneità dei sensori** simulati: 🟢
+  - **Analogici (continui)**: speed, rpm, tireTemp, fuel, trackPos
+  - **Digitali (discreti / on-off)**: pit-lane sensor (in/out), DRS (on/off), transponder di settore, flag detector
+- [ ] Documentare nel report la sezione **crittografia** (algoritmo, chiavi, flow coinvolti) 🟢
+
+### UML e diagrammi
+
+- [ ] **Component diagram** dei moduli (simulator, broker, Node-RED, MongoDB, dashboard) 🟠
+- [ ] **Sequence diagram** dei flussi MQTT chiave (telemetry publish → Node-RED → DB; race-control flag broadcast; encrypt/decrypt) 🟠
+- [ ] **State diagram** della FSM auto (INIT → RUNNING → PIT / FAULT / RETIRED / FINISHED) 🟠
+- [ ] **Deployment diagram** con i container Docker e le porte esposte 🟢
+
+### Codice e dump
+
+- [ ] Scrivere il README con istruzioni di setup e avvio (`docker compose up`) 🟢
+- [ ] Esportare i **flow Node-RED** in JSON e committarli nel repo 🟢
+- [ ] Generare il **dump MongoDB** (`mongodump`) e includerlo nel pacchetto di consegna 🟢
+- [ ] Documentare la struttura MQTT con esempi di payload 🟢
+- [ ] Documentare il data model MongoDB (schema collection + indici) 🟢
+
+### Presentazione
+
 - [ ] Preparare screenshot/screen recording della dashboard in funzione 🟢
 - [ ] Preparare la presentazione finale del progetto 🟠
 
