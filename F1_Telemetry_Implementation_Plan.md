@@ -33,12 +33,12 @@
 
 ## Fase 2 — Data Model e Schema
 
-- [ ] Definire lo schema JSON del payload telemetria (speed, rpm, tireTemp, fuel, trackPos, lap, state…) 🟠
-- [ ] Definire lo schema per gli eventi car-level (pit stop, fault, retirement…) 🟠
-- [ ] Definire lo schema per gli eventi race-control (flags, safety car…) 🟠
-- [ ] Definire lo schema della classifica (classification) 🟢
-- [ ] Creare le collection MongoDB (`telemetry`, `events`, `states`, `classifications`) con indici appropriati 🟠
-- [ ] Scrivere script di seed/test per popolare dati di esempio 🟢
+- [x] Definire lo schema JSON del payload telemetria (speed, rpm, tireTemp, fuel, trackPos, lap, state…) 🟠
+- [x] Definire lo schema per gli eventi car-level (pit stop, fault, retirement…) 🟠
+- [x] Definire lo schema per gli eventi race-control (flags, safety car…) 🟠
+- [x] Definire lo schema della classifica (classification) 🟢
+- [x] Creare le collection MongoDB (`telemetry`, `events`, `states`, `classifications`) con indici appropriati 🟠
+- [x] Scrivere script di seed/test per popolare dati di esempio 🟢
 
 ---
 

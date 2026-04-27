@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://f1-telemetry.local/schemas/classification.schema.json",
+  "title": "Classification",
+  "description": "Snapshot della classifica di gara, calcolata da Node-RED a 1 Hz e pubblicata con retain su f1/simulation/{raceId}/race-control/classification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestamp", "raceId", "lap", "leaderLap", "standings"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "raceId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Giro di riferimento dello snapshot (in genere = leaderLap)."
+    },
+    "leaderLap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Numero di giro completato dal leader."
+    },
+    "standings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["position", "carId", "teamId", "lap", "gap"],
+        "properties": {
+          "position": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "carId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 99
+          },
+          "teamId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,31}$"
+          },
+          "lap": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "gap": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Distacco dal leader in secondi."
+          },
+          "state": {
+            "type": "string",
+            "enum": ["INIT", "RUNNING", "PIT", "FAULT", "RETIRED", "FINISHED"]
+          }
+        }
+      }
+    }
+  }
+}

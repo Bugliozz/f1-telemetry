@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://f1-telemetry.local/schemas/flag.schema.json",
+  "title": "RaceControlFlag",
+  "description": "Evento di race control globale (bandiera, safety car) pubblicato con retain su f1/simulation/{raceId}/race-control/flags.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestamp", "raceId", "flag", "active"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "raceId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "flag": {
+      "type": "string",
+      "enum": ["GREEN", "YELLOW", "RED", "CHECKERED", "SC", "VSC"]
+    },
+    "active": {
+      "type": "boolean",
+      "description": "true quando la bandiera entra in vigore, false quando viene revocata."
+    },
+    "sector": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 3,
+      "description": "Settore interessato (es. yellow flag locale). null per flag globali."
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "maxLength": 256
+    }
+  }
+}

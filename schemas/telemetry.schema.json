@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://f1-telemetry.local/schemas/telemetry.schema.json",
+  "title": "Telemetry",
+  "description": "Campione di telemetria pubblicato dal simulatore sul topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/telemetry. Frequenza 2-5 Hz.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "timestamp",
+    "raceId",
+    "teamId",
+    "carId",
+    "lap",
+    "trackPos",
+    "speed",
+    "rpm",
+    "gear",
+    "throttle",
+    "brake",
+    "drs",
+    "tireTemp",
+    "fuel",
+    "state"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC con millisecondi (es. 2026-04-27T14:32:10.512Z)."
+    },
+    "raceId": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Identificatore univoco della gara simulata."
+    },
+    "teamId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,31}$",
+      "description": "Slug minuscolo del team (es. ferrari, mercedes)."
+    },
+    "carId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 99,
+      "description": "Numero macchina."
+    },
+    "lap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Giro corrente (0 prima della partenza)."
+    },
+    "trackPos": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Posizione normalizzata sul giro corrente."
+    },
+    "speed": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 400,
+      "description": "Velocita in km/h."
+    },
+    "rpm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 16000,
+      "description": "Giri motore al minuto."
+    },
+    "gear": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8,
+      "description": "0 = folle, 1-7 = marce avanti, 8 = retro."
+    },
+    "throttle": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Posizione pedale acceleratore [0,1]."
+    },
+    "brake": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Posizione pedale freno [0,1]."
+    },
+    "drs": {
+      "type": "boolean",
+      "description": "Sensore digitale: DRS attivo."
+    },
+    "tireTemp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fl", "fr", "rl", "rr"],
+      "properties": {
+        "fl": { "type": "number", "minimum": -10, "maximum": 200 },
+        "fr": { "type": "number", "minimum": -10, "maximum": 200 },
+        "rl": { "type": "number", "minimum": -10, "maximum": 200 },
+        "rr": { "type": "number", "minimum": -10, "maximum": 200 }
+      },
+      "description": "Temperatura gomme in C per ciascun angolo (front/rear left/right)."
+    },
+    "fuel": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 110,
+      "description": "Carburante residuo in kg."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["INIT", "RUNNING", "PIT", "FAULT", "RETIRED", "FINISHED"],
+      "description": "Stato corrente della FSM auto, denormalizzato per analytics."
+    }
+  }
+}

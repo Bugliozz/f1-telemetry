@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://f1-telemetry.local/schemas/event.schema.json",
+  "title": "CarEvent",
+  "description": "Evento discreto a livello auto pubblicato sul topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["timestamp", "raceId", "teamId", "carId", "type"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "raceId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "teamId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    },
+    "carId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 99
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "pit-entry",
+        "pit-stop",
+        "pit-exit",
+        "fault",
+        "retirement",
+        "lap-completed",
+        "sector-completed",
+        "overtake",
+        "state-change"
+      ],
+      "description": "Categoria dell'evento. La forma di details dipende dal tipo."
+    },
+    "details": {
+      "type": "object",
+      "description": "Payload specifico dell'evento. Esempi: {duration, tyreCompound, fuelAdded} per pit-stop; {lap, lapTime} per lap-completed; {sector, sectorTime} per sector-completed; {from, to, reason} per state-change."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "pit-stop" } } },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["duration"],
+            "properties": {
+              "duration": { "type": "number", "minimum": 0, "maximum": 60 },
+              "tyreCompound": { "type": "string", "enum": ["soft", "medium", "hard", "intermediate", "wet"] },
+              "fuelAdded": { "type": "number", "minimum": 0, "maximum": 110 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "lap-completed" } } },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["lap", "lapTime"],
+            "properties": {
+              "lap": { "type": "integer", "minimum": 1 },
+              "lapTime": { "type": "number", "minimum": 0, "description": "Tempo sul giro in secondi." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "sector-completed" } } },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sector", "sectorTime"],
+            "properties": {
+              "sector": { "type": "integer", "minimum": 1, "maximum": 3 },
+              "sectorTime": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "state-change" } } },
+      "then": {
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string", "enum": ["INIT", "RUNNING", "PIT", "FAULT", "RETIRED", "FINISHED"] },
+              "to": { "type": "string", "enum": ["INIT", "RUNNING", "PIT", "FAULT", "RETIRED", "FINISHED"] },
+              "reason": { "type": "string", "maxLength": 128 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
