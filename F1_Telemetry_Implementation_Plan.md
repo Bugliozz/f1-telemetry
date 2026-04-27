@@ -44,9 +44,9 @@
 
 ## Fase 3 — Simulation Layer (Car Simulator)
 
-- [ ] Progettare l'architettura del simulatore multi-car (10 auto, 5 team) 🔴
-- [ ] Implementare il modello base di avanzamento lungo il circuito (`trackPos ∈ [0,1]`, gestione giri) 🔴
-- [ ] Implementare la variazione realistica della velocità (accelerazione, frenata, curve di Monza) 🔴
+- [x] Progettare l'architettura del simulatore multi-car (10 auto, 5 team) 🔴 — vedi [docs/simulator-architecture.md](docs/simulator-architecture.md)
+- [x] Implementare il modello base di avanzamento lungo il circuito (`trackPos ∈ [0,1]`, gestione giri) 🔴
+- [x] Implementare la variazione realistica della velocità (accelerazione, frenata, curve di Monza) 🔴
 - [ ] Implementare il degrado progressivo delle gomme (`tireTemp`) 🟠
 - [ ] Implementare il consumo carburante (`fuel`) 🟠
 - [ ] Implementare la generazione RPM correlata alla velocità 🟠
