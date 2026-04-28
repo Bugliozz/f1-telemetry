@@ -1,0 +1,144 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #0b0d12;
+    color: #e6e8ee;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+}
+
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid #1c2030;
+    background: linear-gradient(180deg, #11141d, #0b0d12);
+}
+
+.dashboard-header h1 {
+    margin: 0;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.status-bar {
+    display: flex;
+    gap: 8px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+
+.status-pill--idle    { background: #2a2f3d; color: #c5c9d6; }
+.status-pill--muted   { background: #1a1d28; color: #8a90a3; }
+.status-pill--ok      { background: #143b2b; color: #5cd39c; }
+.status-pill--error   { background: #3b1a1f; color: #f87171; }
+
+.dashboard-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 240px;
+    gap: 16px;
+    padding: 16px 24px 24px;
+}
+
+.circuit-panel {
+    background: #11141d;
+    border: 1px solid #1c2030;
+    border-radius: 12px;
+    padding: 16px;
+    overflow: hidden;
+}
+
+.circuit-container {
+    width: 100%;
+    aspect-ratio: 516.66 / 263.84;
+    position: relative;
+}
+
+.circuit-container svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.circuit-container svg path {
+    stroke: #4d5366 !important;
+    stroke-width: 8 !important;
+}
+
+.car-marker {
+    pointer-events: none;
+}
+
+.car-marker__dot {
+    stroke: #0b0d12;
+    stroke-width: 1.5;
+}
+
+.car-marker__label {
+    fill: #ffffff;
+    font-size: 8px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    paint-order: stroke;
+    stroke: #0b0d12;
+    stroke-width: 2;
+}
+
+.car-marker--pit  .car-marker__dot { opacity: 0.55; }
+.car-marker--fault .car-marker__dot { stroke: #f87171; stroke-width: 2.5; }
+.car-marker--retired .car-marker__dot { opacity: 0.25; }
+.car-marker--finished .car-marker__dot { stroke: #fbbf24; stroke-width: 2.5; }
+
+.legend-panel {
+    background: #11141d;
+    border: 1px solid #1c2030;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.legend-panel h2 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8a90a3;
+}
+
+.legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.legend .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #0b0d12;
+}

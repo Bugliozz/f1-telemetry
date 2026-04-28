@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>F1 Telemetry — Monza</title>
+    <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+    <header class="dashboard-header">
+        <h1>F1 Telemetry — Monza</h1>
+        <div class="status-bar">
+            <span id="connection-status" class="status-pill status-pill--idle">disconnected</span>
+            <span id="snapshot-info" class="status-pill status-pill--muted">waiting for data…</span>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <section class="circuit-panel" aria-label="Monza circuit map">
+            <div id="circuit-container" class="circuit-container">
+                <!-- The SVG is fetched and injected into this container at runtime so
+                     getPointAtLength() can resolve coordinates from trackPos. -->
+            </div>
+        </section>
+
+        <aside class="legend-panel" aria-label="Team legend">
+            <h2>Teams</h2>
+            <ul id="legend" class="legend"></ul>
+        </aside>
+    </main>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

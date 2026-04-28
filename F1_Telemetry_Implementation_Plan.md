@@ -104,19 +104,19 @@
 
 ## Fase 6 — Persistence Layer (MongoDB)
 
-- [x] Implementare l'inserimento bulk della telemetria (ottimizzazione write) 🟠
-- [x] Implementare query per analisi storica (tempi sul giro, andamento fuel/tire) 🟠
-- [x] Creare indici per query frequenti (`raceId`, `carId`, `timestamp`, `lap`) 🟢
-- [x] Implementare TTL o capping per gestione volume dati 🟢
-- [x] Verificare consistenza dati tra MQTT payload e documenti MongoDB 🟢
+- [ ] Implementare l'inserimento bulk della telemetria (ottimizzazione write) 🟠
+- [ ] Implementare query per analisi storica (tempi sul giro, andamento fuel/tire) 🟠
+- [ ] Creare indici per query frequenti (`raceId`, `carId`, `timestamp`, `lap`) 🟢
+- [ ] Implementare TTL o capping per gestione volume dati 🟢
+- [ ] Verificare consistenza dati tra MQTT payload e documenti MongoDB 🟢
 
 ---
 
 ## Fase 7 — Dashboard e Visualizzazione
 
-- [ ] Creare/reperire la grafica SVG del circuito di **Monza** 🟠
-- [ ] Implementare il rendering delle auto come marker dinamici sull'SVG 🔴
-- [ ] Implementare l'**interpolazione fluida** tra posizioni successive (smooth movement client-side) 🔴
+- [x] Creare/reperire la grafica SVG del circuito di **Monza** 🟠
+- [x] Implementare il rendering delle auto come marker dinamici sull'SVG 🔴
+- [x] Implementare l'**interpolazione fluida** tra posizioni successive (smooth movement client-side) 🔴
 - [ ] Implementare il pannello **classifica in tempo reale** 🟠
 - [ ] Implementare il pannello **stato auto** (colori per stato FSM) 🟠
 - [ ] Implementare il pannello **eventi di gara** (log live) 🟠
