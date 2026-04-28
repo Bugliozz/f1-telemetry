@@ -14,6 +14,16 @@ const Orchestrator = require('../src/orchestrator');
 const config = require('../config/default');
 const roster = require('../config/roster.json');
 const { createCarPrng } = require('../src/util/prng');
+const path = require('path');
+const Ajv2020 = require('ajv/dist/2020');
+
+const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });
+const schemaDir = path.join(__dirname, '..', '..', 'schemas');
+const validateTelemetrySchema = ajv.compile(require(path.join(schemaDir, 'telemetry.schema.json')));
+const validateStateSchema = ajv.compile(require(path.join(schemaDir, 'state.schema.json')));
+const validateEventSchema = ajv.compile(require(path.join(schemaDir, 'event.schema.json')));
+const validateFlagSchema = ajv.compile(require(path.join(schemaDir, 'flag.schema.json')));
+const validateClassificationSchema = ajv.compile(require(path.join(schemaDir, 'classification.schema.json')));
 
 let passed = 0;
 let failed = 0;
@@ -164,6 +174,83 @@ for (const t of telemetryHistory) {
 assert(car.lap >= 0, `Lap counter valido: ${car.lap}`);
 
 // ============================================================
+// TEST 1B: Car integration edge cases
+// ============================================================
+
+section('TEST 1B: Car integration edge cases');
+
+const minimalCar = new Car({ teamId: 'test', carId: 99 });
+const minimalMsgs = minimalCar.tick(dt, ctx);
+assert(minimalMsgs.telemetry && minimalMsgs.telemetry.state === 'INIT',
+  'Car senza config produce telemetria INIT senza eccezioni');
+
+const lapCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(777, 16),
+  config: { ...config, engineFailureProbPerTick: 0 },
+});
+lapCar.startRace(1, ctx.timestamp);
+const lapEvents = [];
+for (let i = 0; i < 1300 && lapEvents.length < 2; i++) {
+  const msgs = lapCar.tick(dt, {
+    raceId: 1,
+    timestamp: new Date().toISOString(),
+    totalLaps: 15,
+    checkeredActive: false,
+  });
+  for (const e of msgs.events || []) {
+    if (e.type === 'lap-completed') lapEvents.push(e);
+  }
+}
+assert(lapEvents.length >= 2, `lap-completed emesso per due giri (got ${lapEvents.length})`);
+assert(lapEvents[0] && lapEvents[0].details.lap === 1,
+  `primo lap-completed ha lap=1 (got ${lapEvents[0] && lapEvents[0].details.lap})`);
+assert(lapEvents[1] && lapEvents[1].details.lap === 2,
+  `secondo lap-completed ha lap=2 (got ${lapEvents[1] && lapEvents[1].details.lap})`);
+
+const pitConfig = { ...config, engineFailureProbPerTick: 0 };
+const pitCar = new Car({
+  teamId: 'ferrari',
+  carId: 55,
+  driver: 'C. Sainz',
+  pitStrategy: [1],
+  rng: createCarPrng(888, 55),
+  config: pitConfig,
+});
+pitCar.startRace(1, ctx.timestamp);
+let pitEntryTelemetry = null;
+let pitStopEvent = null;
+let pitExitTelemetry = null;
+let pitEntryLap = null;
+for (let i = 0; i < 1800 && !pitExitTelemetry; i++) {
+  const msgs = pitCar.tick(dt, {
+    raceId: 1,
+    timestamp: new Date().toISOString(),
+    totalLaps: 15,
+    checkeredActive: false,
+  });
+
+  if (msgs.state && msgs.state.state === 'PIT') {
+    pitEntryTelemetry = msgs.telemetry;
+    pitEntryLap = pitCar.lap;
+  }
+  for (const e of msgs.events || []) {
+    if (e.type === 'pit-stop') pitStopEvent = e;
+  }
+  if (msgs.state && msgs.state.previousState === 'PIT' && msgs.state.state === 'RUNNING') {
+    pitExitTelemetry = msgs.telemetry;
+  }
+}
+assert(pitEntryTelemetry && pitEntryTelemetry.trackPos >= pitConfig.pitEntryPos,
+  `PIT scatta alla pit entry (trackPos=${pitEntryTelemetry && pitEntryTelemetry.trackPos})`);
+assert(pitStopEvent != null, 'pit-stop emesso dopo ingresso pit');
+assert(pitExitTelemetry && pitExitTelemetry.lap > pitEntryLap && pitExitTelemetry.trackPos >= pitConfig.pitExitPos,
+  `pit-exit dopo giro wrap e pitExitPos (lap=${pitExitTelemetry && pitExitTelemetry.lap}, trackPos=${pitExitTelemetry && pitExitTelemetry.trackPos})`);
+
+// ============================================================
 // TEST 2: 10 auto — 40 tick (10 secondi simulati)
 // ============================================================
 
@@ -282,6 +369,47 @@ for (const t of mockPub.telemetry) {
   if (t.trackPos < 0 || t.trackPos > 1) schemaErrors++;
   if (t.throttle < 0 || t.throttle > 1) schemaErrors++;
   if (t.brake < 0 || t.brake > 1) schemaErrors++;
+  if (!validateTelemetrySchema(t)) {
+    schemaErrors++;
+    console.error(`  Telemetry schema error car ${t.carId}: ${JSON.stringify(validateTelemetrySchema.errors && validateTelemetrySchema.errors[0])}`);
+  }
+}
+for (const s of mockPub.states) {
+  if (!validateStateSchema(s)) {
+    schemaErrors++;
+    console.error(`  State schema error car ${s.carId}: ${JSON.stringify(validateStateSchema.errors && validateStateSchema.errors[0])}`);
+  }
+}
+for (const e of mockPub.events) {
+  if (!validateEventSchema(e)) {
+    schemaErrors++;
+    console.error(`  Event schema error car ${e.carId}: ${JSON.stringify(validateEventSchema.errors && validateEventSchema.errors[0])}`);
+  }
+}
+const sampleFlag = {
+  timestamp: new Date().toISOString(),
+  raceId: 1,
+  flag: 'GREEN',
+  active: true,
+  sector: null,
+  reason: 'schema-test',
+};
+if (!validateFlagSchema(sampleFlag)) {
+  schemaErrors++;
+  console.error(`  Flag schema error: ${JSON.stringify(validateFlagSchema.errors && validateFlagSchema.errors[0])}`);
+}
+const sampleClassification = {
+  timestamp: new Date().toISOString(),
+  raceId: 1,
+  lap: 1,
+  leaderLap: 1,
+  standings: [
+    { position: 1, carId: 16, teamId: 'ferrari', lap: 1, gap: 0, state: 'RUNNING' },
+  ],
+};
+if (!validateClassificationSchema(sampleClassification)) {
+  schemaErrors++;
+  console.error(`  Classification schema error: ${JSON.stringify(validateClassificationSchema.errors && validateClassificationSchema.errors[0])}`);
 }
 console.log(`  Campioni verificati: ${mockPub.telemetry.length}`);
 assert(schemaErrors === 0, `Nessun errore di schema (${schemaErrors} trovati)`);

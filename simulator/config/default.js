@@ -4,6 +4,14 @@
 // dell'architettura). Qui si definiscono i default ragionevoli per una
 // gara di test di 15 giri a Monza con 10 auto.
 
+function intEnvInRange(name, fallback, min, max) {
+  const value = parseInt(process.env[name], 10);
+  if (!Number.isFinite(value)) return fallback;
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
 const config = Object.freeze({
 
   // --- Rete ---
@@ -11,7 +19,7 @@ const config = Object.freeze({
   raceId: parseInt(process.env.RACE_ID, 10) || 1,
 
   // --- Tick rate (fisica = publish) ---
-  tickMs: parseInt(process.env.TICK_MS, 10) || 250,  // 4 Hz default
+  tickMs: intEnvInRange('TICK_MS', 250, 200, 500),  // 4 Hz default, clamp 2-5 Hz
 
   // --- Gara ---
   totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 15,
@@ -37,6 +45,7 @@ const config = Object.freeze({
 
   // --- Pit lane ---
   pitEntryPos: 0.95,      // trackPos di ingresso pit-lane
+  pitBoxPos: 0.985,       // trackPos stimata del box nella pit-lane
   pitExitPos: 0.04,       // trackPos di uscita pit-lane (giro successivo)
   pitLaneSpeedKmh: 80,    // velocita' pit-lane limit
   fuelAddedOnPit: 50,     // kg riforniti a ogni pit
@@ -72,6 +81,16 @@ const config = Object.freeze({
     mclaren: 1.005,
     mercedes: 1.00,
     alpine: 0.99,
+  },
+
+  // --- Race Control trigger (Fase 4) ---
+  raceControlTriggers: {
+    retirementScProbability: 0.40,   // prob. SC per ogni ritiro
+    multiFaultVscThreshold: 2,       // N auto in FAULT → VSC
+    massIncidentThreshold: 3,        // N auto FAULT+RETIRED → RED FLAG
+    scMinDurationS: 30,              // durata minima SC prima di clearance
+    vscMinDurationS: 20,             // durata minima VSC prima di clearance
+    yellowMinDurationS: 10,          // durata minima YELLOW prima di clearance
   },
 });
 

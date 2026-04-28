@@ -44,12 +44,13 @@ class Car {
     this.simulatedTimeS = 0;
 
     // Variabilita' per-auto (calcolata una volta, fissa per tutta la gara)
-    const jitterKmh = config.speedJitterKmh || 3;
+    const jitterKmh = this.config.speedJitterKmh || 3;
     this._speedOffset = (this.rng() - 0.5) * 2 * jitterKmh;
-    this._teamFactor = (config.teamPerformanceFactor && config.teamPerformanceFactor[teamId]) || 1.0;
+    this._teamFactor = (this.config.teamPerformanceFactor && this.config.teamPerformanceFactor[teamId]) || 1.0;
 
     // Pit refuel/reset tracking
-    this._pitRefueled = false;
+    this._pitServiced = false;
+    this._pitEntryLap = null;
   }
 
   // --- Tick principale ---
@@ -95,9 +96,14 @@ class Car {
     // --- PIT: velocita' limitata, attende timer ---
     if (this.fsm.state === STATES.PIT) {
       const pitTarget = this.config.pitLaneSpeedKmh || 80;
-      this.speed = updateSpeed(this.speed, pitTarget, dt);
+      const pitStopElapsed = this._pitServiced && this.condTracker.pitEnteredAtS != null
+        && (this.simulatedTimeS - this.condTracker.pitEnteredAtS) >= (this.condTracker.pitDurationS || 0);
+      const target = this._pitServiced && !pitStopElapsed ? 0 : pitTarget;
+      this.speed = updateSpeed(this.speed, target, dt);
+      if (target === pitTarget && this.speed > pitTarget) this.speed = pitTarget;
 
-      const posResult = advance({ trackPos: this.trackPos, lap: this.lap }, this.speed, dt);
+      const prevPos = { trackPos: this.trackPos, lap: this.lap };
+      const posResult = advance(prevPos, this.speed, dt);
       this._checkSectorCrossing(posResult, raceId, timestamp, messages);
       if (posResult.lapsCompleted > 0) {
         this._onLapCompleted(posResult, raceId, timestamp, messages);
@@ -105,11 +111,13 @@ class Car {
       this.trackPos = posResult.trackPos;
       this.lap = posResult.lap;
 
-      // Refuel e reset gomme (una volta sola durante il pit)
-      if (!this._pitRefueled) {
+      // Refuel e reset gomme solo quando viene raggiunta la box position.
+      if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
         this.fuel = Math.min(INITIAL_FUEL_KG, this.fuel + (this.config.fuelAddedOnPit || 50));
         this.tireTemp = initialTireTemp(this.config.tireResetTempC || 90);
-        this._pitRefueled = true;
+        this._pitServiced = true;
+        this.speed = 0;
+        this.condTracker = onEnterPit(this.condTracker, this.simulatedTimeS, this.condTracker.pitDurationS || 2.4);
 
         messages.events.push({
           timestamp, raceId, teamId: this.teamId, carId: this.carId,
@@ -221,11 +229,14 @@ class Car {
       fuel: this.fuel,
       tireTemp: this.tireTemp,
       lap: this.lap,
+      trackPos: this.trackPos,
       totalLaps: ctx.totalLaps || 15,
       checkeredActive: ctx.checkeredActive || false,
       nowS: this.simulatedTimeS,
       rng: this.rng,
       scheduledPitLaps: this.pitStrategy,
+      pitEntryPos: this.config.pitEntryPos,
+      pitExitReached: this._pitExitReached(),
       fuelPitThreshold: this.config.fuelPitThresholdKg,
       tireOverheatThreshold: this.config.tireOverheatThresholdC,
       tireOverheatTicksRequired: this.config.tireOverheatTicksRequired,
@@ -321,8 +332,13 @@ class Car {
     if (fsmResult.state === STATES.PIT) {
       const pitDuration = samplePitDurationS(this.rng,
         this.config.pitDurationMinS, this.config.pitDurationMaxS);
-      this.condTracker = onEnterPit(this.condTracker, this.simulatedTimeS, pitDuration);
-      this._pitRefueled = false;
+      this.condTracker = {
+        ...this.condTracker,
+        pitEnteredAtS: null,
+        pitDurationS: pitDuration,
+      };
+      this._pitServiced = false;
+      this._pitEntryLap = this.lap;
 
       messages.events.push({
         timestamp, raceId, teamId: this.teamId, carId: this.carId,
@@ -350,12 +366,28 @@ class Car {
     }
 
     if (fsmResult.previousState === STATES.PIT && fsmResult.state === STATES.RUNNING) {
+      this._pitEntryLap = null;
       messages.events.push({
         timestamp, raceId, teamId: this.teamId, carId: this.carId,
         type: 'pit-exit',
         details: {},
       });
     }
+  }
+
+  _crossedTrackPos(prev, next, targetPos) {
+    const target = Number.isFinite(targetPos) ? targetPos : 0;
+    if (!prev || !next) return false;
+    if (next.lap > prev.lap) {
+      return prev.trackPos <= target || next.trackPos >= target;
+    }
+    return prev.trackPos <= target && next.trackPos >= target;
+  }
+
+  _pitExitReached() {
+    if (this._pitEntryLap == null) return true;
+    const pitExitPos = this.config.pitExitPos || 0.04;
+    return this._pitServiced && this.lap > this._pitEntryLap && this.trackPos >= pitExitPos;
   }
 
   _checkSectorCrossing(posResult, raceId, timestamp, messages) {
@@ -399,12 +431,14 @@ class Car {
       ? this.simulatedTimeS - this.lapStartTimeS
       : 0;
 
-    if (lapTime > 0 && this.lap > 0) {
+    const completedLap = posResult.lap;
+
+    if (lapTime > 0 && completedLap > 0) {
       messages.events.push({
         timestamp, raceId, teamId: this.teamId, carId: this.carId,
         type: 'lap-completed',
         details: {
-          lap: this.lap,
+          lap: completedLap,
           lapTime: Math.round(lapTime * 1000) / 1000,
         },
       });

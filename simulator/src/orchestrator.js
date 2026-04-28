@@ -1,7 +1,8 @@
 // Orchestrator — ciclo tick, lifecycle, fan-out alle Car.
 //
 // Un solo `setInterval(tickFn, TICK_MS)` gestisce tutte le auto.
-// A ogni tick: calcola dt, aggiorna tutte le auto, pubblica i messaggi.
+// A ogni tick: calcola dt, valuta Race Control, aggiorna tutte le auto,
+// pubblica i messaggi.
 //
 // Cfr. docs/simulator-architecture.md §4.
 
@@ -9,6 +10,8 @@ const Car = require('./car/car');
 const { createCarPrng } = require('./util/prng');
 const { createClock } = require('./util/clock');
 const { STATES } = require('./car/fsm');
+const RaceController = require('./race-control/race-controller');
+const { FLAGS } = require('./race-control/flag-state');
 
 class Orchestrator {
   constructor({ roster, config, publisher, logger }) {
@@ -20,6 +23,17 @@ class Orchestrator {
     this.raceId = config.raceId || 1;
     this.totalLaps = config.totalLaps || 15;
     this.tickMs = config.tickMs || 250;
+
+    // PRNG globale per Race Control (separato dalle auto)
+    const rcRng = createCarPrng(config.seed, 0);
+
+    // Race Controller — motore centrale delle flag (Fase 4)
+    this.raceController = new RaceController({
+      raceId: this.raceId,
+      triggerConfig: config.raceControlTriggers || {},
+      logger: this.log,
+      rng: rcRng,
+    });
 
     // Crea le auto dal roster
     this.cars = roster.map((entry) => {
@@ -41,6 +55,7 @@ class Orchestrator {
     this._raceFinished = false;
     this._checkeredSent = false;
     this._leaderLap = 0;
+    this._simulatedTimeS = 0;
 
     // Stats
     this._totalPublished = 0;
@@ -51,6 +66,19 @@ class Orchestrator {
     this.log.info(`[Orchestrator] Avvio simulazione: ${this.cars.length} auto, ${this.totalLaps} giri, ${1000 / this.tickMs} Hz`);
     this._startTimeMs = this.clock.nowMs();
     this._lastTickMs = this._startTimeMs;
+
+    // Pubblica la flag iniziale GREEN (retained, cosi' i subscriber la
+    // ricevono immediatamente alla connessione)
+    const greenPayload = {
+      timestamp: this.clock.isoNow(),
+      raceId: this.raceId,
+      flag: FLAGS.GREEN,
+      active: true,
+      sector: null,
+      reason: 'race-start',
+    };
+    this.publisher.publishFlag(greenPayload);
+    this._totalPublished++;
 
     // Race start: transizione INIT → RUNNING per tutte le auto
     const timestamp = this.clock.isoNow();
@@ -76,7 +104,14 @@ class Orchestrator {
     }
 
     const elapsed = ((this.clock.nowMs() - this._startTimeMs) / 1000).toFixed(1);
+    const flagHistory = this.raceController.history;
     this.log.info(`[Orchestrator] Simulazione terminata dopo ${elapsed}s, ${this._tickCount} tick, ${this._totalPublished} messaggi pubblicati`);
+    if (flagHistory.length > 0) {
+      this.log.info(`[Orchestrator] Flag history (${flagHistory.length} cambi):`);
+      for (const entry of flagHistory) {
+        this.log.info(`  ${entry.from} → ${entry.to} [${entry.source}] ${entry.reason || ''}`);
+      }
+    }
   }
 
   _tick() {
@@ -92,25 +127,43 @@ class Orchestrator {
 
     const timestamp = this.clock.isoNow();
     this._tickCount++;
+    this._simulatedTimeS += dt;
 
     // Controlla se il leader ha completato tutti i giri
     this._updateLeaderLap();
 
-    // Contesto globale del tick
+    // --- RACE CONTROL: valuta trigger automatici PRIMA delle auto ---
+    const rcResult = this.raceController.tick(this.cars, {
+      leaderLap: this._leaderLap,
+      totalLaps: this.totalLaps,
+      nowS: this._simulatedTimeS,
+      timestamp,
+    });
+
+    // Se la flag e' cambiata, pubblica su MQTT
+    if (rcResult.flagChanged && rcResult.flagPayload) {
+      this.publisher.publishFlag(rcResult.flagPayload);
+      this._totalPublished++;
+    }
+
+    // Aggiorna checkered dal RaceController (sostituisce la logica
+    // hardcoded precedente)
+    if (this.raceController.activeFlag === FLAGS.CHECKERED) {
+      this._checkeredSent = true;
+    }
+
+    // Costruisci il contesto globale del tick con le info di Race Control
+    const flagCtx = this.raceController.buildFlagContext();
     const ctx = {
       raceId: this.raceId,
       timestamp,
       totalLaps: this.totalLaps,
       checkeredActive: this._checkeredSent,
       leaderLap: this._leaderLap,
+      // Contesto Race Control per le auto (Fase 4)
+      activeFlag: flagCtx.flag,
+      activeFlagSector: flagCtx.sector,
     };
-
-    // Attiva checkered flag quando il leader raggiunge totalLaps
-    if (!this._checkeredSent && this._leaderLap >= this.totalLaps) {
-      this._checkeredSent = true;
-      ctx.checkeredActive = true;
-      this.log.info(`[Orchestrator] 🏁 CHECKERED FLAG! Leader al giro ${this._leaderLap}`);
-    }
 
     // Tick di tutte le auto
     let allTerminal = true;
@@ -167,10 +220,11 @@ class Orchestrator {
 
   _logStatus() {
     const elapsed = ((this.clock.nowMs() - this._startTimeMs) / 1000).toFixed(0);
+    const flag = this.raceController.activeFlag;
     const carSummaries = this.cars.map((c) => {
       return `#${c.carId}[${c.fsm.state}:L${c.lap}]`;
     }).join(' ');
-    this.log.info(`[Orchestrator] t=${elapsed}s tick=${this._tickCount} pub=${this._totalPublished} leader=L${this._leaderLap} | ${carSummaries}`);
+    this.log.info(`[Orchestrator] t=${elapsed}s tick=${this._tickCount} pub=${this._totalPublished} flag=${flag} leader=L${this._leaderLap} | ${carSummaries}`);
   }
 }
 

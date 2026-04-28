@@ -10,10 +10,17 @@
     "test:fsm": "node scripts/test-fsm.js",
     "test:conditions": "node scripts/test-conditions.js",
     "test:mqtt-sim": "node scripts/test-mqtt-sim.js",
-    "test": "npm run test:physics && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:mqtt-sim"
+    "test:mqtt-broker": "node scripts/test-mqtt-broker.js",
+    "test:mongo-schema": "node scripts/test-mongo-schema.js",
+    "test:race-control": "node scripts/test-race-control.js",
+    "seed": "node scripts/seed.js",
+    "test": "npm run test:physics && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:race-control && npm run test:mqtt-sim"
   },
   "dependencies": {
-    "mqtt": "^5.3.5",
-    "mongodb": "^6.12.0"
+    "mongodb": "^6.12.0",
+    "mqtt": "^5.3.5"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
   }
 }

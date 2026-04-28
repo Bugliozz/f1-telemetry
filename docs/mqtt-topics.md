@@ -205,3 +205,31 @@ mosquitto_sub -h localhost -p 1883 \
 # Tutto il sotto-albero del progetto (debug)
 mosquitto_sub -h localhost -p 1883 -t 'f1/#' -v
 ```
+
+## 6. Esempi di publish manuale
+
+Aprire prima una subscription:
+
+```bash
+mosquitto_sub -h localhost -p 1883 \
+  -t 'f1/simulation/1/teams/ferrari/cars/16/telemetry' -v
+```
+
+Poi pubblicare un payload di test:
+
+```bash
+mosquitto_pub -h localhost -p 1883 \
+  -t 'f1/simulation/1/teams/ferrari/cars/16/telemetry' \
+  -m '{"timestamp":"2026-04-27T14:32:10.512Z","raceId":1,"teamId":"ferrari","carId":16,"lap":1,"trackPos":0.1,"speed":250,"rpm":11000,"gear":6,"throttle":0.8,"brake":0,"drs":true,"tireTemp":{"fl":95,"fr":96,"rl":98,"rr":99},"fuel":80,"state":"RUNNING"}'
+```
+
+Per verificare un topic retained:
+
+```bash
+mosquitto_pub -h localhost -p 1883 -q 1 -r \
+  -t 'f1/simulation/1/race-control/flags' \
+  -m '{"timestamp":"2026-04-27T14:40:12.000Z","raceId":1,"flag":"GREEN","active":true,"sector":null,"reason":"manual-test"}'
+
+mosquitto_sub -h localhost -p 1883 -C 1 \
+  -t 'f1/simulation/1/race-control/flags'
+```

@@ -52,15 +52,15 @@
 - [x] Implementare la generazione RPM correlata alla velocità 🟠
 - [x] Implementare la **macchina a stati finiti** per ogni auto (INIT → RUNNING → PIT / FAULT / RETIRED / FINISHED) 🔴
 - [x] Definire le condizioni di transizione di stato (temperatura alta → FAULT, fuel basso → PIT, ecc.) 🔴
-- [ ] Implementare il loop di publish MQTT a 2–5 Hz per ogni auto 🟠
-- [ ] Aggiungere variabilità e randomness realistica ai dati generati 🟠
-- [ ] Testare il simulatore con 1 auto, poi scalare a 10 🟢
+- [x] Implementare il loop di publish MQTT a 2–5 Hz per ogni auto 🟠
+- [x] Aggiungere variabilità e randomness realistica ai dati generati 🟠
+- [x] Testare il simulatore con 1 auto, poi scalare a 10 🟢
 
 ---
     
 ## Fase 4 — Race Control
 
-- [ ] Progettare la logica di Race Control (trigger e gestione flag globali) 🔴
+- [x] Progettare la logica di Race Control (trigger e gestione flag globali) 🔴 — vedi [docs/race-control-design.md](docs/race-control-design.md)
 - [ ] Implementare il **Safety Car (SC)**: riduzione velocità globale + compattamento del gruppo 🔴
 - [ ] Implementare il **Virtual Safety Car (VSC)**: velocità limitata uniforme + divieto sorpasso 🔴
 - [ ] Implementare le flag: 🟠

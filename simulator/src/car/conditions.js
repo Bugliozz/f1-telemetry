@@ -137,6 +137,12 @@ function isRaceEnd(currentLap, totalLaps, checkeredActive) {
   return checkeredActive === true && currentLap >= totalLaps;
 }
 
+function isPitEntryWindow(trackPos, pitEntryPos) {
+  if (!isFiniteNumber(trackPos)) return true;
+  const entry = isFiniteNumber(pitEntryPos) ? pitEntryPos : 0.95;
+  return trackPos >= entry;
+}
+
 function onEnterPit(tracker, nowS, durationS) {
   const t = tracker || initialConditionsTracker();
   return {
@@ -170,11 +176,14 @@ function readObservation(obs) {
     fuel: o.fuel,
     tireTemp: o.tireTemp,
     lap: o.lap,
+    trackPos: o.trackPos,
     totalLaps: o.totalLaps,
     checkeredActive: o.checkeredActive === true,
     nowS: o.nowS,
     rng: o.rng,
     scheduledPitLaps: Array.isArray(o.scheduledPitLaps) ? o.scheduledPitLaps : [],
+    pitEntryPos: isFiniteNumber(o.pitEntryPos) ? o.pitEntryPos : 0.95,
+    pitExitReached: o.pitExitReached !== false,
     fuelPitThreshold: isFiniteNumber(o.fuelPitThreshold) ? o.fuelPitThreshold : FUEL_PIT_THRESHOLD_KG,
     tireOverheatThreshold: isFiniteNumber(o.tireOverheatThreshold) ? o.tireOverheatThreshold : TIRE_OVERHEAT_THRESHOLD_C,
     tireOverheatTicksRequired: isFiniteNumber(o.tireOverheatTicksRequired) ? o.tireOverheatTicksRequired : TIRE_OVERHEAT_TICKS_REQUIRED,
@@ -216,7 +225,8 @@ function evaluate(fsmState, observation, tracker) {
         tracker: { ...nextTracker, tireOverheatTicks: 0 },
       };
     }
-    if (isLowFuel(safe.fuel, safe.fuelPitThreshold)) {
+    const canEnterPit = isPitEntryWindow(safe.trackPos, safe.pitEntryPos);
+    if (canEnterPit && isLowFuel(safe.fuel, safe.fuelPitThreshold)) {
       const fuelStr = isFiniteNumber(safe.fuel) ? safe.fuel.toFixed(2) : '0.00';
       return {
         trigger: TRIGGERS.LOW_FUEL,
@@ -224,7 +234,7 @@ function evaluate(fsmState, observation, tracker) {
         tracker: nextTracker,
       };
     }
-    if (isScheduledPit(safe.lap, safe.scheduledPitLaps, nextTracker.scheduledPitTriggeredLaps)) {
+    if (canEnterPit && isScheduledPit(safe.lap, safe.scheduledPitLaps, nextTracker.scheduledPitTriggeredLaps)) {
       return {
         trigger: TRIGGERS.SCHEDULED_PIT,
         reason: `scheduled-pit:lap=${safe.lap}`,
@@ -244,7 +254,7 @@ function evaluate(fsmState, observation, tracker) {
     if (isEngineFailure(safe.rng, safe.engineFailureProb)) {
       return { trigger: TRIGGERS.ENGINE_FAILURE, reason: TRIGGERS.ENGINE_FAILURE, tracker: nextTracker };
     }
-    if (isPitTimeElapsed(nextTracker.pitEnteredAtS, nextTracker.pitDurationS, safe.nowS)) {
+    if (safe.pitExitReached && isPitTimeElapsed(nextTracker.pitEnteredAtS, nextTracker.pitDurationS, safe.nowS)) {
       return {
         trigger: TRIGGERS.PIT_OUT,
         reason: TRIGGERS.PIT_OUT,
@@ -288,6 +298,7 @@ module.exports = {
   isPitTimeElapsed,
   isFaultUnrecoverable,
   isRaceEnd,
+  isPitEntryWindow,
   onEnterPit,
   onEnterFault,
   samplePitDurationS,

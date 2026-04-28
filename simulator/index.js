@@ -8,6 +8,7 @@ const config = require('./config/default');
 const roster = require('./config/roster.json');
 const MqttPublisher = require('./src/mqtt/publisher');
 const Orchestrator = require('./src/orchestrator');
+const RaceControlSubscriber = require('./src/race-control/subscriber');
 const { createLogger } = require('./src/util/log');
 
 const log = createLogger(config.logLevel);
@@ -30,18 +31,36 @@ const client = mqtt.connect(config.mqttBroker, {
   clientId: `f1-simulator-${config.raceId}-${Date.now()}`,
 });
 
-const publisher = new MqttPublisher(client, config.raceId, log);
+const publisher = new MqttPublisher(client, config.raceId, log, {
+  validateSchemas: config.logLevel === 'debug',
+});
+let orchestrator = null;
+let rcSubscriber = null;
 
 // Aspetta la connessione prima di avviare
 client.on('connect', () => {
+  if (orchestrator) {
+    log.info('[main] Broker MQTT riconnesso, simulazione gia attiva');
+    return;
+  }
+
   log.info('[main] Connesso al broker MQTT — avvio simulazione...');
 
-  const orchestrator = new Orchestrator({
+  orchestrator = new Orchestrator({
     roster,
     config,
     publisher,
     logger: log,
   });
+
+  // Avvia il subscriber per flag esterne (Fase 4 — Race Control)
+  rcSubscriber = new RaceControlSubscriber({
+    mqttClient: client,
+    raceId: config.raceId,
+    raceController: orchestrator.raceController,
+    logger: log,
+  });
+  rcSubscriber.start();
 
   orchestrator.start();
 

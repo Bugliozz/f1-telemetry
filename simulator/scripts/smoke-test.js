@@ -108,7 +108,10 @@ async function main() {
   await testNodeRed();
 
   console.log(`\n=== Risultato: ${passed} ✅  ${failed} ❌ ===`);
-  process.exit(failed > 0 ? 1 : 0);
+  process.exitCode = failed > 0 ? 1 : 0;
 }
 
-main();
+main().catch((err) => {
+  console.error('[smoke-test] errore non gestito:', err.message);
+  process.exitCode = 1;
+});
