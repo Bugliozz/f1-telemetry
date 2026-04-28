@@ -14,6 +14,7 @@ const Orchestrator = require('../src/orchestrator');
 const config = require('../config/default');
 const roster = require('../config/roster.json');
 const { createCarPrng } = require('../src/util/prng');
+const { LENGTH_M } = require('../src/track/monza');
 const path = require('path');
 const Ajv2020 = require('ajv/dist/2020');
 
@@ -249,6 +250,447 @@ assert(pitEntryTelemetry && pitEntryTelemetry.trackPos >= pitConfig.pitEntryPos,
 assert(pitStopEvent != null, 'pit-stop emesso dopo ingresso pit');
 assert(pitExitTelemetry && pitExitTelemetry.lap > pitEntryLap && pitExitTelemetry.trackPos >= pitConfig.pitExitPos,
   `pit-exit dopo giro wrap e pitExitPos (lap=${pitExitTelemetry && pitExitTelemetry.lap}, trackPos=${pitExitTelemetry && pitExitTelemetry.trackPos})`);
+
+// ============================================================
+// TEST 1C: Safety Car
+// ============================================================
+
+section('TEST 1C: Safety Car');
+
+const scConfig = {
+  ...config,
+  engineFailureProbPerTick: 0,
+  safetyCarSpeedKmh: 140,
+  safetyCarCatchupSpeedKmh: 180,
+  safetyCarTargetGapS: 0.5,
+  safetyCarGapGainKmhPerS: 12,
+  safetyCarCloseGapSlowdownKmhPerS: 60,
+  safetyCarMinSpeedKmh: 60,
+};
+
+const scLeader = new Car({
+  teamId: 'redbull',
+  carId: 1,
+  driver: 'M. Verstappen',
+  pitStrategy: [],
+  rng: createCarPrng(1001, 1),
+  config: scConfig,
+});
+scLeader.startRace(1, ctx.timestamp);
+scLeader.trackPos = 0.2;
+scLeader.speed = 250;
+scLeader.tick(2, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'SC',
+  safetyCar: { isLeader: true, gapToCarAheadS: 0, targetGapS: scConfig.safetyCarTargetGapS },
+});
+assert(scLeader.speed <= scConfig.safetyCarSpeedKmh + 0.1,
+  `SC leader limitato a ${scConfig.safetyCarSpeedKmh} km/h (got ${scLeader.speed.toFixed(1)})`);
+
+const scChaser = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(1002, 16),
+  config: scConfig,
+});
+scChaser.startRace(1, ctx.timestamp);
+scChaser.trackPos = 0.19;
+scChaser.speed = scConfig.safetyCarSpeedKmh;
+const chaserMsgs = scChaser.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'SC',
+  safetyCar: { isLeader: false, gapToCarAheadS: 8, targetGapS: scConfig.safetyCarTargetGapS },
+});
+assert(scChaser.speed > scConfig.safetyCarSpeedKmh,
+  `SC auto lontana accelera per compattare (got ${scChaser.speed.toFixed(1)})`);
+assert(scChaser.speed <= scConfig.safetyCarCatchupSpeedKmh,
+  `SC catch-up resta sotto ${scConfig.safetyCarCatchupSpeedKmh} km/h (got ${scChaser.speed.toFixed(1)})`);
+assert(chaserMsgs.telemetry && chaserMsgs.telemetry.drs === false,
+  'DRS disattivato sotto Safety Car');
+
+const scClose = new Car({
+  teamId: 'mercedes',
+  carId: 44,
+  driver: 'L. Hamilton',
+  pitStrategy: [],
+  rng: createCarPrng(1003, 44),
+  config: scConfig,
+});
+scClose.startRace(1, ctx.timestamp);
+scClose.trackPos = 0.19;
+scClose.speed = scConfig.safetyCarSpeedKmh;
+scClose.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'SC',
+  safetyCar: { isLeader: false, gapToCarAheadS: 0.1, targetGapS: scConfig.safetyCarTargetGapS },
+});
+assert(scClose.speed < scConfig.safetyCarSpeedKmh,
+  `SC auto troppo vicina rallenta per tenere gap (got ${scClose.speed.toFixed(1)})`);
+
+const scOrchestrator = new Orchestrator({
+  roster: [
+    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen', pitStrategy: [] },
+    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc', pitStrategy: [] },
+  ],
+  config: scConfig,
+  publisher: new MockPublisher(),
+  logger: { debug() {}, info() {}, warn() {}, error() {} },
+});
+for (const c of scOrchestrator.cars) c.startRace(1, ctx.timestamp);
+scOrchestrator.cars[0].lap = 1;
+scOrchestrator.cars[0].trackPos = 0.5;
+scOrchestrator.cars[1].lap = 1;
+scOrchestrator.cars[1].trackPos = 0.45;
+const scContexts = scOrchestrator._buildSafetyCarContexts('SC');
+assert(scContexts.get(1) && scContexts.get(1).isLeader === true,
+  'Orchestrator identifica il leader sotto SC');
+assert(scContexts.get(16) && scContexts.get(16).gapToCarAheadS > scConfig.safetyCarTargetGapS,
+  `Orchestrator calcola gap SC verso auto davanti (got ${scContexts.get(16) && scContexts.get(16).gapToCarAheadS})`);
+
+// ============================================================
+// TEST 1D: Virtual Safety Car
+// ============================================================
+
+section('TEST 1D: Virtual Safety Car');
+
+const vscConfig = {
+  ...config,
+  engineFailureProbPerTick: 0,
+  virtualSafetyCarSpeedKmh: 120,
+  virtualSafetyCarMinGapM: 5,
+};
+
+const vscLeader = new Car({
+  teamId: 'redbull',
+  carId: 1,
+  driver: 'M. Verstappen',
+  pitStrategy: [],
+  rng: createCarPrng(1101, 1),
+  config: vscConfig,
+});
+vscLeader.startRace(1, ctx.timestamp);
+vscLeader.trackPos = 0.94;
+vscLeader.speed = 250;
+const leaderMsgs = vscLeader.tick(2, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'VSC',
+  virtualSafetyCar: { isLeader: true, position: 1 },
+});
+assert(vscLeader.speed <= vscConfig.virtualSafetyCarSpeedKmh + 0.1,
+  `VSC limita la velocita a ${vscConfig.virtualSafetyCarSpeedKmh} km/h (got ${vscLeader.speed.toFixed(1)})`);
+assert(leaderMsgs.telemetry && leaderMsgs.telemetry.drs === false,
+  'DRS disattivato sotto Virtual Safety Car');
+
+const leaderProgress = 0.5;
+const maxVscProgress = leaderProgress - (vscConfig.virtualSafetyCarMinGapM / LENGTH_M);
+const vscChaser = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(1102, 16),
+  config: vscConfig,
+});
+vscChaser.startRace(1, ctx.timestamp);
+vscChaser.trackPos = 0.49;
+vscChaser.speed = 300;
+vscChaser.tick(2, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'VSC',
+  virtualSafetyCar: { isLeader: false, position: 2, maxProgress: maxVscProgress },
+});
+const chaserProgress = vscChaser.lap + vscChaser.trackPos;
+assert(chaserProgress <= maxVscProgress + 1e-9,
+  `VSC blocca il sorpasso (progress=${chaserProgress.toFixed(6)}, max=${maxVscProgress.toFixed(6)})`);
+
+const vscOrchestrator = new Orchestrator({
+  roster: [
+    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen', pitStrategy: [] },
+    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc', pitStrategy: [] },
+  ],
+  config: vscConfig,
+  publisher: new MockPublisher(),
+  logger: { debug() {}, info() {}, warn() {}, error() {} },
+});
+for (const c of vscOrchestrator.cars) c.startRace(1, ctx.timestamp);
+vscOrchestrator.cars[0].lap = 1;
+vscOrchestrator.cars[0].trackPos = 0.5;
+vscOrchestrator.cars[1].lap = 1;
+vscOrchestrator.cars[1].trackPos = 0.49;
+const vscContexts = vscOrchestrator._buildVirtualSafetyCarContexts('VSC');
+assert(vscContexts.get(1) && vscContexts.get(1).isLeader === true,
+  'Orchestrator identifica il leader sotto VSC');
+assert(vscContexts.get(16) && vscContexts.get(16).maxProgress < 1.5,
+  'Orchestrator calcola il limite anti-sorpasso VSC');
+
+// ============================================================
+// TEST 1E: Race flags (GREEN / YELLOW / RED / CHECKERED)
+// ============================================================
+
+section('TEST 1E: Race flags');
+
+const flagConfig = {
+  ...config,
+  engineFailureProbPerTick: 0,
+  yellowSpeedMultiplier: 0.6,
+};
+
+const greenFlagCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(1201, 16),
+  config: flagConfig,
+});
+greenFlagCar.startRace(1, ctx.timestamp);
+greenFlagCar.currentSector = 3;
+greenFlagCar.trackPos = 0.94;
+greenFlagCar.speed = 250;
+const greenFlagMsgs = greenFlagCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(greenFlagCar.speed > 250,
+  `GREEN lascia la gara attiva e l'auto accelera (got ${greenFlagCar.speed.toFixed(1)})`);
+assert(greenFlagMsgs.telemetry && greenFlagMsgs.telemetry.drs === true,
+  'GREEN non disattiva il DRS nelle zone abilitate');
+
+const yellowFlagCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(1201, 16),
+  config: flagConfig,
+});
+yellowFlagCar.startRace(1, ctx.timestamp);
+yellowFlagCar.currentSector = 3;
+yellowFlagCar.trackPos = 0.94;
+yellowFlagCar.speed = 250;
+const yellowFlagMsgs = yellowFlagCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'YELLOW',
+  activeFlagSector: 3,
+});
+assert(yellowFlagCar.speed < greenFlagCar.speed,
+  `YELLOW rallenta nel settore attivo (${yellowFlagCar.speed.toFixed(1)} < ${greenFlagCar.speed.toFixed(1)})`);
+assert(yellowFlagMsgs.telemetry && yellowFlagMsgs.telemetry.drs === false,
+  'YELLOW disattiva il DRS nel settore interessato');
+
+const yellowOtherSectorCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: createCarPrng(1201, 16),
+  config: flagConfig,
+});
+yellowOtherSectorCar.startRace(1, ctx.timestamp);
+yellowOtherSectorCar.currentSector = 3;
+yellowOtherSectorCar.trackPos = 0.94;
+yellowOtherSectorCar.speed = 250;
+const yellowOtherSectorMsgs = yellowOtherSectorCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'YELLOW',
+  activeFlagSector: 2,
+});
+assert(yellowOtherSectorCar.speed === greenFlagCar.speed,
+  'YELLOW locale non rallenta fuori dal settore interessato');
+assert(yellowOtherSectorMsgs.telemetry && yellowOtherSectorMsgs.telemetry.drs === true,
+  'YELLOW locale fuori settore non disattiva il DRS');
+
+const redFlagCar = new Car({
+  teamId: 'mercedes',
+  carId: 44,
+  driver: 'L. Hamilton',
+  pitStrategy: [],
+  rng: createCarPrng(1202, 44),
+  config: flagConfig,
+});
+redFlagCar.startRace(1, ctx.timestamp);
+redFlagCar.trackPos = 0.2;
+redFlagCar.speed = 220;
+const redFlagMsgs = redFlagCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'RED',
+});
+assert(redFlagCar.speed < 220,
+  `RED fa frenare l'auto (got ${redFlagCar.speed.toFixed(1)})`);
+assert(redFlagMsgs.telemetry && redFlagMsgs.telemetry.brake > 0,
+  'RED produce frenata in telemetria');
+assert(redFlagMsgs.telemetry && redFlagMsgs.telemetry.drs === false,
+  'RED disattiva il DRS');
+
+for (let i = 0; i < 3; i++) {
+  redFlagCar.tick(1, {
+    raceId: 1,
+    timestamp: new Date().toISOString(),
+    totalLaps: 15,
+    checkeredActive: false,
+    activeFlag: 'RED',
+  });
+}
+const stoppedPos = redFlagCar.trackPos;
+redFlagCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'RED',
+});
+assert(redFlagCar.speed === 0 && redFlagCar.trackPos === stoppedPos,
+  'RED sospende la gara: auto ferma dopo la frenata');
+
+const checkeredFlagCar = new Car({
+  teamId: 'mclaren',
+  carId: 4,
+  driver: 'L. Norris',
+  pitStrategy: [],
+  rng: createCarPrng(1203, 4),
+  config: flagConfig,
+});
+checkeredFlagCar.startRace(1, ctx.timestamp);
+checkeredFlagCar.lap = 15;
+const checkeredMsgs = checkeredFlagCar.tick(0.25, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: true,
+  activeFlag: 'CHECKERED',
+});
+assert(checkeredFlagCar.fsm.state === 'FINISHED',
+  `CHECKERED chiude la gara al lap finale (state=${checkeredFlagCar.fsm.state})`);
+assert(checkeredMsgs.state && checkeredMsgs.state.state === 'FINISHED',
+  'CHECKERED produce lo state FINISHED');
+
+// ============================================================
+// TEST 1F: Combined race scenarios
+// ============================================================
+
+section('TEST 1F: Combined race scenarios');
+
+const combinedConfig = {
+  ...config,
+  engineFailureProbPerTick: 0,
+  pitBoxPos: 0.951,
+  pitDurationMinS: 2,
+  pitDurationMaxS: 2,
+  pitLaneSpeedKmh: 80,
+};
+
+const pitUnderScCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [1],
+  rng: createCarPrng(1301, 16),
+  config: combinedConfig,
+});
+pitUnderScCar.startRace(1, ctx.timestamp);
+pitUnderScCar.lap = 1;
+pitUnderScCar.trackPos = combinedConfig.pitEntryPos;
+pitUnderScCar.speed = 60;
+const scPitEntryMsgs = pitUnderScCar.tick(0.25, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(scPitEntryMsgs.state && scPitEntryMsgs.state.state === 'PIT',
+  'scheduled pit enters PIT before Safety Car phase');
+const scPitMsgs = pitUnderScCar.tick(0.25, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'SC',
+  safetyCar: { isLeader: false, gapToCarAheadS: 8, targetGapS: combinedConfig.safetyCarTargetGapS },
+});
+assert(pitUnderScCar.fsm.state === 'PIT',
+  'SC during pit stop keeps the car in PIT state');
+assert(pitUnderScCar.speed <= combinedConfig.pitLaneSpeedKmh,
+  `SC during pit stop respects pit-lane speed limit (got ${pitUnderScCar.speed.toFixed(1)})`);
+assert((scPitMsgs.events || []).some(e => e.type === 'pit-stop'),
+  'SC during pit stop still emits pit-stop event');
+
+const redPitCar = new Car({
+  teamId: 'mercedes',
+  carId: 44,
+  driver: 'L. Hamilton',
+  pitStrategy: [],
+  rng: createCarPrng(1302, 44),
+  config: combinedConfig,
+});
+redPitCar.startRace(1, ctx.timestamp);
+redPitCar.fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'scheduled-pit' };
+redPitCar._pitServiced = true;
+redPitCar._pitEntryLap = 1;
+redPitCar.lap = 2;
+redPitCar.trackPos = combinedConfig.pitExitPos + 0.001;
+redPitCar.speed = 40;
+redPitCar.simulatedTimeS = 10;
+redPitCar.condTracker = {
+  ...redPitCar.condTracker,
+  pitEnteredAtS: 0,
+  pitDurationS: 2,
+};
+const redPitPos = redPitCar.trackPos;
+const redPitMsgs = redPitCar.tick(1, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'RED',
+});
+assert(redPitCar.fsm.state === 'PIT',
+  'RED during pit exit keeps the car in PIT state');
+assert(!redPitMsgs.state,
+  'RED during pit exit does not publish PIT to RUNNING');
+assert(redPitCar.speed === 0 && redPitCar.trackPos === redPitPos,
+  'RED during pit exit holds the car stopped in place');
+
+const greenAfterRedPitMsgs = redPitCar.tick(0.25, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(redPitCar.fsm.state === 'RUNNING',
+  'pit exit resumes after RED clears to GREEN');
+assert(greenAfterRedPitMsgs.state && greenAfterRedPitMsgs.state.previousState === 'PIT',
+  'pit exit publishes state once RED clears');
 
 // ============================================================
 // TEST 2: 10 auto — 40 tick (10 secondi simulati)

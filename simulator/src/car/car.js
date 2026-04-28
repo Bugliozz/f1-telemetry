@@ -17,7 +17,7 @@ const {
   onEnterFault,
   samplePitDurationS,
 } = require('./conditions');
-const { targetSpeed } = require('../track/monza');
+const { LENGTH_M, targetSpeed } = require('../track/monza');
 
 class Car {
   constructor({ teamId, carId, driver, pitStrategy, rng, config }) {
@@ -98,9 +98,10 @@ class Car {
       const pitTarget = this.config.pitLaneSpeedKmh || 80;
       const pitStopElapsed = this._pitServiced && this.condTracker.pitEnteredAtS != null
         && (this.simulatedTimeS - this.condTracker.pitEnteredAtS) >= (this.condTracker.pitDurationS || 0);
-      const target = this._pitServiced && !pitStopElapsed ? 0 : pitTarget;
+      const redSuspended = ctx && ctx.activeFlag === 'RED';
+      const target = redSuspended ? 0 : (this._pitServiced && !pitStopElapsed ? 0 : pitTarget);
       this.speed = updateSpeed(this.speed, target, dt);
-      if (target === pitTarget && this.speed > pitTarget) this.speed = pitTarget;
+      if (!redSuspended && target === pitTarget && this.speed > pitTarget) this.speed = pitTarget;
 
       const prevPos = { trackPos: this.trackPos, lap: this.lap };
       const posResult = advance(prevPos, this.speed, dt);
@@ -155,9 +156,14 @@ class Car {
 
     // Jitter istantaneo (micro-variazioni per tick)
     const instantJitter = (this.rng() - 0.5) * 1.5;
-    const finalTarget = Math.max(0, adjustedTarget + instantJitter);
+    const nominalTarget = Math.max(0, adjustedTarget + instantJitter);
+    const yellowLimited = this._isYellowActiveForCurrentSector(ctx);
+    const finalTarget = this._applySafetyCarTarget(nominalTarget, ctx, yellowLimited);
 
     this.speed = updateSpeed(this.speed, finalTarget, dt);
+    if (ctx.activeFlag === 'VSC') {
+      this.speed = Math.min(this.speed, this._virtualSafetyCarSpeedLimit());
+    }
 
     // Throttle e brake derivati (§5.1)
     const speedDiff = finalTarget - this.speed;
@@ -171,7 +177,13 @@ class Car {
     }
 
     // Avanzamento posizione
-    const posResult = advance({ trackPos: this.trackPos, lap: this.lap }, this.speed, dt);
+    const prevPos = { trackPos: this.trackPos, lap: this.lap };
+    let posResult = advance(prevPos, this.speed, dt);
+    const vscClamp = this._clampVirtualSafetyCarOvertake(prevPos, posResult, ctx, dt);
+    posResult = vscClamp.position;
+    if (vscClamp.speedKmh != null) {
+      this.speed = vscClamp.speedKmh;
+    }
 
     // Controllo settori
     this._checkSectorCrossing(posResult, raceId, timestamp, messages);
@@ -219,10 +231,100 @@ class Car {
       this._applyTransition(evalResult.trigger, evalResult.reason, raceId, timestamp, messages);
     }
 
-    messages.telemetry = this._buildTelemetry(raceId, timestamp);
+    messages.telemetry = this._buildTelemetry(raceId, timestamp, {
+      throttle,
+      brake,
+      drsAllowed: ctx.activeFlag !== 'SC' && ctx.activeFlag !== 'VSC' &&
+        ctx.activeFlag !== 'RED' && !yellowLimited,
+    });
   }
 
   // --- Helpers ---
+
+  _applySafetyCarTarget(targetKmh, ctx, yellowLimited = false) {
+    if (ctx && ctx.activeFlag === 'RED') {
+      return 0;
+    }
+
+    if (yellowLimited) {
+      const multiplier = Math.max(0, Math.min(1, this._numberConfig('yellowSpeedMultiplier', 0.6)));
+      return targetKmh * multiplier;
+    }
+
+    if (ctx && ctx.activeFlag === 'VSC') {
+      return Math.min(targetKmh, this._virtualSafetyCarSpeedLimit());
+    }
+
+    if (!ctx || ctx.activeFlag !== 'SC') {
+      return targetKmh;
+    }
+
+    const limit = Math.max(0, this._numberConfig('safetyCarSpeedKmh', 140));
+    const catchupMax = Math.max(limit, this._numberConfig('safetyCarCatchupSpeedKmh', 180));
+    const targetGapS = Math.max(0, this._numberConfig('safetyCarTargetGapS', 0.5));
+    const gainKmhPerS = Math.max(0, this._numberConfig('safetyCarGapGainKmhPerS', 12));
+    const slowdownKmhPerS = Math.max(0, this._numberConfig('safetyCarCloseGapSlowdownKmhPerS', 60));
+    const minSpeed = Math.max(0, this._numberConfig('safetyCarMinSpeedKmh', 60));
+
+    const baseTarget = Math.min(targetKmh, limit);
+    const sc = ctx.safetyCar || {};
+    if (sc.isLeader || !Number.isFinite(sc.gapToCarAheadS)) {
+      return baseTarget;
+    }
+
+    const gapErrorS = sc.gapToCarAheadS - targetGapS;
+    if (gapErrorS > 0) {
+      const boost = Math.min(catchupMax - limit, gapErrorS * gainKmhPerS);
+      return Math.min(targetKmh, limit + boost);
+    }
+
+    if (gapErrorS < 0) {
+      const floor = Math.min(baseTarget, minSpeed);
+      const drop = Math.min(baseTarget - floor, Math.abs(gapErrorS) * slowdownKmhPerS);
+      return Math.max(floor, baseTarget - drop);
+    }
+
+    return baseTarget;
+  }
+
+  _virtualSafetyCarSpeedLimit() {
+    return Math.max(0, this._numberConfig('virtualSafetyCarSpeedKmh', 120));
+  }
+
+  _isYellowActiveForCurrentSector(ctx) {
+    if (!ctx || ctx.activeFlag !== 'YELLOW') return false;
+    if (ctx.activeFlagSector == null) return true;
+    return Number(ctx.activeFlagSector) === this.currentSector;
+  }
+
+  _clampVirtualSafetyCarOvertake(prevPos, posResult, ctx, dt) {
+    const unchanged = { position: posResult, speedKmh: null };
+    if (!ctx || ctx.activeFlag !== 'VSC') return unchanged;
+
+    const vsc = ctx.virtualSafetyCar || {};
+    if (vsc.isLeader || !Number.isFinite(vsc.maxProgress)) return unchanged;
+
+    const prevProgress = prevPos.lap + prevPos.trackPos;
+    const nextProgress = posResult.lap + posResult.trackPos;
+    const allowedProgress = Math.max(prevProgress, vsc.maxProgress);
+    if (nextProgress <= allowedProgress) return unchanged;
+
+    const lap = Math.max(0, Math.floor(allowedProgress));
+    const trackPos = allowedProgress - lap;
+    const lapsCompleted = Math.max(0, lap - prevPos.lap);
+    const distanceM = Math.max(0, (allowedProgress - prevProgress) * LENGTH_M);
+    const speedKmh = dt > 0 ? (distanceM / dt) * 3.6 : 0;
+
+    return {
+      position: { trackPos, lap, lapsCompleted },
+      speedKmh: Math.min(speedKmh, this._virtualSafetyCarSpeedLimit()),
+    };
+  }
+
+  _numberConfig(name, fallback) {
+    const value = this.config ? this.config[name] : undefined;
+    return Number.isFinite(value) ? value : fallback;
+  }
 
   _buildObservation(ctx) {
     return {
@@ -236,7 +338,7 @@ class Car {
       rng: this.rng,
       scheduledPitLaps: this.pitStrategy,
       pitEntryPos: this.config.pitEntryPos,
-      pitExitReached: this._pitExitReached(),
+      pitExitReached: ctx && ctx.activeFlag === 'RED' ? false : this._pitExitReached(),
       fuelPitThreshold: this.config.fuelPitThresholdKg,
       tireOverheatThreshold: this.config.tireOverheatThresholdC,
       tireOverheatTicksRequired: this.config.tireOverheatTicksRequired,
@@ -245,14 +347,14 @@ class Car {
     };
   }
 
-  _buildTelemetry(raceId, timestamp) {
+  _buildTelemetry(raceId, timestamp, controls = {}) {
     const rpmJitter = (this.rng() - 0.5) * 2 * (this.config.rpmJitterRange || 200);
     const gear = this.fsm.state === STATES.INIT ? 0 : gearForSpeed(this.speed);
     const rpm = this.fsm.state === STATES.INIT ? 0 : rpmForSpeed(this.speed, rpmJitter);
 
     // DRS attivo solo in RUNNING sui rettilinei lunghi
     let drs = false;
-    if (this.fsm.state === STATES.RUNNING && Array.isArray(this.config.drsZones)) {
+    if (this.fsm.state === STATES.RUNNING && controls.drsAllowed !== false && Array.isArray(this.config.drsZones)) {
       for (const zone of this.config.drsZones) {
         if (this.trackPos >= zone.start && this.trackPos <= zone.end) {
           drs = true;
@@ -265,7 +367,10 @@ class Car {
     const rawTarget = targetSpeed(this.trackPos);
     const diff = rawTarget * this._teamFactor - this.speed;
     let throttle, brake;
-    if (this.fsm.state === STATES.INIT || this.fsm.state === STATES.FAULT) {
+    if (Number.isFinite(controls.throttle) && Number.isFinite(controls.brake)) {
+      throttle = Math.max(0, Math.min(1, controls.throttle));
+      brake = Math.max(0, Math.min(1, controls.brake));
+    } else if (this.fsm.state === STATES.INIT || this.fsm.state === STATES.FAULT) {
       throttle = 0;
       brake = this.fsm.state === STATES.FAULT ? 0.8 : 0;
     } else if (diff >= 0) {

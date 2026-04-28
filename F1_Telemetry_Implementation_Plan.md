@@ -61,16 +61,16 @@
 ## Fase 4 — Race Control
 
 - [x] Progettare la logica di Race Control (trigger e gestione flag globali) 🔴 — vedi [docs/race-control-design.md](docs/race-control-design.md)
-- [ ] Implementare il **Safety Car (SC)**: riduzione velocità globale + compattamento del gruppo 🔴
-- [ ] Implementare il **Virtual Safety Car (VSC)**: velocità limitata uniforme + divieto sorpasso 🔴
-- [ ] Implementare le flag: 🟠
-  - [ ] 🟩 Green Flag → gara attiva
-  - [ ] 🟨 Yellow Flag → rallentamento
-  - [ ] 🟥 Red Flag → gara sospesa
-  - [ ] 🏁 Checkered Flag → fine gara
-- [ ] Implementare la logica di influenza delle flag sul comportamento delle auto 🔴
-- [ ] Implementare il trigger automatico/manuale degli eventi globali 🟠
-- [ ] Testare scenari combinati (SC durante un pit stop, red flag, ecc.) 🟠
+- [x] Implementare il **Safety Car (SC)**: riduzione velocità globale + compattamento del gruppo 🔴
+- [x] Implementare il **Virtual Safety Car (VSC)**: velocità limitata uniforme + divieto sorpasso 🔴
+- [x] Implementare le flag: 🟠
+  - [x] 🟩 Green Flag → gara attiva
+  - [x] 🟨 Yellow Flag → rallentamento
+  - [x] 🟥 Red Flag → gara sospesa
+  - [x] 🏁 Checkered Flag → fine gara
+- [x] Implementare la logica di influenza delle flag sul comportamento delle auto 🔴
+- [x] Implementare il trigger automatico/manuale degli eventi globali 🟠
+- [x] Testare scenari combinati (SC durante un pit stop, red flag, ecc.) 🟠
 
 ---
 

@@ -12,6 +12,7 @@ const { createClock } = require('./util/clock');
 const { STATES } = require('./car/fsm');
 const RaceController = require('./race-control/race-controller');
 const { FLAGS } = require('./race-control/flag-state');
+const { LENGTH_M } = require('./track/monza');
 
 class Orchestrator {
   constructor({ roster, config, publisher, logger }) {
@@ -164,12 +165,18 @@ class Orchestrator {
       activeFlag: flagCtx.flag,
       activeFlagSector: flagCtx.sector,
     };
+    const safetyCarContexts = this._buildSafetyCarContexts(flagCtx.flag);
+    const virtualSafetyCarContexts = this._buildVirtualSafetyCarContexts(flagCtx.flag);
 
     // Tick di tutte le auto
     let allTerminal = true;
     for (const car of this.cars) {
       try {
-        const messages = car.tick(dt, ctx);
+        const messages = car.tick(dt, {
+          ...ctx,
+          safetyCar: safetyCarContexts.get(car.carId) || null,
+          virtualSafetyCar: virtualSafetyCarContexts.get(car.carId) || null,
+        });
         this.publisher.publishCarMessages(messages);
         this._countMessages(messages);
 
@@ -207,6 +214,93 @@ class Orchestrator {
       }
     }
     this._leaderLap = maxLap;
+  }
+
+  _buildSafetyCarContexts(activeFlag) {
+    const contexts = new Map();
+    if (activeFlag !== FLAGS.SC) return contexts;
+
+    const runningCars = this.cars
+      .filter((car) => car.fsm && car.fsm.state === STATES.RUNNING)
+      .sort((a, b) => (b.lap + b.trackPos) - (a.lap + a.trackPos));
+
+    if (runningCars.length === 0) return contexts;
+
+    const targetGapS = Number.isFinite(this.config.safetyCarTargetGapS)
+      ? this.config.safetyCarTargetGapS
+      : 0.5;
+    const referenceSpeedKmh = Number.isFinite(this.config.safetyCarSpeedKmh)
+      ? this.config.safetyCarSpeedKmh
+      : 140;
+    const referenceSpeedMs = Math.max(1, referenceSpeedKmh / 3.6);
+
+    for (let i = 0; i < runningCars.length; i += 1) {
+      const car = runningCars[i];
+      if (i === 0) {
+        contexts.set(car.carId, {
+          isLeader: true,
+          position: 1,
+          gapToCarAheadS: 0,
+          targetGapS,
+        });
+        continue;
+      }
+
+      const ahead = runningCars[i - 1];
+      const carProgress = car.lap + car.trackPos;
+      const aheadProgress = ahead.lap + ahead.trackPos;
+      const gapM = Math.max(0, (aheadProgress - carProgress) * LENGTH_M);
+
+      contexts.set(car.carId, {
+        isLeader: false,
+        position: i + 1,
+        gapToCarAheadS: gapM / referenceSpeedMs,
+        targetGapS,
+      });
+    }
+
+    return contexts;
+  }
+
+  _buildVirtualSafetyCarContexts(activeFlag) {
+    const contexts = new Map();
+    if (activeFlag !== FLAGS.VSC) return contexts;
+
+    const runningCars = this.cars
+      .filter((car) => car.fsm && car.fsm.state === STATES.RUNNING)
+      .sort((a, b) => {
+        const progressDiff = (b.lap + b.trackPos) - (a.lap + a.trackPos);
+        return progressDiff || (Number(a.carId) - Number(b.carId));
+      });
+
+    if (runningCars.length === 0) return contexts;
+
+    const minGapM = Number.isFinite(this.config.virtualSafetyCarMinGapM)
+      ? Math.max(0, this.config.virtualSafetyCarMinGapM)
+      : 5;
+    const minGapProgress = minGapM / LENGTH_M;
+
+    for (let i = 0; i < runningCars.length; i += 1) {
+      const car = runningCars[i];
+      if (i === 0) {
+        contexts.set(car.carId, {
+          isLeader: true,
+          position: 1,
+        });
+        continue;
+      }
+
+      const ahead = runningCars[i - 1];
+      const aheadProgress = ahead.lap + ahead.trackPos;
+
+      contexts.set(car.carId, {
+        isLeader: false,
+        position: i + 1,
+        maxProgress: aheadProgress - minGapProgress,
+      });
+    }
+
+    return contexts;
   }
 
   _countMessages(messages) {

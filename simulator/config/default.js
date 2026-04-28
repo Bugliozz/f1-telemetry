@@ -83,6 +83,21 @@ const config = Object.freeze({
     alpine: 0.99,
   },
 
+  // --- Race flag behaviour ---
+  yellowSpeedMultiplier: 0.6,
+
+  // --- Safety Car ---
+  safetyCarSpeedKmh: 140,
+  safetyCarCatchupSpeedKmh: 180,
+  safetyCarTargetGapS: 0.5,
+  safetyCarGapGainKmhPerS: 12,
+  safetyCarCloseGapSlowdownKmhPerS: 60,
+  safetyCarMinSpeedKmh: 60,
+
+  // --- Virtual Safety Car ---
+  virtualSafetyCarSpeedKmh: 120,
+  virtualSafetyCarMinGapM: 5,
+
   // --- Race Control trigger (Fase 4) ---
   raceControlTriggers: {
     retirementScProbability: 0.40,   // prob. SC per ogni ritiro
