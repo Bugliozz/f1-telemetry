@@ -238,6 +238,33 @@ Possible extensions:
 - Packet loss
 - Jitter
 
+## **10.1 Payload Encryption in Node-RED**
+
+The encrypted slice is limited to race-control flag commands coming from the
+dashboard. These messages can change the global race state, so they are treated
+as sensitive control traffic. High-frequency telemetry, car states, car events
+and live classification remain in clear text to preserve throughput and make
+debugging simpler.
+
+Node-RED encrypts dashboard flag commands with AES-256-GCM before publishing
+them to:
+
+f1/simulation/{raceId}/secure/race-control/flags
+
+The encrypted MQTT payload is a JSON envelope with base64 fields:
+`{iv, ciphertext, tag}`. The IV is random for every message and the GCM tag is
+verified by the subscriber before any command is accepted.
+
+After successful decrypt, Node-RED republishes the original flag payload to the
+legacy topic:
+
+f1/simulation/{raceId}/race-control/flags
+
+This keeps the simulator and the existing processing flow compatible while
+showing a complete encrypt -> MQTT -> decrypt path for control messages. The
+key is provided only through `F1_TELEMETRY_CRYPTO_KEY_B64` in the Node-RED
+container and must decode to exactly 32 bytes.
+
 # **11. Expected Results**
 
 The final system enables:

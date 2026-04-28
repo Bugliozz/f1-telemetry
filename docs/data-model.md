@@ -123,12 +123,23 @@ In MongoDB l'unico documento per `raceId` viene aggiornato in upsert.
 | `telemetry` | `(raceId, carId, timestamp desc)` | query "ultimi N campioni dell'auto X". |
 | `telemetry` | `(raceId, lap)` | aggregazioni per giro. |
 | `telemetry` | `(raceId, teamId, carId, lap)` | analisi per team/auto/giro. |
+| `telemetry` | `(raceId, carId, lap, timestamp)` | andamento storico fuel/tire per auto e giro. |
+| `telemetry` | `(timestamp)` TTL | retention automatica dei campioni ad alta frequenza. |
 | `events` | `(raceId, carId, timestamp desc)` | timeline auto. |
 | `events` | `(raceId, type, timestamp desc)` | filtro per tipo evento (es. "tutti i pit"). |
+| `events` | `(raceId, type, carId, details.lap)` | tempi sul giro dagli eventi `lap-completed`. |
 | `states` | `(raceId, carId)` **unique** | upsert dello stato corrente. |
 | `classifications` | `(raceId)` **unique** | upsert dello snapshot corrente. |
 | `race_control` | `(raceId, timestamp desc)` | timeline flag. |
 | `race_control` | `(raceId, flag, timestamp desc)` | filtro per tipo bandiera. |
+
+La retention della telemetria e' configurabile con `TELEMETRY_TTL_SECONDS`
+(default: 30 giorni). Gli ambienti gia' inizializzati possono applicare gli
+stessi indici con:
+
+```bash
+npm run ensure:persistence-indexes
+```
 
 ---
 
@@ -193,4 +204,18 @@ indici, validator e per i test dei flow Node-RED prima della Fase 5.
 node simulator/scripts/seed.js
 # oppure, con override URL:
 MONGO_URL=mongodb://localhost:27017 node simulator/scripts/seed.js
+```
+
+## 8. Query storiche
+
+Il modulo [`simulator/src/persistence/telemetry-store.js`](../simulator/src/persistence/telemetry-store.js)
+espone query aggregate per:
+
+- tempi sul giro dagli eventi `lap-completed`;
+- andamento fuel/tire dalla telemetria, con bucket temporali configurabili.
+
+Esempio CLI:
+
+```bash
+RACE_ID=1 CAR_ID=16 BUCKET_SECONDS=10 npm run query:history
 ```

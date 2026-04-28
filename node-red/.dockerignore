@@ -1,0 +1,7 @@
+data/.config.*.json
+data/.config.*.json.backup
+data/.flows.json.backup
+data/.npm
+data/.sessions.db
+data/flows_cred.json
+data/node_modules

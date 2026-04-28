@@ -35,5 +35,9 @@ module.exports = {
             // Disabilitato: usiamo Git direttamente sulla cartella montata
             enabled: false
         }
+    },
+
+    functionGlobalContext: {
+        crypto: require('crypto')
     }
 };

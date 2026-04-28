@@ -24,14 +24,6 @@ function sameKey(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function hasIndex(indexes, key, unique) {
-  return indexes.some((idx) => {
-    if (!sameKey(idx.key, key)) return false;
-    if (unique == null) return true;
-    return Boolean(idx.unique) === Boolean(unique);
-  });
-}
-
 async function expectReject(label, fn) {
   try {
     await fn();
@@ -80,10 +72,13 @@ async function main() {
         { key: { raceId: 1, carId: 1, timestamp: -1 } },
         { key: { raceId: 1, lap: 1 } },
         { key: { raceId: 1, teamId: 1, carId: 1, lap: 1 } },
+        { key: { raceId: 1, carId: 1, lap: 1, timestamp: 1 } },
+        { key: { timestamp: 1 }, expireAfterSeconds: true },
       ],
       events: [
         { key: { raceId: 1, carId: 1, timestamp: -1 } },
         { key: { raceId: 1, type: 1, timestamp: -1 } },
+        { key: { raceId: 1, type: 1, carId: 1, 'details.lap': 1 } },
       ],
       states: [
         { key: { raceId: 1, carId: 1 }, unique: true },
@@ -100,8 +95,17 @@ async function main() {
     for (const [name, expected] of Object.entries(expectedIndexes)) {
       const indexes = await db.collection(name).indexes();
       for (const idx of expected) {
-        if (hasIndex(indexes, idx.key, idx.unique)) ok(`${name} index ${JSON.stringify(idx.key)}`);
-        else fail(`${name} index ${JSON.stringify(idx.key)}`, new Error('missing index'));
+        const found = indexes.find((index) => sameKey(index.key, idx.key));
+        if (found && (idx.unique == null || Boolean(found.unique) === Boolean(idx.unique))) {
+          ok(`${name} index ${JSON.stringify(idx.key)}`);
+          if (idx.expireAfterSeconds && Number.isInteger(found.expireAfterSeconds)) {
+            ok(`${name} TTL ${JSON.stringify(idx.key)}`);
+          } else if (idx.expireAfterSeconds) {
+            fail(`${name} TTL ${JSON.stringify(idx.key)}`, new Error('missing expireAfterSeconds'));
+          }
+        } else {
+          fail(`${name} index ${JSON.stringify(idx.key)}`, new Error('missing index'));
+        }
       }
     }
 

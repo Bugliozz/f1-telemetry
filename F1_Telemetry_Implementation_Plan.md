@@ -76,39 +76,39 @@
 
 ## Fase 5 — Processing Layer (Node-RED Flows)
 
-- [ ] Progettare l'architettura dei flow Node-RED (flow diagram) 🔴
-- [ ] Creare il flow di **subscription** ai topic telemetria (wildcard `+`) 🟠
-- [ ] Creare il flow di **parsing e normalizzazione** dei messaggi MQTT 🟠
-- [ ] Creare il flow di **calcolo della classifica** in tempo reale (basato su trackPos + lap) 🔴
-- [ ] Creare il flow di **event detection** (anomalie, soglie superate) 🟠
-- [ ] Creare il flow di **scrittura su MongoDB** (telemetria, eventi, stati, classifica) 🟠
-- [ ] Creare il flow di **gestione race control** (ricezione flag → broadcast agli effetti) 🟠
-- [ ] Creare il flow di **invio dati alla dashboard** (WebSocket / dashboard nodes) 🟠
-- [ ] Ottimizzare i flow per gestire il throughput di 10 auto a 2–5 Hz 🔴
-- [ ] Testare end-to-end: simulatore → MQTT → Node-RED → MongoDB 🟠
+- [x] Progettare l'architettura dei flow Node-RED (flow diagram) 🔴 - vedi [docs/node-red-flow-architecture.md](docs/node-red-flow-architecture.md)
+- [x] Creare il flow di **subscription** ai topic telemetria (wildcard `+`) 🟠
+- [x] Creare il flow di **parsing e normalizzazione** dei messaggi MQTT 🟠
+- [x] Creare il flow di **calcolo della classifica** in tempo reale (basato su trackPos + lap) 🔴
+- [x] Creare il flow di **event detection** (anomalie, soglie superate) 🟠
+- [x] Creare il flow di **scrittura su MongoDB** (telemetria, eventi, stati, classifica) 🟠
+- [x] Creare il flow di **gestione race control** (ricezione flag → broadcast agli effetti) 🟠
+- [x] Creare il flow di **invio dati alla dashboard** (WebSocket / dashboard nodes) 🟠
+- [x] Ottimizzare i flow per gestire il throughput di 10 auto a 2–5 Hz 🔴
+- [x] Testare end-to-end: simulatore → MQTT → Node-RED → MongoDB 🟠
 
 ### Fase 5.bis — Crittografia (opzionale, requisito di consegna)
 
 > Requisito: alcune regole Node-RED devono trasmettere dati cifrati con operazioni di encrypt/decrypt. Sotto-flow da innestare nei flow esistenti.
 
-- [ ] Scegliere il payload sensibile da cifrare (es. eventi `race-control/flags`, comandi PIT, classifica finale) 🟠
-- [ ] Definire algoritmo e modalità (consigliato **AES-256-GCM** con IV random per messaggio) 🟠
-- [ ] Gestire la chiave simmetrica via env var del container Node-RED (no hardcoding) 🟢
-- [ ] Implementare il nodo `function` di **encrypt** lato publisher (output: `{iv, ciphertext, tag}` base64) 🟠
-- [ ] Implementare il nodo `function` di **decrypt** lato subscriber con verifica del tag GCM 🟠
-- [ ] Aggiungere un topic dedicato per i payload cifrati (es. `f1/simulation/{raceId}/secure/...`) 🟢
-- [ ] Testare round-trip encrypt → MQTT → decrypt e fallimento controllato con chiave errata 🟢
-- [ ] Documentare nel report quali flow usano crittografia e perché 🟢
+- [x] Scegliere il payload sensibile da cifrare (es. eventi `race-control/flags`, comandi PIT, classifica finale) 🟠
+- [x] Definire algoritmo e modalità (consigliato **AES-256-GCM** con IV random per messaggio) 🟠
+- [x] Gestire la chiave simmetrica via env var del container Node-RED (no hardcoding) 🟢
+- [x] Implementare il nodo `function` di **encrypt** lato publisher (output: `{iv, ciphertext, tag}` base64) 🟠
+- [x] Implementare il nodo `function` di **decrypt** lato subscriber con verifica del tag GCM 🟠
+- [x] Aggiungere un topic dedicato per i payload cifrati (es. `f1/simulation/{raceId}/secure/...`) 🟢
+- [x] Testare round-trip encrypt → MQTT → decrypt e fallimento controllato con chiave errata 🟢
+- [x] Documentare nel report quali flow usano crittografia e perché 🟢
 
 ---
 
 ## Fase 6 — Persistence Layer (MongoDB)
 
-- [ ] Implementare l'inserimento bulk della telemetria (ottimizzazione write) 🟠
-- [ ] Implementare query per analisi storica (tempi sul giro, andamento fuel/tire) 🟠
-- [ ] Creare indici per query frequenti (`raceId`, `carId`, `timestamp`, `lap`) 🟢
-- [ ] Implementare TTL o capping per gestione volume dati 🟢
-- [ ] Verificare consistenza dati tra MQTT payload e documenti MongoDB 🟢
+- [x] Implementare l'inserimento bulk della telemetria (ottimizzazione write) 🟠
+- [x] Implementare query per analisi storica (tempi sul giro, andamento fuel/tire) 🟠
+- [x] Creare indici per query frequenti (`raceId`, `carId`, `timestamp`, `lap`) 🟢
+- [x] Implementare TTL o capping per gestione volume dati 🟢
+- [x] Verificare consistenza dati tra MQTT payload e documenti MongoDB 🟢
 
 ---
 

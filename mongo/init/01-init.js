@@ -23,6 +23,15 @@ const EVENT_TYPES = [
   'lap-completed', 'sector-completed',
   'overtake', 'state-change'
 ];
+const DEFAULT_TELEMETRY_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+function envNumber(name, fallback) {
+  const raw = (typeof process !== 'undefined' && process.env) ? process.env[name] : null;
+  const value = Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+const TELEMETRY_TTL_SECONDS = envNumber('TELEMETRY_TTL_SECONDS', DEFAULT_TELEMETRY_TTL_SECONDS);
 
 // ---------------------------------------------------------------------------
 // telemetry - serie temporale ad alta frequenza (2-5 Hz per auto)
@@ -75,6 +84,8 @@ db.createCollection('telemetry', {
 db.telemetry.createIndex({ raceId: 1, carId: 1, timestamp: -1 });
 db.telemetry.createIndex({ raceId: 1, lap: 1 });
 db.telemetry.createIndex({ raceId: 1, teamId: 1, carId: 1, lap: 1 });
+db.telemetry.createIndex({ raceId: 1, carId: 1, lap: 1, timestamp: 1 });
+db.telemetry.createIndex({ timestamp: 1 }, { expireAfterSeconds: TELEMETRY_TTL_SECONDS });
 
 // ---------------------------------------------------------------------------
 // events - eventi discreti per singola auto (pit stop, fault, retirement...)
@@ -100,6 +111,7 @@ db.createCollection('events', {
 });
 db.events.createIndex({ raceId: 1, carId: 1, timestamp: -1 });
 db.events.createIndex({ raceId: 1, type: 1, timestamp: -1 });
+db.events.createIndex({ raceId: 1, type: 1, carId: 1, 'details.lap': 1 });
 
 // ---------------------------------------------------------------------------
 // states - ultimo stato FSM per auto (un solo doc per (raceId, carId))
