@@ -1,4 +1,7 @@
 module.exports = {
+    // File statici (dashboard assets: SVG circuito, CSS, JS)
+    httpStatic: '/data/public',
+
     // URL base dell'editor Node-RED
     httpAdminRoot: '/admin',
 

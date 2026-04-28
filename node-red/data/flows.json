@@ -358,7 +358,7 @@
         "type": "function",
         "z": "f1-telemetry-tab",
         "name": "Cache latest telemetry",
-        "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asFiniteNumber(value) {\n    const n = Number(value);\n    return Number.isFinite(n) ? n : null;\n}\n\nconst envelope = msg.payload || {};\nconst sample = envelope.payload || {};\nconst raceId = asInteger(sample.raceId != null ? sample.raceId : envelope.raceId);\nconst carId = asInteger(sample.carId != null ? sample.carId : envelope.carId);\nconst lap = asInteger(sample.lap);\nconst trackPos = asFiniteNumber(sample.trackPos);\nconst teamId = sample.teamId != null ? String(sample.teamId) : null;\n\nif (!raceId || !carId || !teamId || lap == null || trackPos == null || trackPos < 0 || trackPos > 1) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'telemetry skipped' });\n    return msg;\n}\n\nconst nowMs = Date.now();\nconst raceKey = 'race.' + raceId;\nconst carsKey = raceKey + '.cars';\nconst cars = flow.get(carsKey) || {};\nconst previous = cars[String(carId)] || {};\nconst speed = asFiniteNumber(sample.speed);\nconst avgSpeedKmh = speed == null\n    ? previous.avgSpeedKmh\n    : (Number.isFinite(previous.avgSpeedKmh) ? previous.avgSpeedKmh * 0.7 + speed * 0.3 : speed);\n\ncars[String(carId)] = {\n    raceId,\n    teamId,\n    carId,\n    lap,\n    trackPos,\n    speed,\n    avgSpeedKmh,\n    state: sample.state || previous.state || 'RUNNING',\n    timestamp: sample.timestamp || envelope.timestamp || new Date().toISOString(),\n    receivedAt: envelope.receivedAt || new Date().toISOString(),\n    observedAtMs: nowMs\n};\nflow.set(carsKey, cars);\n\nconst raceIds = flow.get('raceIds') || [];\nif (!raceIds.includes(raceId)) {\n    raceIds.push(raceId);\n    flow.set('raceIds', raceIds);\n}\n\nconst lastStatusAt = context.get('lastStatusAt') || 0;\nif (nowMs - lastStatusAt >= 1000) {\n    context.set('lastStatusAt', nowMs);\n    node.status({ fill: 'green', shape: 'dot', text: 'cached ' + Object.keys(cars).length + ' cars race ' + raceId });\n}\nreturn null;",
+        "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asFiniteNumber(value) {\n    const n = Number(value);\n    return Number.isFinite(n) ? n : null;\n}\n\nconst envelope = msg.payload || {};\nconst sample = envelope.payload || {};\nconst raceId = asInteger(sample.raceId != null ? sample.raceId : envelope.raceId);\nconst carId = asInteger(sample.carId != null ? sample.carId : envelope.carId);\nconst lap = asInteger(sample.lap);\nconst trackPos = asFiniteNumber(sample.trackPos);\nconst teamId = sample.teamId != null ? String(sample.teamId) : null;\n\nif (!raceId || !carId || !teamId || lap == null || trackPos == null || trackPos < 0 || trackPos > 1) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'telemetry skipped' });\n    return msg;\n}\n\nconst nowMs = Date.now();\nconst raceKey = 'race.' + raceId;\nconst carsKey = raceKey + '.cars';\nconst cars = flow.get(carsKey) || {};\nconst previous = cars[String(carId)] || {};\nconst speed = asFiniteNumber(sample.speed);\nconst avgSpeedKmh = speed == null\n    ? previous.avgSpeedKmh\n    : (Number.isFinite(previous.avgSpeedKmh) ? previous.avgSpeedKmh * 0.7 + speed * 0.3 : speed);\nconst rpm = asInteger(sample.rpm);\nconst gear = asInteger(sample.gear);\nconst throttle = asFiniteNumber(sample.throttle);\nconst brake = asFiniteNumber(sample.brake);\nconst fuel = asFiniteNumber(sample.fuel);\nconst drs = typeof sample.drs === 'boolean' ? sample.drs : previous.drs;\n\nfunction readTireTemp(corner) {\n    const next = sample.tireTemp && typeof sample.tireTemp === 'object'\n        ? asFiniteNumber(sample.tireTemp[corner])\n        : null;\n    return next == null && previous.tireTemp ? previous.tireTemp[corner] : next;\n}\n\nconst tireTemp = {\n    fl: readTireTemp('fl'),\n    fr: readTireTemp('fr'),\n    rl: readTireTemp('rl'),\n    rr: readTireTemp('rr')\n};\n\ncars[String(carId)] = {\n    raceId,\n    teamId,\n    carId,\n    lap,\n    trackPos,\n    speed,\n    avgSpeedKmh,\n    rpm: rpm == null ? previous.rpm : rpm,\n    gear: gear == null ? previous.gear : gear,\n    throttle: throttle == null ? previous.throttle : throttle,\n    brake: brake == null ? previous.brake : brake,\n    drs,\n    tireTemp,\n    fuel: fuel == null ? previous.fuel : fuel,\n    state: sample.state || previous.state || 'RUNNING',\n    timestamp: sample.timestamp || envelope.timestamp || new Date().toISOString(),\n    receivedAt: envelope.receivedAt || new Date().toISOString(),\n    observedAtMs: nowMs\n};\nflow.set(carsKey, cars);\n\nconst raceIds = flow.get('raceIds') || [];\nif (!raceIds.includes(raceId)) {\n    raceIds.push(raceId);\n    flow.set('raceIds', raceIds);\n}\n\nconst lastStatusAt = context.get('lastStatusAt') || 0;\nif (nowMs - lastStatusAt >= 1000) {\n    context.set('lastStatusAt', nowMs);\n    node.status({ fill: 'green', shape: 'dot', text: 'cached ' + Object.keys(cars).length + ' cars race ' + raceId });\n}\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -946,7 +946,7 @@
         "type": "function",
         "z": "f1-telemetry-tab",
         "name": "Build dashboard snapshot",
-        "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction sortCars(a, b) {\n    const progressA = (Number(a.lap) || 0) + (Number(a.trackPos) || 0);\n    const progressB = (Number(b.lap) || 0) + (Number(b.trackPos) || 0);\n    return progressB - progressA || Number(a.carId) - Number(b.carId);\n}\n\nconst nowIso = new Date().toISOString();\nconst raceIds = (flow.get('raceIds') || [])\n    .map(asInteger)\n    .filter((raceId) => raceId != null)\n    .sort((a, b) => a - b);\nconst races = [];\n\nfor (const raceId of raceIds) {\n    const raceKey = 'race.' + raceId;\n    const carsById = flow.get(raceKey + '.cars') || {};\n    const statesById = flow.get(raceKey + '.states') || {};\n    const cars = Object.values(carsById).map((car) => {\n        const state = statesById[String(car.carId)] || {};\n        return {\n            raceId: car.raceId,\n            teamId: car.teamId,\n            carId: car.carId,\n            lap: car.lap,\n            trackPos: car.trackPos,\n            speed: car.speed,\n            avgSpeedKmh: car.avgSpeedKmh,\n            state: state.state || car.state,\n            timestamp: car.timestamp,\n            receivedAt: car.receivedAt\n        };\n    }).sort(sortCars);\n\n    const flag = flow.get(raceKey + '.flag') || null;\n    const effects = flow.get(raceKey + '.raceEffects') || null;\n    const classification = flow.get(raceKey + '.lastClassification') || null;\n\n    if (cars.length === 0 && !flag && !classification) continue;\n\n    races.push({\n        raceId,\n        flag,\n        effects,\n        classification,\n        cars\n    });\n}\n\nif (races.length === 0) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'waiting data' });\n    return null;\n}\n\nmsg.topic = 'dashboard/snapshot';\nmsg.payload = JSON.stringify({\n    type: 'snapshot',\n    timestamp: nowIso,\n    races\n});\nnode.status({ fill: 'blue', shape: 'dot', text: 'snapshot ' + races.length + ' race(s)' });\nreturn msg;",
+        "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction sortCars(a, b) {\n    const progressA = (Number(a.lap) || 0) + (Number(a.trackPos) || 0);\n    const progressB = (Number(b.lap) || 0) + (Number(b.trackPos) || 0);\n    return progressB - progressA || Number(a.carId) - Number(b.carId);\n}\n\nconst nowIso = new Date().toISOString();\nconst raceIds = (flow.get('raceIds') || [])\n    .map(asInteger)\n    .filter((raceId) => raceId != null)\n    .sort((a, b) => a - b);\nconst races = [];\n\nfor (const raceId of raceIds) {\n    const raceKey = 'race.' + raceId;\n    const carsById = flow.get(raceKey + '.cars') || {};\n    const statesById = flow.get(raceKey + '.states') || {};\n    const cars = Object.values(carsById).map((car) => {\n        const state = statesById[String(car.carId)] || {};\n        return {\n            raceId: car.raceId,\n            teamId: car.teamId,\n            carId: car.carId,\n            lap: car.lap,\n            trackPos: car.trackPos,\n            speed: car.speed,\n            avgSpeedKmh: car.avgSpeedKmh,\n            rpm: car.rpm,\n            gear: car.gear,\n            throttle: car.throttle,\n            brake: car.brake,\n            drs: car.drs,\n            tireTemp: car.tireTemp,\n            fuel: car.fuel,\n            state: state.state || car.state,\n            timestamp: car.timestamp,\n            receivedAt: car.receivedAt\n        };\n    }).sort(sortCars);\n\n    const flag = flow.get(raceKey + '.flag') || null;\n    const effects = flow.get(raceKey + '.raceEffects') || null;\n    const classification = flow.get(raceKey + '.lastClassification') || null;\n\n    if (cars.length === 0 && !flag && !classification) continue;\n\n    races.push({\n        raceId,\n        flag,\n        effects,\n        classification,\n        cars\n    });\n}\n\nif (races.length === 0) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'waiting data' });\n    return null;\n}\n\nmsg.topic = 'dashboard/snapshot';\nmsg.payload = JSON.stringify({\n    type: 'snapshot',\n    timestamp: nowIso,\n    races\n});\nnode.status({ fill: 'blue', shape: 'dot', text: 'snapshot ' + races.length + ' race(s)' });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -973,7 +973,8 @@
         "y": 1040,
         "wires": [
             [
-                "fn-dashboard-race-control-command"
+                "fn-dashboard-race-control-command",
+                "fn-dashboard-start-scenario-command"
             ]
         ]
     },
@@ -999,6 +1000,47 @@
                 "debug-dashboard-command-errors"
             ]
         ]
+    },
+    {
+        "id": "fn-dashboard-start-scenario-command",
+        "type": "function",
+        "z": "f1-telemetry-tab",
+        "name": "Dashboard start scenario",
+        "func": "const ALLOWED_SCENARIOS = {\n    'red-flag': true,\n    checkered: true,\n    balanced: true\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parsePayload(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction fail(reason, details) {\n    msg.topic = 'dashboard/command/error';\n    msg.payload = {\n        error: reason,\n        details: details || {},\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nlet input;\ntry {\n    input = parsePayload(msg.payload);\n} catch (err) {\n    return fail(err.message || 'invalid dashboard command');\n}\n\nconst command = input.data && typeof input.data === 'object' ? input.data : input;\nconst type = input.type || command.type || command.command || null;\nif (type !== 'start-scenario') return [null, null];\n\nconst raceId = asInteger(command.raceId != null ? command.raceId : input.raceId);\nconst scenario = String(command.scenario || command.scenarioId || '').trim().toLowerCase();\n\nif (!raceId) return fail('invalid scenario raceId', { raceId: command.raceId || input.raceId });\nif (!ALLOWED_SCENARIOS[scenario]) return fail('invalid scenario', { scenario });\n\nmsg.topic = 'f1/simulation/' + raceId + '/control/start';\nmsg.qos = 1;\nmsg.retain = false;\nmsg.payload = {\n    timestamp: command.timestamp || new Date().toISOString(),\n    raceId,\n    scenario,\n    source: 'dashboard'\n};\n\nnode.status({ fill: 'green', shape: 'dot', text: 'start ' + scenario + ' race ' + raceId });\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 1080,
+        "wires": [
+            [
+                "mqtt-out-dashboard-start"
+            ],
+            [
+                "debug-dashboard-command-errors"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-out-dashboard-start",
+        "type": "mqtt out",
+        "z": "f1-telemetry-tab",
+        "name": "Dashboard start out",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt-broker-config",
+        "x": 800,
+        "y": 1080,
+        "wires": []
     },
     {
         "id": "mqtt-out-dashboard-flags",

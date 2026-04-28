@@ -57,6 +57,10 @@ class Orchestrator {
     this._checkeredSent = false;
     this._leaderLap = 0;
     this._simulatedTimeS = 0;
+    this._scenarioFaults = Array.isArray(config.scenario && config.scenario.scheduledFaults)
+      ? config.scenario.scheduledFaults
+      : [];
+    this._scenarioFaultsApplied = new Set();
 
     // Stats
     this._totalPublished = 0;
@@ -129,6 +133,8 @@ class Orchestrator {
     const timestamp = this.clock.isoNow();
     this._tickCount++;
     this._simulatedTimeS += dt;
+
+    this._applyScenarioFaults(timestamp);
 
     // Controlla se il leader ha completato tutti i giri
     this._updateLeaderLap();
@@ -214,6 +220,35 @@ class Orchestrator {
       }
     }
     this._leaderLap = maxLap;
+  }
+
+  _applyScenarioFaults(timestamp) {
+    if (this._scenarioFaults.length === 0) return;
+
+    for (const fault of this._scenarioFaults) {
+      const carId = Number(fault && fault.carId);
+      const atS = Number(fault && fault.atS);
+      const key = `${carId}@${atS}`;
+      if (!Number.isFinite(carId) || !Number.isFinite(atS)) continue;
+      if (this._scenarioFaultsApplied.has(key)) continue;
+      if (this._simulatedTimeS < atS) continue;
+
+      const car = this.cars.find((candidate) => Number(candidate.carId) === carId);
+      if (!car || typeof car.forceFault !== 'function') {
+        this._scenarioFaultsApplied.add(key);
+        continue;
+      }
+
+      const messages = car.forceFault(
+        this.raceId,
+        timestamp,
+        typeof fault.reason === 'string' ? fault.reason : 'scenario-fault',
+      );
+      this.publisher.publishCarMessages(messages);
+      this._countMessages(messages);
+      this._scenarioFaultsApplied.add(key);
+      this.log.info(`[Orchestrator] Scenario fault applicato: car ${carId}`);
+    }
   }
 
   _buildSafetyCarContexts(activeFlag) {

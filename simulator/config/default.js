@@ -23,6 +23,7 @@ const config = Object.freeze({
 
   // --- Gara ---
   totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 15,
+  autoStart: process.env.AUTO_START === 'true',
 
   // --- Determinismo ---
   seed: process.env.SEED ? parseInt(process.env.SEED, 10) : null,

@@ -562,6 +562,12 @@ class Car {
     this.sectorStartTimeS = this.simulatedTimeS;
     return messages;
   }
+
+  forceFault(raceId, timestamp, reason) {
+    const messages = { telemetry: null, state: null, events: [] };
+    this._applyTransition(TRIGGERS.INTERNAL_ERROR, reason || 'scenario-fault', raceId, timestamp, messages);
+    return messages;
+  }
 }
 
 module.exports = Car;

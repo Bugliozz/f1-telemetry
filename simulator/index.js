@@ -9,6 +9,7 @@ const roster = require('./config/roster.json');
 const MqttPublisher = require('./src/mqtt/publisher');
 const Orchestrator = require('./src/orchestrator');
 const RaceControlSubscriber = require('./src/race-control/subscriber');
+const { SCENARIOS, applyScenario } = require('./src/scenarios');
 const { createLogger } = require('./src/util/log');
 
 const log = createLogger(config.logLevel);
@@ -36,6 +37,85 @@ const publisher = new MqttPublisher(client, config.raceId, log, {
 });
 let orchestrator = null;
 let rcSubscriber = null;
+let startSubscribed = false;
+const startTopic = `f1/simulation/${config.raceId}/control/start`;
+
+function parseStartCommand(message) {
+  const payload = JSON.parse(message.toString());
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('payload is not an object');
+  }
+  const raceId = Number(payload.raceId == null ? config.raceId : payload.raceId);
+  if (!Number.isInteger(raceId) || raceId !== config.raceId) {
+    throw new Error(`invalid raceId ${payload.raceId}`);
+  }
+  return payload.scenario || payload.scenarioId || SCENARIOS.BALANCED;
+}
+
+function startSimulation(scenarioId, source) {
+  if (orchestrator) {
+    log.info(`[main] Comando start ignorato: simulazione gia attiva (${source || 'unknown'})`);
+    return;
+  }
+
+  const scenarioConfig = applyScenario(config, scenarioId);
+  log.info(`[main] Scenario selezionato: ${scenarioConfig.scenario.label} (${scenarioConfig.scenario.id})`);
+
+  orchestrator = new Orchestrator({
+    roster,
+    config: scenarioConfig,
+    publisher,
+    logger: log,
+  });
+
+  orchestrator.start();
+
+  // Avvia il subscriber per flag esterne dopo il GREEN iniziale.
+  rcSubscriber = new RaceControlSubscriber({
+    mqttClient: client,
+    raceId: scenarioConfig.raceId,
+    raceController: orchestrator.raceController,
+    logger: log,
+  });
+  rcSubscriber.start();
+
+  client.unsubscribe(startTopic);
+  startSubscribed = false;
+}
+
+function subscribeStartTopic() {
+  if (startSubscribed) return;
+  client.subscribe(startTopic, { qos: 1 }, (err) => {
+    if (err) {
+      log.error('[main] Errore subscribe start scenario:', err.message);
+      startSubscribed = false;
+      return;
+    }
+    startSubscribed = true;
+    log.info(`[main] In attesa scelta scenario su ${startTopic}`);
+  });
+}
+
+client.on('message', (topic, message) => {
+  if (topic !== startTopic) return;
+  try {
+    const scenarioId = parseStartCommand(message);
+    startSimulation(scenarioId, 'dashboard');
+  } catch (err) {
+    log.warn('[main] Comando start scenario non valido:', err.message);
+  }
+});
+
+async function shutdown(signal) {
+  log.info(`[main] Ricevuto ${signal}, shutdown in corso...`);
+  if (orchestrator) orchestrator.stop();
+  await publisher.end();
+  log.info('[main] Disconnesso. Bye!');
+  process.exit(0);
+}
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
 
 // Aspetta la connessione prima di avviare
 client.on('connect', () => {
@@ -44,37 +124,13 @@ client.on('connect', () => {
     return;
   }
 
-  log.info('[main] Connesso al broker MQTT — avvio simulazione...');
+  log.info('[main] Connesso al broker MQTT');
 
-  orchestrator = new Orchestrator({
-    roster,
-    config,
-    publisher,
-    logger: log,
-  });
-
-  // Avvia il subscriber per flag esterne (Fase 4 — Race Control)
-  rcSubscriber = new RaceControlSubscriber({
-    mqttClient: client,
-    raceId: config.raceId,
-    raceController: orchestrator.raceController,
-    logger: log,
-  });
-  rcSubscriber.start();
-
-  orchestrator.start();
-
-  // Shutdown ordinato (§12.2)
-  const shutdown = async (signal) => {
-    log.info(`[main] Ricevuto ${signal}, shutdown in corso...`);
-    orchestrator.stop();
-    await publisher.end();
-    log.info('[main] Disconnesso. Bye! 👋');
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  if (config.autoStart) {
+    startSimulation(process.env.RACE_SCENARIO || SCENARIOS.BALANCED, 'auto-start');
+  } else {
+    subscribeStartTopic();
+  }
 });
 
 client.on('error', (err) => {
