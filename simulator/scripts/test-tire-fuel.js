@@ -73,7 +73,7 @@ test('a velocita zero senza pedali: raffreddamento verso ambient', () => {
 test('alta velocita scalda: T cresce vs. tick precedente', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 300, throttle: 0.8, brake: 0 }, 0.25);
-  // Heat rear = K_HEAT_SPEED + K_HEAT_THROTTLE * 0.8 = 12 + 4.8 = 16.8
+  // Heat rear = K_HEAT_SPEED + K_HEAT_THROTTLE * 0.8 = 12 + 2 = 14
   // Cool = K_COOL * (95 - 25) = 7
   // dT_rear/dt = 9.8; dt=0.25 -> +2.45
   assert.ok(out.rl > prev.rl, `rl=${out.rl} non aumenta`);
@@ -103,8 +103,8 @@ test('left/right simmetrici per asse (no curva direction in fase 3)', () => {
 
 test('integrazione lunga a regime: converge verso equilibrio finito', () => {
   // Speed 250, throttle 0.7, brake 0 costanti -> equilibrio analitico:
-  // heat_rear = 12*(250/300)^2 + 6*0.7 = 8.333 + 4.2 = 12.533
-  // T_eq_rear = ambient + heat/K_COOL = 25 + 125.33 = 150.33
+  // heat_rear = 12*(250/300)^2 + 2.5*0.7 = 8.333 + 1.75 = 10.083
+  // T_eq_rear = ambient + heat/K_COOL = 25 + 100.83 = 125.83
   let temps = initialTireTemp(95);
   const dt = 0.25;
   for (let i = 0; i < 600; i += 1) {

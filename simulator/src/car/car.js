@@ -7,7 +7,13 @@
 //
 // Cfr. docs/simulator-architecture.md §5 (Modello dell'auto).
 
-const { advance, updateSpeed, gearForSpeed, rpmForSpeed } = require('./physics');
+const {
+  advance,
+  updateSpeed,
+  gearForSpeed,
+  rpmForSpeed,
+  MAX_BRAKE_MS2,
+} = require('./physics');
 const { initialTireTemp, updateTireTemp, consumeFuel, INITIAL_FUEL_KG } = require('./tire-fuel');
 const { initialFsm, transition, STATES, TRIGGERS, isTerminal } = require('./fsm');
 const {
@@ -17,7 +23,9 @@ const {
   onEnterFault,
   samplePitDurationS,
 } = require('./conditions');
-const { LENGTH_M, targetSpeed } = require('../track/monza');
+const { LENGTH_M, targetSpeed, racingControls } = require('../track/monza');
+
+const MS2_TO_KMH_PER_S = 3.6;
 
 class Car {
   constructor({ teamId, carId, driver, pitStrategy, rng, config }) {
@@ -75,7 +83,9 @@ class Car {
 
     // --- FAULT: decelera a 0, telemetria ridotta ---
     if (this.fsm.state === STATES.FAULT) {
+      const prevSpeed = this.speed;
       this.speed = updateSpeed(this.speed, 0, dt);
+      const controls = this._controlsForSpeedChange(prevSpeed, this.speed, 0, dt);
       if (this.speed > 0) {
         const posResult = advance({ trackPos: this.trackPos, lap: this.lap }, this.speed, dt);
         this.trackPos = posResult.trackPos;
@@ -89,7 +99,7 @@ class Car {
         this._applyTransition(evalResult.trigger, evalResult.reason, raceId, timestamp, messages);
       }
 
-      messages.telemetry = this._buildTelemetry(raceId, timestamp);
+      messages.telemetry = this._buildTelemetry(raceId, timestamp, controls);
       return messages;
     }
 
@@ -100,7 +110,9 @@ class Car {
         && (this.simulatedTimeS - this.condTracker.pitEnteredAtS) >= (this.condTracker.pitDurationS || 0);
       const redSuspended = ctx && ctx.activeFlag === 'RED';
       const target = redSuspended ? 0 : (this._pitServiced && !pitStopElapsed ? 0 : pitTarget);
+      const prevSpeed = this.speed;
       this.speed = updateSpeed(this.speed, target, dt);
+      const controls = this._controlsForSpeedChange(prevSpeed, this.speed, target, dt);
       if (!redSuspended && target === pitTarget && this.speed > pitTarget) this.speed = pitTarget;
 
       const prevPos = { trackPos: this.trackPos, lap: this.lap };
@@ -138,7 +150,7 @@ class Car {
         this._applyTransition(evalResult.trigger, evalResult.reason, raceId, timestamp, messages);
       }
 
-      messages.telemetry = this._buildTelemetry(raceId, timestamp);
+      messages.telemetry = this._buildTelemetry(raceId, timestamp, controls);
       return messages;
     }
 
@@ -157,24 +169,21 @@ class Car {
     // Jitter istantaneo (micro-variazioni per tick)
     const instantJitter = (this.rng() - 0.5) * 1.5;
     const nominalTarget = Math.max(0, adjustedTarget + instantJitter);
+    const maxRaceSpeed = this._numberConfig('maxRaceSpeedKmh', 350);
+    const cappedTarget = Math.min(nominalTarget, maxRaceSpeed);
     const yellowLimited = this._isYellowActiveForCurrentSector(ctx);
-    const finalTarget = this._applySafetyCarTarget(nominalTarget, ctx, yellowLimited);
+    const finalTarget = this._applySafetyCarTarget(cappedTarget, ctx, yellowLimited);
 
+    const prevSpeed = this.speed;
     this.speed = updateSpeed(this.speed, finalTarget, dt);
     if (ctx.activeFlag === 'VSC') {
       this.speed = Math.min(this.speed, this._virtualSafetyCarSpeedLimit());
     }
 
-    // Throttle e brake derivati (§5.1)
-    const speedDiff = finalTarget - this.speed;
-    let throttle, brake;
-    if (speedDiff >= 0) {
-      throttle = Math.min(1, 0.3 + speedDiff / 50);
-      brake = 0;
-    } else {
-      throttle = 0;
-      brake = Math.min(1, Math.abs(speedDiff) / 80);
-    }
+    // Throttle e brake derivati dalla fisica, poi rifiniti con il profilo
+    // pedali di Monza in condizioni di gara verde.
+    let { throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt);
+    ({ throttle, brake } = this._applyRacingControls({ throttle, brake }, ctx, yellowLimited));
 
     // Avanzamento posizione
     const prevPos = { trackPos: this.trackPos, lap: this.lap };
@@ -183,6 +192,7 @@ class Car {
     posResult = vscClamp.position;
     if (vscClamp.speedKmh != null) {
       this.speed = vscClamp.speedKmh;
+      ({ throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt));
     }
 
     // Controllo settori
@@ -326,6 +336,73 @@ class Car {
     return Number.isFinite(value) ? value : fallback;
   }
 
+  _applyRacingControls(baseControls, ctx, yellowLimited) {
+    const baseThrottle = Math.max(0, Math.min(1, baseControls && baseControls.throttle || 0));
+    const baseBrake = Math.max(0, Math.min(1, baseControls && baseControls.brake || 0));
+
+    const activeFlag = ctx && ctx.activeFlag;
+    const greenTrack = !activeFlag || activeFlag === 'GREEN' || activeFlag === 'CHECKERED';
+    if (!greenTrack || yellowLimited) {
+      return { throttle: baseThrottle, brake: baseBrake };
+    }
+
+    const racing = racingControls(this.trackPos);
+    const racingBrake = Math.max(0, Math.min(1, racing.brake || 0));
+    if (racingBrake > 0) {
+      return {
+        throttle: 0,
+        brake: Math.max(baseBrake, racingBrake),
+      };
+    }
+
+    // Fuori dalle braking zone evitiamo piccole correzioni di freno prodotte
+    // dal jitter del target: in gara reale il pilota resta sul gas.
+    if (baseBrake > 0.25) {
+      return { throttle: 0, brake: baseBrake };
+    }
+
+    const racingThrottle = Math.max(0, Math.min(1, racing.throttle || 0));
+    return {
+      throttle: racing.phase === 'throttle-ramp'
+        ? racingThrottle
+        : Math.max(baseThrottle, racingThrottle),
+      brake: 0,
+    };
+  }
+
+  _controlsForSpeedChange(previousSpeedKmh, nextSpeedKmh, targetSpeedKmh, dt) {
+    const previous = Math.max(0, Number.isFinite(previousSpeedKmh) ? previousSpeedKmh : 0);
+    const next = Math.max(0, Number.isFinite(nextSpeedKmh) ? nextSpeedKmh : previous);
+    const target = Math.max(0, Number.isFinite(targetSpeedKmh) ? targetSpeedKmh : next);
+    const safeDt = Math.max(0, Number.isFinite(dt) ? dt : 0);
+    const brakeCap = MAX_BRAKE_MS2 * MS2_TO_KMH_PER_S * safeDt;
+    const actualDelta = next - previous;
+    const targetDelta = target - previous;
+    const epsilon = 0.25;
+
+    if (actualDelta < -epsilon || targetDelta < -epsilon) {
+      const brakeDemand = Math.max(previous - next, previous - target, 0);
+      const scaledBrake = brakeCap > 0 ? brakeDemand / brakeCap : brakeDemand / 80;
+      return {
+        throttle: 0,
+        brake: Math.max(0, Math.min(1, scaledBrake)),
+      };
+    }
+
+    if (actualDelta > epsilon || targetDelta > epsilon) {
+      const throttleDemand = Math.max(actualDelta, targetDelta, 0);
+      return {
+        throttle: Math.max(0, Math.min(1, 0.3 + throttleDemand / 50)),
+        brake: 0,
+      };
+    }
+
+    return {
+      throttle: previous > 0 ? 0.3 : 0,
+      brake: 0,
+    };
+  }
+
   _buildObservation(ctx) {
     return {
       fuel: this.fuel,
@@ -343,6 +420,7 @@ class Car {
       tireOverheatThreshold: this.config.tireOverheatThresholdC,
       tireOverheatTicksRequired: this.config.tireOverheatTicksRequired,
       engineFailureProb: this.config.engineFailureProbPerTick,
+      faultGraceS: this.config.faultGraceS,
       faultDiagnoseS: this.config.faultDiagnoseS,
     };
   }
@@ -379,6 +457,10 @@ class Car {
     } else {
       throttle = 0;
       brake = Math.min(1, Math.abs(diff) / 80);
+    }
+
+    if (brake > 0.05) {
+      drs = false;
     }
 
     return {

@@ -13,8 +13,9 @@ const { LENGTH_M } = require('../track/monza');
 // target (tipicamente quella restituita da `track/monza.targetSpeed`)
 // rispettando i limiti fisici di accelerazione e frenata. La velocita'
 // reale non puo' saltare al target, segue il profilo. Le costanti sono
-// quelle di §6.1 dell'architettura: +8 m/s^2 in accelerazione, -25 m/s^2
-// in frenata. Tutti i valori in km/h, `dt` in secondi.
+// quelle di §6.1 dell'architettura: +8 m/s^2 in accelerazione e una
+// frenata di picco da F1, sufficiente a superare 4.5 G nelle staccate piu'
+// violente. Tutti i valori in km/h, `dt` in secondi.
 //
 // Convenzioni:
 // - `trackPos` resta sempre in [0,1) — l'estremo 1 e' escluso.
@@ -26,7 +27,7 @@ const { LENGTH_M } = require('../track/monza');
 //   sicurezza.
 
 const MAX_ACCEL_MS2 = 8;
-const MAX_BRAKE_MS2 = 25;
+const MAX_BRAKE_MS2 = 44;
 const MS2_TO_KMH_PER_S = 3.6;
 
 // Powertrain (cfr. docs/simulator-architecture.md §5.1):

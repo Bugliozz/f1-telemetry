@@ -12,7 +12,7 @@ const {
   RPM_PER_KMH,
   RPM_MAX,
 } = require('../src/car/physics');
-const { LENGTH_M, SPEED_PROFILE, targetSpeed } = require('../src/track/monza');
+const { LENGTH_M, SPEED_PROFILE, BRAKING_ZONES, targetSpeed, racingControls } = require('../src/track/monza');
 
 let passed = 0;
 function test(name, fn) {
@@ -111,16 +111,17 @@ test('punti tabellati restituiscono il valore esatto della tabella', () => {
 });
 
 test('interpolazione lineare a meta segmento', () => {
-  // Meta tra 0.000 (340) e 0.060 (95): atteso (340+95)/2 = 217.5
-  const v = targetSpeed(0.030);
-  assert.ok(Math.abs(v - 217.5) < 1e-9, `got=${v}`);
+  // Meta della prima fase di staccata Rettifilo: brake start (350) -> 0.044 (250).
+  const start = BRAKING_ZONES[0].start;
+  const v = targetSpeed(start + (0.044 - start) / 2);
+  assert.ok(Math.abs(v - 300) < 1e-9, `got=${v}`);
 });
 
 test('interpolazione lineare al 25% di un segmento', () => {
-  // 25% da 0.420 (200) verso 0.480 (215): 200 + 0.25*15 = 203.75
-  const pos = 0.420 + 0.25 * (0.480 - 0.420);
+  // 25% dell'allungo Serraglio: 0.520 (195) -> 0.589 (315).
+  const pos = 0.520 + 0.25 * (0.589 - 0.520);
   const v = targetSpeed(pos);
-  assert.ok(Math.abs(v - 203.75) < 1e-9, `got=${v}`);
+  assert.ok(Math.abs(v - 225) < 1e-9, `got=${v}`);
 });
 
 test('periodicita: targetSpeed(1) === targetSpeed(0)', () => {
@@ -140,9 +141,55 @@ test('curve sono piu lente dei rettilinei adiacenti (sanity)', () => {
   // Variante del Rettifilo (chicane) deve essere il punto piu lento del giro.
   const chicane = targetSpeed(0.060);
   const startFinish = targetSpeed(0.000);
-  const curvaGrande = targetSpeed(0.180);
+  const curvaGrande = targetSpeed(0.205);
   assert.ok(chicane < startFinish, `chicane ${chicane} >= start ${startFinish}`);
   assert.ok(chicane < curvaGrande, `chicane ${chicane} >= grande ${curvaGrande}`);
+  assert.ok(chicane >= 70 && chicane <= 80, `Prima Variante apex non realistico: ${chicane}`);
+});
+
+test('rettilinei lunghi restano in accelerazione prima della braking zone', () => {
+  const serraglio = targetSpeed(0.589);
+  const backStraight = targetSpeed(0.800);
+  const roggiaApproach = targetSpeed(0.270);
+  assert.ok(serraglio >= 285, `serraglio target troppo basso: ${serraglio}`);
+  assert.ok(backStraight >= 330, `back straight target troppo basso: ${backStraight}`);
+  assert.ok(roggiaApproach >= 330, `rettilineo Roggia frena troppo presto: ${roggiaApproach}`);
+});
+
+test('braking zone concentrate prima dei punti lenti', () => {
+  const roggia = BRAKING_ZONES.find(z => z.id === 'roggia');
+  const ascari = BRAKING_ZONES.find(z => z.id === 'ascari');
+  const parabolica = BRAKING_ZONES.find(z => z.id === 'parabolica');
+  assert.ok(targetSpeed(roggia.start - 0.002) >= 325, 'Roggia non deve frenare prima del cartello dei 100m');
+  assert.ok(targetSpeed(roggia.start + 0.004) < targetSpeed(roggia.start), 'Roggia deve frenare dentro la braking zone');
+  assert.ok(targetSpeed(ascari.apex) < targetSpeed(ascari.start), 'Ascari deve frenare dopo il Serraglio');
+  assert.ok(targetSpeed(parabolica.apex) < targetSpeed(parabolica.start), 'Parabolica deve frenare dopo il back straight');
+});
+
+console.log('\nmonza.racingControls');
+
+test('Prima Variante: freno 100% al cartello 150m e trail braking verso apice', () => {
+  const zone = BRAKING_ZONES.find(z => z.id === 'prima-variante');
+  const hard = racingControls(zone.start + 0.001);
+  const trail = racingControls(zone.apex);
+  assert.equal(hard.brake, 1);
+  assert.equal(hard.throttle, 0);
+  assert.ok(trail.brake > 0 && trail.brake < 0.25, `trail brake=${trail.brake}`);
+});
+
+test('Curva Grande resta pieno gas senza frenata', () => {
+  const controls = racingControls(0.205);
+  assert.equal(controls.brake, 0);
+  assert.equal(controls.throttle, 1);
+});
+
+test('Parabolica riapre il gas prima della fine curva', () => {
+  const ramp = racingControls(0.855);
+  const exit = racingControls(0.886);
+  assert.equal(ramp.brake, 0);
+  assert.ok(ramp.throttle > 0.25 && ramp.throttle < 1, `ramp throttle=${ramp.throttle}`);
+  assert.equal(exit.brake, 0);
+  assert.equal(exit.throttle, 1);
 });
 
 console.log('\nphysics.updateSpeed');
@@ -163,10 +210,10 @@ test('accelerazione limitata da MAX_ACCEL_MS2', () => {
 });
 
 test('frenata limitata da MAX_BRAKE_MS2', () => {
-  // dt = 1 s, MAX_BRAKE = 25 m/s^2 = 90 km/h/s.
-  // Da 300 verso 100, in 1 s puo togliere al massimo 90 km/h.
+  // dt = 1 s, MAX_BRAKE = 44 m/s^2 = 158.4 km/h/s.
+  // Da 300 verso 100, in 1 s puo togliere al massimo 158.4 km/h.
   const v = updateSpeed(300, 100, 1);
-  assert.ok(Math.abs(v - 210) < 1e-9, `got=${v}`);
+  assert.ok(Math.abs(v - 141.6) < 1e-9, `got=${v}`);
 });
 
 test('frenata e piu rapida dell accelerazione (cap diversi)', () => {
@@ -183,8 +230,8 @@ test('target raggiunto se delta entro il limite del tick', () => {
 });
 
 test('target raggiunto in frenata se delta entro il limite del tick', () => {
-  // dt = 0.25 s -> max brake = 90 * 0.25 = 22.5 km/h.
-  // Da 200 verso 190: delta -10, |delta| < 22.5 -> raggiunge 190.
+  // dt = 0.25 s -> max brake = 158.4 * 0.25 = 39.6 km/h.
+  // Da 200 verso 190: delta -10, |delta| < 39.6 -> raggiunge 190.
   assert.equal(updateSpeed(200, 190, 0.25), 190);
 });
 
@@ -195,7 +242,7 @@ test('velocita corrente negativa clamp-ata a 0 prima di accelerare', () => {
 });
 
 test('target negativo trattato come 0 (frena verso fermo)', () => {
-  // Da 50 verso -100, dt = 1 s: target 0, brake max 90 -> raggiunge 0.
+  // Da 50 verso -100, dt = 1 s: target 0, brake max 158.4 -> raggiunge 0.
   const v = updateSpeed(50, -100, 1);
   assert.equal(v, 0);
 });
@@ -213,8 +260,8 @@ test('integrazione 0 -> ~340 km/h impiega ~12 s di pieno gas', () => {
   assert.ok(Math.abs(v - 340) < 1e-9, `v finale=${v}`);
 });
 
-test('integrazione frenata 340 -> 95 km/h impiega ~2.7 s', () => {
-  // (340 - 95) / (25 * 3.6) = 245 / 90 ≈ 2.722 s.
+test('integrazione frenata 340 -> 95 km/h impiega ~1.6 s', () => {
+  // (340 - 95) / (44 * 3.6) = 245 / 158.4 ~= 1.55 s.
   let v = 340;
   let t = 0;
   const dt = 0.25;
@@ -222,18 +269,15 @@ test('integrazione frenata 340 -> 95 km/h impiega ~2.7 s', () => {
     v = updateSpeed(v, 95, dt);
     t += dt;
   }
-  assert.ok(t >= 2.5 && t <= 3.0, `tempo a 95 km/h: ${t}`);
+  assert.ok(t >= 1.5 && t <= 1.75, `tempo a 95 km/h: ${t}`);
   assert.ok(Math.abs(v - 95) < 1e-9, `v finale=${v}`);
 });
 
 test('giro completo a Monza in finestra di lap-time realistico', () => {
   // Integra speed (verso targetSpeed) e posizione tick per tick.
-  // Il modello base "pure target-following" segue il profilo lineare di
-  // monza.targetSpeed e quindi frena gia' a meta' del rettilineo invece
-  // che all'ingresso curva. Risultato: lap time piu lento della stima
-  // ottimistica 80-95 s di §6.1 (che presume tardo-frenata). Qui si
-  // verifica solo l'ordine di grandezza realistico (1:35-2:10), che e'
-  // il risultato atteso dei sistemi base senza degrado/lookahead.
+  // Il profilo include punti di hold sui rettilinei e braking zone corte,
+  // quindi il pure target-following non anticipa la frenata su tutto il
+  // rettilineo.
   let pos = 0;
   let lap = 0;
   let speed = targetSpeed(0);
@@ -246,7 +290,7 @@ test('giro completo a Monza in finestra di lap-time realistico', () => {
     lap = out.lap;
     t += dt;
   }
-  assert.ok(t >= 95 && t <= 130, `lap time fuori range realistico: ${t}s`);
+  assert.ok(t >= 80 && t <= 105, `lap time fuori range realistico: ${t}s`);
 });
 
 console.log('\nphysics.gearForSpeed');

@@ -61,6 +61,7 @@ const FUEL_PIT_THRESHOLD_KG = 8;
 const TIRE_OVERHEAT_THRESHOLD_C = 180;
 const TIRE_OVERHEAT_TICKS_REQUIRED = 3;
 const ENGINE_FAILURE_PROB_PER_TICK = 1e-4;
+const FAULT_GRACE_S = 0;
 const FAULT_DIAGNOSE_S = 5;
 const PIT_DURATION_MIN_S = 2.0;
 const PIT_DURATION_MAX_S = 3.5;
@@ -118,6 +119,12 @@ function isEngineFailure(rng, prob) {
   if (p <= 0) return false;
   const r = rng();
   return isFiniteNumber(r) && r < p;
+}
+
+function isFaultGraceElapsed(nowS, graceS) {
+  const grace = isFiniteNumber(graceS) && graceS > 0 ? graceS : FAULT_GRACE_S;
+  if (grace <= 0) return true;
+  return isFiniteNumber(nowS) && nowS >= grace;
 }
 
 function isPitTimeElapsed(pitEnteredAtS, pitDurationS, nowS) {
@@ -188,6 +195,7 @@ function readObservation(obs) {
     tireOverheatThreshold: isFiniteNumber(o.tireOverheatThreshold) ? o.tireOverheatThreshold : TIRE_OVERHEAT_THRESHOLD_C,
     tireOverheatTicksRequired: isFiniteNumber(o.tireOverheatTicksRequired) ? o.tireOverheatTicksRequired : TIRE_OVERHEAT_TICKS_REQUIRED,
     engineFailureProb: isFiniteNumber(o.engineFailureProb) ? o.engineFailureProb : ENGINE_FAILURE_PROB_PER_TICK,
+    faultGraceS: isFiniteNumber(o.faultGraceS) ? o.faultGraceS : FAULT_GRACE_S,
     faultDiagnoseS: isFiniteNumber(o.faultDiagnoseS) ? o.faultDiagnoseS : FAULT_DIAGNOSE_S,
   };
 }
@@ -199,25 +207,27 @@ function noTrigger(tracker) {
 function evaluate(fsmState, observation, tracker) {
   const baseTracker = tracker && typeof tracker === 'object' ? tracker : initialConditionsTracker();
   const safe = readObservation(observation);
+  const faultsAllowed = isFaultGraceElapsed(safe.nowS, safe.faultGraceS);
 
-  // Aggiorna sempre il contatore tire-overheat: in PIT/FAULT le gomme si
-  // raffreddano e il contatore decade naturalmente, quindi una breve
-  // permanenza fuori RUNNING non lascia residui spuri.
-  const nextTireOverheatTicks = tireOverheatNextTicks(
-    safe.tireTemp,
-    baseTracker.tireOverheatTicks,
-    safe.tireOverheatThreshold,
-  );
+  // Aggiorna il contatore tire-overheat solo quando i fault sono abilitati:
+  // la grace window protegge anche dal latch immediato appena scade.
+  const nextTireOverheatTicks = faultsAllowed
+    ? tireOverheatNextTicks(
+      safe.tireTemp,
+      baseTracker.tireOverheatTicks,
+      safe.tireOverheatThreshold,
+    )
+    : 0;
   const nextTracker = { ...baseTracker, tireOverheatTicks: nextTireOverheatTicks };
 
   if (fsmState === STATES.RUNNING) {
     if (isRaceEnd(safe.lap, safe.totalLaps, safe.checkeredActive)) {
       return { trigger: TRIGGERS.RACE_END, reason: TRIGGERS.RACE_END, tracker: nextTracker };
     }
-    if (isEngineFailure(safe.rng, safe.engineFailureProb)) {
+    if (faultsAllowed && isEngineFailure(safe.rng, safe.engineFailureProb)) {
       return { trigger: TRIGGERS.ENGINE_FAILURE, reason: TRIGGERS.ENGINE_FAILURE, tracker: nextTracker };
     }
-    if (isTireOverheatLatched(nextTracker.tireOverheatTicks, safe.tireOverheatTicksRequired)) {
+    if (faultsAllowed && isTireOverheatLatched(nextTracker.tireOverheatTicks, safe.tireOverheatTicksRequired)) {
       const maxC = maxTireTemp(safe.tireTemp).toFixed(1);
       return {
         trigger: TRIGGERS.TIRE_OVERHEAT,
@@ -251,7 +261,7 @@ function evaluate(fsmState, observation, tracker) {
     if (isRaceEnd(safe.lap, safe.totalLaps, safe.checkeredActive)) {
       return { trigger: TRIGGERS.RACE_END, reason: TRIGGERS.RACE_END, tracker: nextTracker };
     }
-    if (isEngineFailure(safe.rng, safe.engineFailureProb)) {
+    if (faultsAllowed && isEngineFailure(safe.rng, safe.engineFailureProb)) {
       return { trigger: TRIGGERS.ENGINE_FAILURE, reason: TRIGGERS.ENGINE_FAILURE, tracker: nextTracker };
     }
     if (safe.pitExitReached && isPitTimeElapsed(nextTracker.pitEnteredAtS, nextTracker.pitDurationS, safe.nowS)) {
@@ -285,6 +295,7 @@ module.exports = {
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
+  FAULT_GRACE_S,
   FAULT_DIAGNOSE_S,
   PIT_DURATION_MIN_S,
   PIT_DURATION_MAX_S,
@@ -295,6 +306,7 @@ module.exports = {
   tireOverheatNextTicks,
   isTireOverheatLatched,
   isEngineFailure,
+  isFaultGraceElapsed,
   isPitTimeElapsed,
   isFaultUnrecoverable,
   isRaceEnd,

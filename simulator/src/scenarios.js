@@ -9,8 +9,10 @@ const PROFILES = Object.freeze({
     id: SCENARIOS.RED_FLAG,
     label: 'Red flag probability bias',
     overrides: Object.freeze({
-      engineFailureProbPerTick: 3e-4,
-      tireOverheatThresholdC: 165,
+      engineFailureProbPerTick: 8e-4,
+      tireOverheatThresholdC: 210,
+      tireOverheatTicksRequired: 6,
+      faultGraceS: 45,
       faultDiagnoseS: 5,
       raceControlTriggers: Object.freeze({
         retirementScProbability: 0.60,
@@ -36,13 +38,16 @@ const PROFILES = Object.freeze({
   }),
   [SCENARIOS.BALANCED]: Object.freeze({
     id: SCENARIOS.BALANCED,
-    label: 'Balanced demo',
+    label: 'Balanced race distance',
     overrides: Object.freeze({
-      engineFailureProbPerTick: 2e-5,
+      engineFailureProbPerTick: 2e-7,
+      tireOverheatThresholdC: 190,
+      tireOverheatTicksRequired: 8,
+      faultGraceS: 120,
       raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.25,
-        multiFaultVscThreshold: 2,
-        massIncidentThreshold: 4,
+        retirementScProbability: 0.15,
+        multiFaultVscThreshold: 4,
+        massIncidentThreshold: 8,
       }),
     }),
     scheduledFaults: Object.freeze([]),

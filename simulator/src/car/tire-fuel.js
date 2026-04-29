@@ -22,8 +22,9 @@
 // `wearFactor` (default 1) e' un moltiplicatore del termine di riscaldamento
 // che l'orchestrator alza giro dopo giro per simulare il degrado progressivo
 // (es. wearFactor = 1 + lap * WEAR_PER_LAP). A parita' di input la gomma
-// si scalda di piu' man mano che il giro avanza, fino a sfiorare la soglia
-// di tire-overheat (180°C, vedi FSM).
+// si scalda di piu' man mano che il giro avanza, ma uno stint normale deve
+// restare nel range operativo: il tire-overheat FSM e' un guasto grave, non
+// un evento inevitabile dopo pochi giri.
 //
 // Modello fuel (`consumeFuel`):
 //
@@ -40,10 +41,10 @@ const INITIAL_TIRE_TEMP_C = 95;
 const INITIAL_FUEL_KG = 105;
 const AMBIENT_C = 25;
 
-const K_HEAT_SPEED = 12;
-const K_HEAT_THROTTLE = 6;
-const K_HEAT_BRAKE = 8;
-const K_COOL = 0.1;
+const K_HEAT_SPEED = 6;
+const K_HEAT_THROTTLE = 1.8;
+const K_HEAT_BRAKE = 5;
+const K_COOL = 0.08;
 
 const K_FUEL_BASE = 0.01;
 const K_FUEL_LOAD = 0.12;

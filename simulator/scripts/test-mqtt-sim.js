@@ -14,7 +14,8 @@ const Orchestrator = require('../src/orchestrator');
 const config = require('../config/default');
 const roster = require('../config/roster.json');
 const { createCarPrng } = require('../src/util/prng');
-const { LENGTH_M } = require('../src/track/monza');
+const { SCENARIOS, applyScenario } = require('../src/scenarios');
+const { LENGTH_M, BRAKING_ZONES, targetSpeed } = require('../src/track/monza');
 const path = require('path');
 const Ajv2020 = require('ajv/dist/2020');
 
@@ -152,6 +153,10 @@ assert(lastFuel < firstFuel, `Fuel decresce: ${firstFuel} → ${lastFuel}`);
 const drsActive = telemetryHistory.filter(t => t.drs === true);
 assert(drsActive.length > 0, `DRS attivato in almeno 1 campione (got ${drsActive.length})`);
 
+// Brake attivo nelle zone di decelerazione
+const brakeActive = telemetryHistory.filter(t => t.brake > 0);
+assert(brakeActive.length > 0, `Brake attivato in almeno 1 campione (got ${brakeActive.length})`);
+
 // Payload schema compliance (campi obbligatori)
 const REQUIRED_FIELDS = ['timestamp', 'raceId', 'teamId', 'carId', 'lap', 'trackPos',
   'speed', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'tireTemp', 'fuel', 'state'];
@@ -184,6 +189,151 @@ const minimalCar = new Car({ teamId: 'test', carId: 99 });
 const minimalMsgs = minimalCar.tick(dt, ctx);
 assert(minimalMsgs.telemetry && minimalMsgs.telemetry.state === 'INIT',
   'Car senza config produce telemetria INIT senza eccezioni');
+
+const serraglioCar = new Car({
+  teamId: 'alpine',
+  carId: 31,
+  driver: 'E. Ocon',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { alpine: 1 },
+  },
+});
+serraglioCar.startRace(1, ctx.timestamp);
+serraglioCar.trackPos = 0.589;
+serraglioCar.speed = 163.6;
+const serraglioMsgs = serraglioCar.tick(dt, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(targetSpeed(0.589) >= 295,
+  `Serraglio ha target da rettilineo (got ${targetSpeed(0.589).toFixed(1)} km/h)`);
+assert(serraglioMsgs.telemetry && serraglioMsgs.telemetry.throttle >= 0.9,
+  `Auto sul Serraglio accelera (throttle=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.throttle})`);
+assert(serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake === 0,
+  `Auto sul Serraglio non frena (brake=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake})`);
+
+const firstVariant = BRAKING_ZONES.find(z => z.id === 'prima-variante');
+const firstVariantCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { ferrari: 1 },
+  },
+});
+firstVariantCar.startRace(1, ctx.timestamp);
+firstVariantCar.trackPos = firstVariant.start + 0.001;
+firstVariantCar.speed = 350;
+const firstVariantMsgs = firstVariantCar.tick(dt, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.brake === 1,
+  `Prima Variante frena al 100% al cartello 150m (brake=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.brake})`);
+assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.throttle === 0,
+  `Prima Variante chiude il gas in staccata (throttle=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.throttle})`);
+assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.drs === false,
+  'DRS chiuso automaticamente durante la frenata della Prima Variante');
+
+const roggiaApproachCar = new Car({
+  teamId: 'mclaren',
+  carId: 4,
+  driver: 'L. Norris',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { mclaren: 1 },
+  },
+});
+roggiaApproachCar.startRace(1, ctx.timestamp);
+roggiaApproachCar.trackPos = 0.270;
+roggiaApproachCar.speed = 320;
+const roggiaApproachMsgs = roggiaApproachCar.tick(dt, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.brake === 0,
+  `Rettifilo verso Roggia non deve frenare prima dei 100m (brake=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.brake})`);
+assert(roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.throttle >= 0.9,
+  `Rettifilo verso Roggia resta in pieno gas (throttle=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.throttle})`);
+
+const curvaGrandeCar = new Car({
+  teamId: 'redbull',
+  carId: 1,
+  driver: 'M. Verstappen',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { redbull: 1 },
+  },
+});
+curvaGrandeCar.startRace(1, ctx.timestamp);
+curvaGrandeCar.trackPos = 0.205;
+curvaGrandeCar.speed = 305;
+const curvaGrandeMsgs = curvaGrandeCar.tick(dt, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.brake === 0,
+  `Curva Grande non deve frenare (brake=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.brake})`);
+assert(curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.throttle === 1,
+  `Curva Grande deve restare full throttle (throttle=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.throttle})`);
+
+const parabolicaCar = new Car({
+  teamId: 'mercedes',
+  carId: 44,
+  driver: 'L. Hamilton',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { mercedes: 1 },
+  },
+});
+parabolicaCar.startRace(1, ctx.timestamp);
+parabolicaCar.trackPos = 0.855;
+parabolicaCar.speed = targetSpeed(0.855);
+const parabolicaMsgs = parabolicaCar.tick(dt, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.brake === 0,
+  `Parabolica deve aver rilasciato il freno in uscita (brake=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.brake})`);
+assert(parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.throttle > 0.25 && parabolicaMsgs.telemetry.throttle < 1,
+  `Parabolica deve riaprire il gas progressivamente (throttle=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.throttle})`);
 
 const lapCar = new Car({
   teamId: 'ferrari',
@@ -691,6 +841,52 @@ assert(redPitCar.fsm.state === 'RUNNING',
   'pit exit resumes after RED clears to GREEN');
 assert(greenAfterRedPitMsgs.state && greenAfterRedPitMsgs.state.previousState === 'PIT',
   'pit exit publishes state once RED clears');
+
+// ============================================================
+// TEST 1G: Scenario tuning
+// ============================================================
+
+section('TEST 1G: Scenario tuning');
+
+const redScenarioConfig = applyScenario(config, SCENARIOS.RED_FLAG);
+assert(redScenarioConfig.faultGraceS >= 30,
+  `RED scenario ha grace window anti-fault iniziale (got ${redScenarioConfig.faultGraceS})`);
+assert(redScenarioConfig.engineFailureProbPerTick > config.engineFailureProbPerTick,
+  'RED scenario resta ad alta probabilita di failure dopo la grace window');
+assert(redScenarioConfig.tireOverheatThresholdC > config.tireOverheatThresholdC,
+  'RED scenario evita tire-overheat deterministico troppo precoce');
+
+const redScenarioCar = new Car({
+  teamId: 'redbull',
+  carId: 1,
+  driver: 'M. Verstappen',
+  pitStrategy: [],
+  rng: () => 0,
+  config: redScenarioConfig,
+});
+redScenarioCar.startRace(1, ctx.timestamp);
+for (let i = 0; i < (redScenarioConfig.faultGraceS * 4) - 1; i++) {
+  redScenarioCar.tick(0.25, {
+    raceId: 1,
+    timestamp: new Date().toISOString(),
+    totalLaps: 15,
+    checkeredActive: false,
+    activeFlag: 'GREEN',
+  });
+}
+assert(redScenarioCar.fsm.state === 'RUNNING',
+  `RED scenario non produce fault prima della grace window (state=${redScenarioCar.fsm.state})`);
+const redScenarioGraceMsgs = redScenarioCar.tick(0.25, {
+  raceId: 1,
+  timestamp: new Date().toISOString(),
+  totalLaps: 15,
+  checkeredActive: false,
+  activeFlag: 'GREEN',
+});
+assert(redScenarioCar.fsm.state === 'FAULT',
+  `RED scenario consente fault dopo la grace window (state=${redScenarioCar.fsm.state})`);
+assert((redScenarioGraceMsgs.events || []).some(e => e.type === 'fault'),
+  'RED scenario pubblica evento fault dopo la grace window');
 
 // ============================================================
 // TEST 2: 10 auto — 40 tick (10 secondi simulati)

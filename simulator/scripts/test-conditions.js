@@ -4,6 +4,7 @@ const {
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
+  FAULT_GRACE_S,
   FAULT_DIAGNOSE_S,
   PIT_DURATION_MIN_S,
   PIT_DURATION_MAX_S,
@@ -14,6 +15,7 @@ const {
   tireOverheatNextTicks,
   isTireOverheatLatched,
   isEngineFailure,
+  isFaultGraceElapsed,
   isPitTimeElapsed,
   isFaultUnrecoverable,
   isRaceEnd,
@@ -41,6 +43,7 @@ test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
   assert.equal(TIRE_OVERHEAT_THRESHOLD_C, 180);
   assert.equal(TIRE_OVERHEAT_TICKS_REQUIRED, 3);
   assert.equal(ENGINE_FAILURE_PROB_PER_TICK, 1e-4);
+  assert.equal(FAULT_GRACE_S, 0);
   assert.equal(FAULT_DIAGNOSE_S, 5);
   assert.equal(PIT_DURATION_MIN_S, 2.0);
   assert.equal(PIT_DURATION_MAX_S, 3.5);
@@ -182,6 +185,21 @@ test('rng mancante o prob <= 0 -> false', () => {
   assert.equal(isEngineFailure(null), false);
   assert.equal(isEngineFailure(() => 0.0, 0), false);
   assert.equal(isEngineFailure(() => 0.0, -1), false);
+});
+
+// ----------------------------------------------------------------------------
+console.log('\nconditions.isFaultGraceElapsed');
+// ----------------------------------------------------------------------------
+
+test('grace assente o zero -> fault abilitati subito', () => {
+  assert.equal(isFaultGraceElapsed(0, 0), true);
+  assert.equal(isFaultGraceElapsed(10, undefined), true);
+});
+
+test('grace positiva protegge fino alla soglia', () => {
+  assert.equal(isFaultGraceElapsed(44.99, 45), false);
+  assert.equal(isFaultGraceElapsed(45, 45), true);
+  assert.equal(isFaultGraceElapsed(60, 45), true);
 });
 
 // ----------------------------------------------------------------------------
@@ -371,6 +389,33 @@ test('RUNNING -> engine-failure quando rng < prob', () => {
   const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
   assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
   assert.equal(out.reason, TRIGGERS.ENGINE_FAILURE);
+});
+
+test('RUNNING: faultGraceS blocca engine-failure e tire-overheat iniziali', () => {
+  const t = { ...initialConditionsTracker(), tireOverheatTicks: 2 };
+  const obs = {
+    ...baseRunningObs,
+    nowS: 30,
+    faultGraceS: 45,
+    rng: () => 0.0,
+    engineFailureProb: 1e-3,
+    tireTemp: { fl: 220, fr: 220, rl: 220, rr: 220 },
+  };
+  const out = evaluate(STATES.RUNNING, obs, t);
+  assert.equal(out.trigger, null);
+  assert.equal(out.tracker.tireOverheatTicks, 0);
+});
+
+test('RUNNING: faultGraceS scaduta riabilita engine-failure', () => {
+  const obs = {
+    ...baseRunningObs,
+    nowS: 45,
+    faultGraceS: 45,
+    rng: () => 0.0,
+    engineFailureProb: 1e-3,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
 });
 
 test('RUNNING -> race-end quando lap >= totalLaps && CHECKERED', () => {

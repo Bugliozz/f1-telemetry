@@ -35,7 +35,8 @@ const config = Object.freeze({
   fuelPitThresholdKg: 8,
   tireOverheatThresholdC: 180,
   tireOverheatTicksRequired: 3,
-  engineFailureProbPerTick: 1e-4,
+  engineFailureProbPerTick: 2e-6,
+  faultGraceS: 60,
   faultDiagnoseS: 5,
   pitDurationMinS: 2.0,
   pitDurationMaxS: 3.5,
@@ -77,12 +78,13 @@ const config = Object.freeze({
   // Differenziale di prestazione per team (fattore moltiplicativo su target speed)
   // Simula che alcune auto siano intrinsecamente piu' veloci
   teamPerformanceFactor: {
-    redbull: 1.02,
-    ferrari: 1.01,
-    mclaren: 1.005,
+    redbull: 1.012,
+    ferrari: 1.008,
+    mclaren: 1.004,
     mercedes: 1.00,
-    alpine: 0.99,
+    alpine: 0.995,
   },
+  maxRaceSpeedKmh: 350,
 
   // --- Race flag behaviour ---
   yellowSpeedMultiplier: 0.6,

@@ -194,7 +194,7 @@ SIGTERM    stop():
 | `trackPos` | `[0,1)` | posizione normalizzata sul giro |
 | `speed` | km/h | derivata dalla `targetSpeed` di Monza × modificatori |
 | `gear`, `rpm` | derivati | `gear = clamp(round(speed/50), 1, 7)`, `rpm = 7000 + speed*22` con jitter |
-| `throttle`, `brake` | `[0,1]` | derivati dalla differenza speed/targetSpeed |
+| `throttle`, `brake` | `[0,1]` | profilo pedali Monza + differenza speed/targetSpeed per safety/pit/fault |
 | `drs` | bool | true sui rettilinei lunghi (settore 1 e 3 di Monza) |
 | `tireTemp.{fl,fr,rl,rr}` | C | partono ~95°C, salgono con velocita' e curve, scendono in pit |
 | `fuel` | kg | parte 105 kg, decrementa con throttle + speed |
@@ -226,33 +226,50 @@ sui payload senza mockare MQTT.
 
 ### 6.1 Monza — profilo `targetSpeed(trackPos)`
 
-Punti chiave (lookup table interpolata linearmente):
+Punti chiave (lookup table interpolata linearmente). I rettilinei hanno
+punti di hold/accelerazione e le frenate sono concentrate nelle braking zone:
 
 | trackPos | Punto | Target km/h |
 |---|---|---|
-| 0.000 | Start/Finish (rettilineo) | 340 |
-| 0.060 | Variante del Rettifilo (chicane) | 95 |
-| 0.180 | Curva Biassono (Curva Grande) | 290 |
-| 0.300 | Variante della Roggia | 110 |
-| 0.420 | Lesmo 1 | 200 |
-| 0.480 | Lesmo 2 | 215 |
-| 0.660 | Variante Ascari | 130 |
-| 0.830 | Parabolica | 230 |
-| 0.940 | Rettilineo arrivo | 335 |
-| 1.000 | (= 0.000) | 340 |
+| 0.000 | Start/Finish (rettilineo) | 345 |
+| 0.020 | DRS prima del Rettifilo | 350 |
+| 0.034 | Cartello 150m Prima Variante | 350 |
+| 0.052 | Staccata Variante del Rettifilo | 130 |
+| 0.060 | Apice Prima Variante | 75 |
+| 0.085 | Uscita prima variante | 125 |
+| 0.150 | Accelerazione verso Curva Grande | 285 |
+| 0.205 | Curva Grande / Biassono, pieno gas | 305 |
+| 0.245 | Rettilineo Roggia | 325 |
+| 0.283 | Cartello 100m Variante della Roggia | 335 |
+| 0.300 | Apice Variante della Roggia | 115 |
+| 0.335 | Uscita Roggia | 145 |
+| 0.390 | Allungo verso Lesmo 1 | 265 |
+| 0.421 | Cartello 50m Lesmo 1 | 268 |
+| 0.430 | Apice Lesmo 1 | 185 |
+| 0.471 | Cartello 50m Lesmo 2 | 260 |
+| 0.480 | Apice Lesmo 2 | 165 |
+| 0.520 | Uscita Lesmo 2 | 195 |
+| 0.589 | Serraglio, pieno gas | 315 |
+| 0.625 | Serraglio / verso Ascari | 335 |
+| 0.643 | Cartello 100m Variante Ascari | 338 |
+| 0.660 | Ingresso Variante Ascari | 160 |
+| 0.700 | Uscita Ascari | 235 |
+| 0.790 | Rettilineo verso Parabolica | 335 |
+| 0.823 | Cartello 100m Parabolica | 338 |
+| 0.840 | Apice Parabolica | 185 |
+| 0.880 | Uscita Parabolica | 290 |
+| 0.940 | Rettilineo arrivo | 340 |
+| 1.000 | (= 0.000) | 345 |
 
 `physics.js` clamp-segue il target con accelerazione/decelerazione
-limitate (`+8 m/s^2` accel, `-25 m/s^2` brake): la `speed` reale non salta,
-solo segue il profilo. Risultato: i giri durano 80-95 s a seconda
+limitate (`+8 m/s^2` accel, `-44 m/s^2` brake di picco): la `speed` reale non salta,
+solo segue il profilo. Risultato: i giri durano 80-105 s a seconda
 dell'auto e dello stato gomme/fuel.
 
-> **Nota implementazione (Fase 3, task velocita)**: il pure target-following
-> con interpolazione lineare anticipa la frenata (l'auto inizia a rallentare
-> appena il target scende, invece di tenere il rettilineo e staccare tardi).
-> Lap time misurato del modello base: ~110 s. La finestra 80-95 s qui sopra
-> e' ottenibile aggiungendo punti di "hold" sui rettilinei o un lookahead di
-> frenata; per la Fase 3 si accetta il modello base, il raffinamento e'
-> previsto se la Fase 8 di tuning lo richiede.
+I pedali sono gestiti da `racingControls(trackPos)`: nelle braking zone il
+freno passa al 100% e poi viene rilasciato in trail braking verso l'apice;
+fuori dalle braking zone il modello resta a gas pieno o riapre
+progressivamente il throttle in uscita curva, come alla Parabolica.
 
 ### 6.2 Settori
 
@@ -526,4 +543,3 @@ in JavaScript "vanilla" coerentemente con la scala del progetto.
   E[ritiri] ≈ 2.4, mediana ~1-2 per gara. Bilanciato.
 - [ ] **Compattamento Safety Car**: definire algoritmo (gap target 0.5 s)
   in collaborazione con la Fase 4.
-
