@@ -51,12 +51,17 @@ services:
     container_name: f1-simulator
     environment:
       - MQTT_BROKER=mqtt://mosquitto:1883
+      - MONGO_URL=mongodb://mongodb:27017
+      - MONGO_DB=f1_telemetry
+      - RESET_RACE_ON_START=true
       - RACE_ID=1
       - TOTAL_LAPS=5
       - TICK_MS=250
       - LOG_LEVEL=info
     depends_on:
       mosquitto:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
 
 volumes:

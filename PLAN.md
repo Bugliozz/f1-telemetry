@@ -9,7 +9,7 @@
 - Ricalibrare `balanced` per 5 giri:
   - probabilità piccola ma non nulla di guasto: `engineFailureProbPerTick: 1e-5`;
   - fault non immediati: `faultGraceS: 60`;
-  - overheat possibile sui 5 giri: `wearPerLap: 0.06`, `tireOverheatThresholdC: 138`, `tireOverheatTicksRequired: 8`;
+  - overheat possibile sui 5 giri: `wearPerLap: 0.06`, `tireOverheatThresholdC: 145`, `tireOverheatTicksRequired: 8`;
   - bassa probabilità di interruzione: `retirementScProbability: 0.08`, `multiFaultVscThreshold: 3`, `massIncidentThreshold: 3`.
 - Ricalibrare `red-flag` come modalità probabilistica ad alto rischio:
   - nessun guasto nei primi giri: `faultGraceS: 300`;

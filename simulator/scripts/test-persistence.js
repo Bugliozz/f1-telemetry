@@ -8,6 +8,10 @@ const {
   findTelemetryConsistencyErrors,
   normalizeTelemetryDocument,
 } = require('../src/persistence/telemetry-store');
+const {
+  RUNTIME_COLLECTIONS,
+  resetRaceData,
+} = require('../src/persistence/race-reset');
 
 let passed = 0;
 let failed = 0;
@@ -165,6 +169,47 @@ async function main() {
     assert.ok(hasIndexCall(calls, 'telemetry', { timestamp: 1 }, (options) => {
       assert.strictEqual(options.expireAfterSeconds, 123);
     }));
+  });
+
+  await test('resets race-scoped runtime collections before a new start', async () => {
+    const calls = [];
+    const fakeClient = {
+      async connect() {},
+      db(dbName) {
+        assert.strictEqual(dbName, 'f1_telemetry');
+        return {
+          collection(collection) {
+            return {
+              async deleteMany(query) {
+                calls.push({ collection, query });
+                return { deletedCount: collection.length };
+              },
+            };
+          },
+        };
+      },
+      async close() {},
+    };
+
+    const result = await resetRaceData({
+      mongoUrl: 'mongodb://example:27017',
+      dbName: 'f1_telemetry',
+      raceId: 7,
+      logger: { info() {}, debug() {}, warn() {}, error() {} },
+      clientFactory() {
+        return fakeClient;
+      },
+    });
+
+    assert.deepStrictEqual(
+      calls.map((call) => call.collection).sort(),
+      [...RUNTIME_COLLECTIONS].sort(),
+    );
+    for (const call of calls) {
+      assert.deepStrictEqual(call.query, { raceId: 7 });
+    }
+    assert.strictEqual(result.raceId, 7);
+    assert.strictEqual(result.totalDeleted, calls.reduce((sum, call) => sum + call.collection.length, 0));
   });
 
   console.log(`\n=== Result: ${passed} OK, ${failed} FAIL ===`);

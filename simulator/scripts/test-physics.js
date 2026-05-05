@@ -111,10 +111,10 @@ test('punti tabellati restituiscono il valore esatto della tabella', () => {
 });
 
 test('interpolazione lineare a meta segmento', () => {
-  // Meta della prima fase di staccata Rettifilo: brake start (350) -> 0.044 (250).
+  // Meta della prima fase di staccata Rettifilo: brake start (350) -> 0.096 (260).
   const start = BRAKING_ZONES[0].start;
-  const v = targetSpeed(start + (0.044 - start) / 2);
-  assert.ok(Math.abs(v - 300) < 1e-9, `got=${v}`);
+  const v = targetSpeed(start + (0.096 - start) / 2);
+  assert.ok(Math.abs(v - 305) < 1e-9, `got=${v}`);
 });
 
 test('interpolazione lineare al 25% di un segmento', () => {
@@ -139,7 +139,7 @@ test('valore non finito: fallback a posizione 0', () => {
 
 test('curve sono piu lente dei rettilinei adiacenti (sanity)', () => {
   // Variante del Rettifilo (chicane) deve essere il punto piu lento del giro.
-  const chicane = targetSpeed(0.060);
+  const chicane = targetSpeed(BRAKING_ZONES[0].apex);
   const startFinish = targetSpeed(0.000);
   const curvaGrande = targetSpeed(0.205);
   assert.ok(chicane < startFinish, `chicane ${chicane} >= start ${startFinish}`);
@@ -148,18 +148,23 @@ test('curve sono piu lente dei rettilinei adiacenti (sanity)', () => {
 });
 
 test('rettilinei lunghi restano in accelerazione prima della braking zone', () => {
+  const rettifiloLaunch = targetSpeed(0.070);
   const serraglio = targetSpeed(0.589);
   const backStraight = targetSpeed(0.800);
   const roggiaApproach = targetSpeed(0.270);
+  assert.ok(rettifiloLaunch >= 345, `rettilineo principale frena troppo presto: ${rettifiloLaunch}`);
   assert.ok(serraglio >= 285, `serraglio target troppo basso: ${serraglio}`);
   assert.ok(backStraight >= 330, `back straight target troppo basso: ${backStraight}`);
   assert.ok(roggiaApproach >= 330, `rettilineo Roggia frena troppo presto: ${roggiaApproach}`);
 });
 
 test('braking zone concentrate prima dei punti lenti', () => {
+  const firstVariant = BRAKING_ZONES.find(z => z.id === 'prima-variante');
   const roggia = BRAKING_ZONES.find(z => z.id === 'roggia');
   const ascari = BRAKING_ZONES.find(z => z.id === 'ascari');
   const parabolica = BRAKING_ZONES.find(z => z.id === 'parabolica');
+  assert.ok(firstVariant.start * LENGTH_M >= 500, 'Prima Variante non deve far frenare l auto dopo pochi metri dal via');
+  assert.ok(targetSpeed(firstVariant.start - 0.002) >= 345, 'Rettifilo principale deve restare pieno prima dei 150m');
   assert.ok(targetSpeed(roggia.start - 0.002) >= 325, 'Roggia non deve frenare prima del cartello dei 100m');
   assert.ok(targetSpeed(roggia.start + 0.004) < targetSpeed(roggia.start), 'Roggia deve frenare dentro la braking zone');
   assert.ok(targetSpeed(ascari.apex) < targetSpeed(ascari.start), 'Ascari deve frenare dopo il Serraglio');

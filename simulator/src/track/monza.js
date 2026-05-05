@@ -21,14 +21,14 @@ const BRAKING_ZONES = Object.freeze([
   Object.freeze({
     id: 'prima-variante',
     label: 'Prima Variante',
-    start: metersBefore(0.060, 150),
-    hardEnd: 0.044,
-    apex: 0.060,
-    end: 0.085,
+    start: metersBefore(0.115, 150),
+    hardEnd: 0.096,
+    apex: 0.115,
+    end: 0.145,
     peakBrake: 1.0,
     apexBrake: 0.16,
-    throttleStart: 0.064,
-    fullThrottle: 0.095,
+    throttleStart: 0.121,
+    fullThrottle: 0.155,
   }),
   Object.freeze({
     id: 'roggia',
@@ -98,13 +98,13 @@ const BRAKING_ZONES = Object.freeze([
 // viene generato sui rettilinei.
 const SPEED_PROFILE = Object.freeze([
   Object.freeze({ pos: 0.000, kmh: 345 }), // Rettilineo Start/Finish
-  Object.freeze({ pos: 0.020, kmh: 350 }), // DRS, pieno gas
+  Object.freeze({ pos: 0.050, kmh: 350 }), // DRS, pieno gas
   Object.freeze({ pos: BRAKING_ZONES[0].start, kmh: 350 }), // Cartello 150m
-  Object.freeze({ pos: 0.044, kmh: 250 }),
-  Object.freeze({ pos: 0.052, kmh: 130 }),
-  Object.freeze({ pos: 0.060, kmh: 75 }),  // Apice Prima Variante
-  Object.freeze({ pos: 0.085, kmh: 125 }), // Uscita Prima Variante
-  Object.freeze({ pos: 0.150, kmh: 285 }),
+  Object.freeze({ pos: 0.096, kmh: 260 }),
+  Object.freeze({ pos: 0.106, kmh: 135 }),
+  Object.freeze({ pos: 0.115, kmh: 78 }),  // Apice Prima Variante
+  Object.freeze({ pos: 0.145, kmh: 125 }), // Uscita Prima Variante
+  Object.freeze({ pos: 0.175, kmh: 235 }),
   Object.freeze({ pos: 0.205, kmh: 305 }), // Curva Grande, pieno
   Object.freeze({ pos: 0.245, kmh: 325 }),
   Object.freeze({ pos: BRAKING_ZONES[1].start, kmh: 335 }), // Roggia 100m

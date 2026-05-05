@@ -6,6 +6,9 @@
     const WS_PATH = '/api/ws/f1';
     const DEFAULT_RACE_ID = 1;
     const RACE_TOTAL_LAPS = 5;
+    // The SVG path is authored counter-clockwise and starts near Lesmo.
+    // Telemetry trackPos starts on the start straight and increases clockwise.
+    const TRACK_PATH_START_OFFSET = 0.390;
 
     // Smooth-movement tuning. We use an interpolation buffer based on the server's
     // timestamp to completely eliminate network jitter and velocity changes.
@@ -67,8 +70,9 @@
         }
     ]);
     const TRACK_LOCATIONS = Object.freeze([
-        { start: 0.000, end: 0.055, label: 'Rettifilo / Prima Variante' },
-        { start: 0.055, end: 0.235, label: 'Curva Biassono' },
+        { start: 0.000, end: 0.089, label: 'Rettifilo principale' },
+        { start: 0.089, end: 0.145, label: 'Prima Variante' },
+        { start: 0.145, end: 0.235, label: 'Curva Biassono' },
         { start: 0.235, end: 0.330, label: 'Seconda Variante / Roggia' },
         { start: 0.330, end: 0.445, label: 'Lesmo 1' },
         { start: 0.445, end: 0.545, label: 'Lesmo 2' },
@@ -904,7 +908,7 @@
         const points = [];
         for (let i = 0; i <= steps; i += 1) {
             const t = start + ((end - start) * i / steps);
-            const point = state.path.getPointAtLength(t * state.pathLength);
+            const point = pointForTrackPos(t);
             points.push(point.x + ',' + point.y);
         }
         return points.join(' ');
@@ -957,9 +961,18 @@
         return t;
     }
 
+    function visualPathProgressForTrackPos(trackPos) {
+        const wrapped = clampTrackPos(trackPos);
+        return clampTrackPos(TRACK_PATH_START_OFFSET - wrapped);
+    }
+
+    function pointForTrackPos(trackPos) {
+        const progress = visualPathProgressForTrackPos(trackPos);
+        return state.path.getPointAtLength(progress * state.pathLength);
+    }
+
     function applyMarkerTransform(marker, pos) {
-        const wrapped = ((pos % 1) + 1) % 1;
-        const point = state.path.getPointAtLength(wrapped * state.pathLength);
+        const point = pointForTrackPos(pos);
         marker.group.setAttribute('transform', 'translate(' + point.x + ' ' + point.y + ')');
     }
 

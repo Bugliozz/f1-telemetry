@@ -29,7 +29,7 @@ const PROFILES = Object.freeze({
       engineFailureProbPerTick: 1e-5,
       faultGraceS: 60,
       wearPerLap: 0.06,
-      tireOverheatThresholdC: 138,
+      tireOverheatThresholdC: 145,
       tireOverheatTicksRequired: 8,
       raceControlTriggers: Object.freeze({
         retirementScProbability: 0.08,

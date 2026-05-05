@@ -144,7 +144,7 @@ function testScenarioTuning() {
   assert.strictEqual(balanced.engineFailureProbPerTick, 1e-5);
   assert.strictEqual(balanced.faultGraceS, 60);
   assert.strictEqual(balanced.wearPerLap, 0.06);
-  assert.strictEqual(balanced.tireOverheatThresholdC, 138);
+  assert.strictEqual(balanced.tireOverheatThresholdC, 145);
   assert.strictEqual(balanced.tireOverheatTicksRequired, 8);
   assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0.08);
   assert.strictEqual(balanced.raceControlTriggers.multiFaultVscThreshold, 3);

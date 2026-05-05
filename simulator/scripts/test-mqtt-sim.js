@@ -221,6 +221,45 @@ assert(serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake === 0,
   `Auto sul Serraglio non frena (brake=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake})`);
 
 const firstVariant = BRAKING_ZONES.find(z => z.id === 'prima-variante');
+const startApproachCar = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  pitStrategy: [],
+  rng: () => 0.5,
+  config: {
+    ...config,
+    engineFailureProbPerTick: 0,
+    speedJitterKmh: 0,
+    teamPerformanceFactor: { ferrari: 1 },
+  },
+});
+startApproachCar.startRace(1, ctx.timestamp);
+let earlyBrakeBeforeRettifilo = null;
+let firstBrakeFromStart = null;
+for (let i = 0; i < 120 && !firstBrakeFromStart; i += 1) {
+  const msgs = startApproachCar.tick(dt, {
+    raceId: 1,
+    timestamp: new Date().toISOString(),
+    totalLaps: 15,
+    checkeredActive: false,
+    activeFlag: 'GREEN',
+  });
+  const telemetry = msgs.telemetry;
+  if (telemetry && telemetry.trackPos < firstVariant.start - 0.002 && telemetry.brake > 0) {
+    earlyBrakeBeforeRettifilo = telemetry;
+  }
+  if (telemetry && telemetry.brake > 0) {
+    firstBrakeFromStart = telemetry;
+  }
+}
+assert(earlyBrakeBeforeRettifilo === null,
+  `Rettifilo principale non deve avere frenate premature allo start (sample=${JSON.stringify(earlyBrakeBeforeRettifilo)})`);
+assert(firstBrakeFromStart && firstBrakeFromStart.trackPos >= firstVariant.start,
+  `Prima frenata dopo lo start deve iniziare alla staccata Rettifilo (trackPos=${firstBrakeFromStart && firstBrakeFromStart.trackPos}, start=${firstVariant.start})`);
+assert(firstBrakeFromStart && firstBrakeFromStart.speed >= 300,
+  `Alla staccata della Prima Variante lo start deve arrivare gia veloce (speed=${firstBrakeFromStart && firstBrakeFromStart.speed})`);
+
 const firstVariantCar = new Car({
   teamId: 'ferrari',
   carId: 16,
@@ -891,10 +930,10 @@ assert((redScenarioGraceMsgs.events || []).some(e => e.type === 'fault'),
   'RED scenario pubblica evento fault dopo la grace window');
 
 // ============================================================
-// TEST 2: 10 auto — 40 tick (10 secondi simulati)
+// TEST 2: 10 auto — 80 tick (20 secondi simulati)
 // ============================================================
 
-section('TEST 2: 10 auto — 40 tick (10 secondi simulati)');
+section('TEST 2: 10 auto — 80 tick (20 secondi simulati)');
 
 const mockPub = new MockPublisher();
 const multiConfig = { ...config, seed: 12345, totalLaps: 15 };
@@ -916,7 +955,8 @@ for (const c of orchestrator.cars) {
 console.log(`  Auto nel roster: ${orchestrator.cars.length}`);
 assert(orchestrator.cars.length === 10, `10 auto create (got ${orchestrator.cars.length})`);
 
-// Simula 40 tick manuali
+// Simula 80 tick manuali: dopo la staccata Rettifilo emergono le differenze
+// tra auto, mentre nei primi secondi dal via sono tutte limitate da MAX_ACCEL.
 const multiCtx = {
   raceId: 1,
   timestamp: ts,
@@ -927,7 +967,7 @@ const multiCtx = {
 
 const startTelemetryCount = mockPub.telemetry.length;
 
-for (let i = 0; i < 40; i++) {
+for (let i = 0; i < 80; i++) {
   multiCtx.timestamp = new Date().toISOString();
   let maxLap = 0;
   for (const c of orchestrator.cars) {
@@ -939,12 +979,12 @@ for (let i = 0; i < 40; i++) {
 }
 
 const multiTelemetryCount = mockPub.telemetry.length - startTelemetryCount;
-console.log(`  Telemetria 10 auto × 40 tick: ${multiTelemetryCount} campioni`);
+console.log(`  Telemetria 10 auto × 80 tick: ${multiTelemetryCount} campioni`);
 
 // Ogni auto non terminale produce 1 telemetria per tick
-// Consideriamo che tutte sono RUNNING (nessuna RETIRED in 40 tick)
-assert(multiTelemetryCount >= 350, `Almeno 350 campioni (10×40 - margine FAULT): got ${multiTelemetryCount}`);
-assert(multiTelemetryCount <= 400, `Max 400 campioni: got ${multiTelemetryCount}`);
+// Consideriamo che tutte sono RUNNING (nessuna RETIRED in 80 tick)
+assert(multiTelemetryCount >= 750, `Almeno 750 campioni (10×80 - margine FAULT): got ${multiTelemetryCount}`);
+assert(multiTelemetryCount <= 800, `Max 800 campioni: got ${multiTelemetryCount}`);
 
 // Velocita' diverse tra le auto (variabilita' per-car)
 const car1Speeds = [];

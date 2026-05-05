@@ -16,6 +16,8 @@ const config = Object.freeze({
 
   // --- Rete ---
   mqttBroker: process.env.MQTT_BROKER || 'mqtt://localhost:1883',
+  mongoUrl: process.env.MONGO_URL || null,
+  mongoDb: process.env.MONGO_DB || 'f1_telemetry',
   raceId: parseInt(process.env.RACE_ID, 10) || 1,
 
   // --- Tick rate (fisica = publish) ---
@@ -24,6 +26,7 @@ const config = Object.freeze({
   // --- Gara ---
   totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 5,
   autoStart: process.env.AUTO_START === 'true',
+  resetRaceOnStart: process.env.RESET_RACE_ON_START === 'true',
 
   // --- Determinismo ---
   seed: process.env.SEED ? parseInt(process.env.SEED, 10) : null,
@@ -62,7 +65,7 @@ const config = Object.freeze({
 
   // --- DRS zones (rettilinei lunghi settore 1 e 3, §5.1) ---
   drsZones: [
-    { start: 0.000, end: 0.055 },   // rettilineo start/finish
+    { start: 0.000, end: 0.089 },   // rettilineo start/finish fino alla staccata Rettifilo
     { start: 0.910, end: 1.000 },   // rettilineo arrivo
   ],
 

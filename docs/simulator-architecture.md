@@ -232,12 +232,12 @@ punti di hold/accelerazione e le frenate sono concentrate nelle braking zone:
 | trackPos | Punto | Target km/h |
 |---|---|---|
 | 0.000 | Start/Finish (rettilineo) | 345 |
-| 0.020 | DRS prima del Rettifilo | 350 |
-| 0.034 | Cartello 150m Prima Variante | 350 |
-| 0.052 | Staccata Variante del Rettifilo | 130 |
-| 0.060 | Apice Prima Variante | 75 |
-| 0.085 | Uscita prima variante | 125 |
-| 0.150 | Accelerazione verso Curva Grande | 285 |
+| 0.050 | DRS prima del Rettifilo | 350 |
+| 0.089 | Cartello 150m Prima Variante | 350 |
+| 0.106 | Staccata Variante del Rettifilo | 135 |
+| 0.115 | Apice Prima Variante | 78 |
+| 0.145 | Uscita prima variante | 125 |
+| 0.175 | Accelerazione verso Curva Grande | 235 |
 | 0.205 | Curva Grande / Biassono, pieno gas | 305 |
 | 0.245 | Rettilineo Roggia | 325 |
 | 0.283 | Cartello 100m Variante della Roggia | 335 |
