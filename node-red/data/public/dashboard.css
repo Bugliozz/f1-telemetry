@@ -64,7 +64,7 @@ body {
 
 .scenario-options {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
 }
 
@@ -96,12 +96,6 @@ body {
 .scenario-option--red:focus-visible:not(:disabled) {
     border-color: #f87171;
     background: rgba(248, 113, 113, 0.08);
-}
-
-.scenario-option--checkered:hover:not(:disabled),
-.scenario-option--checkered:focus-visible:not(:disabled) {
-    border-color: #f8fafc;
-    background: rgba(248, 250, 252, 0.08);
 }
 
 .scenario-option--balanced:hover:not(:disabled),
@@ -229,20 +223,21 @@ body {
 .sector-overlay__line--s2 { stroke: #fbbf24; }
 .sector-overlay__line--s3 { stroke: #5cd39c; }
 
-.sector-overlay__label {
-    fill: #e6e8ee;
-    font-size: 9px;
-    font-weight: 800;
-    text-anchor: middle;
+.track-annotations {
+    pointer-events: none;
+}
+
+.track-annotation__label {
+    fill: #f8fafc;
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0;
     dominant-baseline: central;
     paint-order: stroke;
     stroke: #0b0d12;
-    stroke-width: 4;
+    stroke-width: 2.2;
+    stroke-linejoin: round;
 }
-
-.sector-overlay__label--s1 { fill: #38bdf8; }
-.sector-overlay__label--s2 { fill: #fbbf24; }
-.sector-overlay__label--s3 { fill: #5cd39c; }
 
 .car-marker {
     cursor: pointer;
@@ -276,6 +271,7 @@ body {
 
 .car-marker--pit  .car-marker__dot { opacity: 0.55; }
 .car-marker--fault .car-marker__dot { stroke: #f87171; stroke-width: 2.5; }
+.car-marker--suspended .car-marker__dot { stroke: #fbbf24; stroke-width: 2.5; opacity: 0.58; }
 .car-marker--retired .car-marker__dot { opacity: 0.25; }
 .car-marker--finished .car-marker__dot { stroke: #5cd39c; stroke-width: 2.5; }
 
@@ -495,6 +491,52 @@ body {
     overflow-wrap: anywhere;
 }
 
+.race-progress {
+    margin-top: 10px;
+    padding: 8px;
+    border: 1px solid #1c2030;
+    border-radius: 8px;
+    background: #161926;
+}
+
+.race-progress__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.race-progress__label,
+.race-progress__percent {
+    font-size: 11px;
+    line-height: 1.25;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #c5c9d6;
+}
+
+.race-progress__percent {
+    color: #5cd39c;
+}
+
+.race-progress__track {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #0b0d12;
+}
+
+.race-progress__bar {
+    display: block;
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #5cd39c, #38bdf8);
+    transition: width 180ms ease;
+}
+
 .map-legend {
     position: absolute;
     top: 16px;
@@ -646,6 +688,11 @@ body {
     border-color: #f87171;
     color: #f87171;
     background: rgba(248, 113, 113, 0.08);
+}
+.car-state-pill[data-state="SUSPENDED"] {
+    border-color: #fbbf24;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.08);
 }
 .car-state-pill[data-state="RETIRED"] {
     border-color: #f87171;

@@ -1,37 +1,23 @@
 const SCENARIOS = Object.freeze({
   RED_FLAG: 'red-flag',
-  CHECKERED: 'checkered',
   BALANCED: 'balanced',
 });
 
 const PROFILES = Object.freeze({
   [SCENARIOS.RED_FLAG]: Object.freeze({
     id: SCENARIOS.RED_FLAG,
-    label: 'Red flag probability bias',
+    label: 'Failure likely',
     overrides: Object.freeze({
-      engineFailureProbPerTick: 8e-4,
-      tireOverheatThresholdC: 210,
-      tireOverheatTicksRequired: 6,
-      faultGraceS: 45,
+      engineFailureProbPerTick: 0.0012,
+      tireOverheatThresholdC: 142,
+      tireOverheatTicksRequired: 8,
+      faultGraceS: 300,
       faultDiagnoseS: 5,
+      wearPerLap: 0.08,
       raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.60,
+        retirementScProbability: 0.35,
         multiFaultVscThreshold: 2,
         massIncidentThreshold: 3,
-      }),
-    }),
-    scheduledFaults: Object.freeze([]),
-  }),
-  [SCENARIOS.CHECKERED]: Object.freeze({
-    id: SCENARIOS.CHECKERED,
-    label: 'Checkered probability bias',
-    overrides: Object.freeze({
-      engineFailureProbPerTick: 1e-7,
-      tireOverheatThresholdC: 240,
-      raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.05,
-        multiFaultVscThreshold: 3,
-        massIncidentThreshold: 4,
       }),
     }),
     scheduledFaults: Object.freeze([]),
@@ -40,14 +26,15 @@ const PROFILES = Object.freeze({
     id: SCENARIOS.BALANCED,
     label: 'Balanced race distance',
     overrides: Object.freeze({
-      engineFailureProbPerTick: 2e-7,
-      tireOverheatThresholdC: 190,
+      engineFailureProbPerTick: 1e-5,
+      faultGraceS: 60,
+      wearPerLap: 0.06,
+      tireOverheatThresholdC: 138,
       tireOverheatTicksRequired: 8,
-      faultGraceS: 120,
       raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.15,
-        multiFaultVscThreshold: 4,
-        massIncidentThreshold: 8,
+        retirementScProbability: 0.08,
+        multiFaultVscThreshold: 3,
+        massIncidentThreshold: 3,
       }),
     }),
     scheduledFaults: Object.freeze([]),

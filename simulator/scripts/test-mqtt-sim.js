@@ -849,12 +849,14 @@ assert(greenAfterRedPitMsgs.state && greenAfterRedPitMsgs.state.previousState ==
 section('TEST 1G: Scenario tuning');
 
 const redScenarioConfig = applyScenario(config, SCENARIOS.RED_FLAG);
-assert(redScenarioConfig.faultGraceS >= 30,
-  `RED scenario ha grace window anti-fault iniziale (got ${redScenarioConfig.faultGraceS})`);
-assert(redScenarioConfig.engineFailureProbPerTick > config.engineFailureProbPerTick,
-  'RED scenario resta ad alta probabilita di failure dopo la grace window');
-assert(redScenarioConfig.tireOverheatThresholdC > config.tireOverheatThresholdC,
-  'RED scenario evita tire-overheat deterministico troppo precoce');
+assert(redScenarioConfig.faultGraceS === 300,
+  `RED scenario ha grace window anti-fault a 300s (got ${redScenarioConfig.faultGraceS})`);
+assert(redScenarioConfig.engineFailureProbPerTick === 0.0012,
+  'RED scenario resta probabilistico ad alta failure dopo la grace window');
+assert(redScenarioConfig.tireOverheatThresholdC === 142,
+  'RED scenario usa soglia overheat ricalibrata per 5 giri');
+assert(redScenarioConfig.tireOverheatTicksRequired === 8,
+  'RED scenario richiede overheat persistente prima del fault');
 
 const redScenarioCar = new Car({
   teamId: 'redbull',

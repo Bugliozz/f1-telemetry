@@ -2,7 +2,7 @@
 //
 // I valori possono essere sovrascritti da variabili d'ambiente (vedi §9.1
 // dell'architettura). Qui si definiscono i default ragionevoli per una
-// gara di test di 15 giri a Monza con 10 auto.
+// gara di test di 5 giri a Monza con 10 auto.
 
 function intEnvInRange(name, fallback, min, max) {
   const value = parseInt(process.env[name], 10);
@@ -22,7 +22,7 @@ const config = Object.freeze({
   tickMs: intEnvInRange('TICK_MS', 250, 200, 500),  // 4 Hz default, clamp 2-5 Hz
 
   // --- Gara ---
-  totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 15,
+  totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 5,
   autoStart: process.env.AUTO_START === 'true',
 
   // --- Determinismo ---
@@ -55,9 +55,9 @@ const config = Object.freeze({
 
   // --- Settori Monza ---
   sectors: [
-    { id: 1, start: 0.000, end: 0.330 },
-    { id: 2, start: 0.330, end: 0.660 },
-    { id: 3, start: 0.660, end: 1.000 },
+    { id: 1, start: 0.000, end: 0.330, label: 'Prima Variante / Roggia' },
+    { id: 2, start: 0.330, end: 0.660, label: 'Lesmo / Serraglio' },
+    { id: 3, start: 0.660, end: 1.000, label: 'Ascari / Parabolica' },
   ],
 
   // --- DRS zones (rettilinei lunghi settore 1 e 3, §5.1) ---

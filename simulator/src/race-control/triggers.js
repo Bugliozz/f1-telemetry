@@ -135,7 +135,7 @@ function evaluateTriggers(flagState, cars, raceState, tracker, triggerConfig) {
   // --- 1. CHECKERED FLAG (massima priorita') ---
   if (flagState.flag !== FLAGS.CHECKERED) {
     const leaderLap = raceState.leaderLap || 0;
-    const totalLaps = raceState.totalLaps || 15;
+    const totalLaps = raceState.totalLaps || 5;
     if (leaderLap >= totalLaps) {
       return {
         action: { flag: FLAGS.CHECKERED, sector: null, reason: 'leader-finished' },

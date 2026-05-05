@@ -409,7 +409,7 @@ class Car {
       tireTemp: this.tireTemp,
       lap: this.lap,
       trackPos: this.trackPos,
-      totalLaps: ctx.totalLaps || 15,
+      totalLaps: ctx.totalLaps || 5,
       checkeredActive: ctx.checkeredActive || false,
       nowS: this.simulatedTimeS,
       rng: this.rng,
@@ -579,9 +579,9 @@ class Car {
 
   _checkSectorCrossing(posResult, raceId, timestamp, messages) {
     const sectors = this.config.sectors || [
-      { id: 1, start: 0, end: 0.330 },
-      { id: 2, start: 0.330, end: 0.660 },
-      { id: 3, start: 0.660, end: 1.000 },
+      { id: 1, start: 0, end: 0.330, label: 'Prima Variante / Roggia' },
+      { id: 2, start: 0.330, end: 0.660, label: 'Lesmo / Serraglio' },
+      { id: 3, start: 0.660, end: 1.000, label: 'Ascari / Parabolica' },
     ];
 
     const newSector = this._getSector(posResult.trackPos, sectors);
@@ -591,13 +591,19 @@ class Car {
         : 0;
 
       if (sectorTime > 0) {
+        const completedSector = sectors.find((sector) => sector.id === this.currentSector);
+        const details = {
+          sector: this.currentSector,
+          sectorTime: Math.round(sectorTime * 1000) / 1000,
+        };
+        if (completedSector && completedSector.label) {
+          details.sectorName = completedSector.label;
+        }
+
         messages.events.push({
           timestamp, raceId, teamId: this.teamId, carId: this.carId,
           type: 'sector-completed',
-          details: {
-            sector: this.currentSector,
-            sectorTime: Math.round(sectorTime * 1000) / 1000,
-          },
+          details,
         });
       }
 

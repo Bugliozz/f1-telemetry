@@ -52,7 +52,7 @@ services:
     environment:
       - MQTT_BROKER=mqtt://mosquitto:1883
       - RACE_ID=1
-      - TOTAL_LAPS=15
+      - TOTAL_LAPS=5
       - TICK_MS=250
       - LOG_LEVEL=info
     depends_on:

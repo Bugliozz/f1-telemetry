@@ -22,7 +22,7 @@ class Orchestrator {
     this.clock = createClock();
 
     this.raceId = config.raceId || 1;
-    this.totalLaps = config.totalLaps || 15;
+    this.totalLaps = config.totalLaps || 5;
     this.tickMs = config.tickMs || 250;
 
     // PRNG globale per Race Control (separato dalle auto)

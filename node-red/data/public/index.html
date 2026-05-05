@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>F1 Telemetry — Monza</title>
-    <link rel="stylesheet" href="dashboard.css?v=20260428-telemetry-popup" />
+    <link rel="stylesheet" href="dashboard.css?v=20260505-track-names" />
 </head>
 <body>
     <div id="scenario-modal" class="scenario-modal" role="dialog" aria-modal="true" aria-labelledby="scenario-title">
@@ -13,16 +13,12 @@
             <h2 id="scenario-title">Choose scenario</h2>
             <div class="scenario-options" aria-label="Race scenarios">
                 <button class="scenario-option scenario-option--red" type="button" data-scenario="red-flag" disabled>
-                    <span class="scenario-option__title">Red flag</span>
-                    <span class="scenario-option__meta">High failure probability</span>
-                </button>
-                <button class="scenario-option scenario-option--checkered" type="button" data-scenario="checkered" disabled>
-                    <span class="scenario-option__title">Checkered flag</span>
-                    <span class="scenario-option__meta">Very low failure probability</span>
+                    <span class="scenario-option__title">Failure likely</span>
+                    <span class="scenario-option__meta">High risk after lap 3</span>
                 </button>
                 <button class="scenario-option scenario-option--balanced" type="button" data-scenario="balanced" disabled>
                     <span class="scenario-option__title">Balanced</span>
-                    <span class="scenario-option__meta">Lower failure pressure</span>
+                    <span class="scenario-option__meta">Five-lap race balance</span>
                 </button>
             </div>
             <div id="scenario-status" class="scenario-modal__status">connecting...</div>
@@ -60,6 +56,15 @@
                     </div>
                 </div>
                 <div id="flag-effect-grid" class="flag-effect-grid"></div>
+                <div class="race-progress" aria-label="Race progress">
+                    <div class="race-progress__head">
+                        <span id="race-progress-label" class="race-progress__label">Lap -- / 5</span>
+                        <span id="race-progress-percent" class="race-progress__percent">0%</span>
+                    </div>
+                    <div id="race-progress-track" class="race-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <span id="race-progress-bar" class="race-progress__bar"></span>
+                    </div>
+                </div>
             </div>
 
             <div class="panel leaderboard-panel" aria-label="Live Leaderboard">
@@ -91,6 +96,6 @@
         </aside>
     </main>
 
-    <script src="dashboard.js?v=20260428-telemetry-popup"></script>
+    <script src="dashboard.js?v=20260505-track-names"></script>
 </body>
 </html>

@@ -13,11 +13,12 @@
     "test:mqtt-broker": "node scripts/test-mqtt-broker.js",
     "test:mongo-schema": "node scripts/test-mongo-schema.js",
     "test:race-control": "node scripts/test-race-control.js",
+    "test:race-modes": "node scripts/test-race-modes.js",
     "test:persistence": "node scripts/test-persistence.js",
     "ensure:persistence-indexes": "node scripts/ensure-persistence-indexes.js",
     "query:history": "node scripts/query-history.js",
     "seed": "node scripts/seed.js",
-    "test": "npm run test:physics && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:race-control && npm run test:persistence && npm run test:mqtt-sim"
+    "test": "npm run test:physics && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:race-control && npm run test:race-modes && npm run test:persistence && npm run test:mqtt-sim"
   },
   "dependencies": {
     "mongodb": "^6.12.0",

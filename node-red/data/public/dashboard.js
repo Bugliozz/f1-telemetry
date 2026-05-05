@@ -5,6 +5,7 @@
     const CIRCUIT_URL = 'assets/monza-circuit.svg';
     const WS_PATH = '/api/ws/f1';
     const DEFAULT_RACE_ID = 1;
+    const RACE_TOTAL_LAPS = 5;
 
     // Smooth-movement tuning. We use an interpolation buffer based on the server's
     // timestamp to completely eliminate network jitter and velocity changes.
@@ -26,6 +27,7 @@
     const STATE_CLASS = Object.freeze({
         PIT:      'car-marker--pit',
         FAULT:    'car-marker--fault',
+        SUSPENDED: 'car-marker--suspended',
         RETIRED:  'car-marker--retired',
         FINISHED: 'car-marker--finished'
     });
@@ -38,16 +40,55 @@
         SC: 'Safety Car',
         VSC: 'Virtual Safety Car'
     });
-    const SECTOR_LABELS = Object.freeze({
-        1: 'S1 [0.000-0.330)',
-        2: 'S2 [0.330-0.660)',
-        3: 'S3 [0.660-1.000)'
-    });
     const TRACK_SECTORS = Object.freeze([
-        { id: 1, start: 0.000, end: 0.330 },
-        { id: 2, start: 0.330, end: 0.660 },
-        { id: 3, start: 0.660, end: 1.000 }
+        {
+            id: 1,
+            start: 0.000,
+            end: 0.330,
+            label: 'Sector 1',
+            routeLabel: 'Prima Variante, Curva Biassono, Roggia',
+            splitLabel: 'Roggia split'
+        },
+        {
+            id: 2,
+            start: 0.330,
+            end: 0.660,
+            label: 'Sector 2',
+            routeLabel: 'Lesmo, Serraglio',
+            splitLabel: 'Ascari entry split'
+        },
+        {
+            id: 3,
+            start: 0.660,
+            end: 1.000,
+            label: 'Sector 3',
+            routeLabel: 'Ascari, Parabolica, finish straight',
+            splitLabel: 'Finish line'
+        }
     ]);
+    const TRACK_LOCATIONS = Object.freeze([
+        { start: 0.000, end: 0.055, label: 'Rettifilo / Prima Variante' },
+        { start: 0.055, end: 0.235, label: 'Curva Biassono' },
+        { start: 0.235, end: 0.330, label: 'Seconda Variante / Roggia' },
+        { start: 0.330, end: 0.445, label: 'Lesmo 1' },
+        { start: 0.445, end: 0.545, label: 'Lesmo 2' },
+        { start: 0.545, end: 0.660, label: 'Serraglio' },
+        { start: 0.660, end: 0.735, label: 'Variante Ascari' },
+        { start: 0.735, end: 0.825, label: 'Rettilineo verso Parabolica' },
+        { start: 0.825, end: 0.910, label: 'Curva Parabolica' },
+        { start: 0.910, end: 1.000, label: 'Rettifilo finale' }
+    ]);
+    const TRACK_ANNOTATIONS = Object.freeze({
+        labels: [
+            { x: 176, y: 228, anchor: 'middle', lines: ['Prima Variante', '(Rettifilo)'] },
+            { x: 18, y: 252, anchor: 'start', lines: ['Curva Biassono', '(Curva Grande)'] },
+            { x: 50, y: 102, anchor: 'start', lines: ['Seconda Variante', '(Roggia)'] },
+            { x: 48, y: 42, anchor: 'middle', lines: ['Curve di', 'Lesmo'] },
+            { x: 148, y: 62, anchor: 'start', lines: ['Curva del', 'Serraglio'] },
+            { x: 270, y: 168, anchor: 'middle', lines: ['Variante Ascari'] },
+            { x: 488, y: 222, anchor: 'end', lines: ['Curva', 'Parabolica'] }
+        ]
+    });
     const MAX_EVENT_LOG_ITEMS = 80;
     const TELEMETRY_FIELDS = Object.freeze([
         'raceId',
@@ -79,6 +120,10 @@
         flagLabel: document.getElementById('flag-label'),
         flagMeta: document.getElementById('flag-meta'),
         flagEffects: document.getElementById('flag-effect-grid'),
+        raceProgressLabel: document.getElementById('race-progress-label'),
+        raceProgressPercent: document.getElementById('race-progress-percent'),
+        raceProgressTrack: document.getElementById('race-progress-track'),
+        raceProgressBar: document.getElementById('race-progress-bar'),
         eventLog: document.getElementById('race-event-log'),
         scenarioModal: document.getElementById('scenario-modal'),
         scenarioStatus: document.getElementById('scenario-status'),
@@ -102,6 +147,8 @@
         eventIdOrder: [],
         latestCars: new Map(),
         latestStandings: new Map(),
+        raceFlags: new Map(),
+        raceEffects: new Map(),
         telemetryPopup: null,
         telemetry: {
             visible: false,
@@ -200,8 +247,37 @@
 
     function sectorLabel(sector) {
         if (sector == null || sector === '') return 'Sector ?';
-        const key = String(sector);
-        return SECTOR_LABELS[key] || 'S' + key;
+        const id = Number(sector);
+        const item = TRACK_SECTORS.find((candidate) => candidate.id === id);
+        return item ? item.label : 'Sector ' + sector;
+    }
+
+    function sectorFullLabel(sector) {
+        if (sector == null || sector === '') return 'Sector ?';
+        const id = Number(sector);
+        const item = TRACK_SECTORS.find((candidate) => candidate.id === id);
+        if (!item) return 'Sector ' + sector;
+        return item.label + ' - ' + item.routeLabel;
+    }
+
+    function sectorSplitLabel(sector) {
+        if (sector == null || sector === '') return '';
+        const id = Number(sector);
+        const item = TRACK_SECTORS.find((candidate) => candidate.id === id);
+        return item ? item.splitLabel : '';
+    }
+
+    function normalizedTrackPos(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        return ((n % 1) + 1) % 1;
+    }
+
+    function trackLocationAt(trackPos) {
+        const pos = normalizedTrackPos(trackPos);
+        if (pos == null) return '';
+        const location = TRACK_LOCATIONS.find((item) => pos >= item.start && pos < item.end);
+        return location ? location.label : 'Rettifilo finale';
     }
 
     function isFiniteNumber(value) {
@@ -232,12 +308,106 @@
         return Math.round(n * 1000) / 10 + '%';
     }
 
+    function clamp01(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(1, n));
+    }
+
+    function findLeaderCar(race, classification) {
+        const cars = race && Array.isArray(race.cars) ? race.cars : [];
+        if (cars.length === 0) return null;
+
+        const standings = classification && Array.isArray(classification.standings)
+            ? classification.standings
+            : [];
+        const leaderId = standings.length > 0 ? Number(standings[0].carId) : null;
+        if (Number.isFinite(leaderId)) {
+            const byClassification = cars.find((car) => Number(car.carId) === leaderId);
+            if (byClassification) return byClassification;
+        }
+
+        return cars.reduce((leader, car) => {
+            if (!leader) return car;
+            const leaderProgress = (Number(leader.lap) || 0) + (Number(leader.trackPos) || 0);
+            const carProgress = (Number(car.lap) || 0) + (Number(car.trackPos) || 0);
+            return carProgress > leaderProgress ? car : leader;
+        }, null);
+    }
+
+    function renderRaceProgress(race) {
+        if (!elements.raceProgressLabel || !elements.raceProgressPercent || !elements.raceProgressBar) return;
+
+        const classification = race && race.classification ? race.classification : null;
+        const leaderCar = findLeaderCar(race, classification);
+        const rawLeaderLap = classification && Number.isFinite(Number(classification.leaderLap))
+            ? Number(classification.leaderLap)
+            : (leaderCar && Number.isFinite(Number(leaderCar.lap)) ? Number(leaderCar.lap) : null);
+        const leaderTrackPos = leaderCar && Number.isFinite(Number(leaderCar.trackPos))
+            ? clamp01(leaderCar.trackPos)
+            : 0;
+        const progress = rawLeaderLap == null
+            ? 0
+            : clamp01((rawLeaderLap + leaderTrackPos) / RACE_TOTAL_LAPS);
+        const percent = Math.round(progress * 100);
+        const currentLap = rawLeaderLap == null
+            ? '--'
+            : Math.min(RACE_TOTAL_LAPS, Math.max(1, Math.floor(rawLeaderLap) + 1));
+
+        elements.raceProgressLabel.textContent = 'Lap ' + currentLap + ' / ' + RACE_TOTAL_LAPS;
+        elements.raceProgressPercent.textContent = percent + '%';
+        elements.raceProgressBar.style.width = percent + '%';
+        if (elements.raceProgressTrack) {
+            elements.raceProgressTrack.setAttribute('aria-valuenow', String(percent));
+        }
+    }
+
     function toneForState(value) {
         const stateName = String(value || '').toUpperCase();
         if (stateName === 'FAULT' || stateName === 'RETIRED') return 'danger';
         if (stateName === 'PIT') return 'warn';
+        if (stateName === 'SUSPENDED') return 'warn';
         if (stateName === 'INIT') return 'muted';
         return 'ok';
+    }
+
+    function raceKeyFromId(raceId) {
+        return raceId == null ? null : String(raceId);
+    }
+
+    function rememberRaceControl(flagDoc, effects) {
+        const key = raceKeyFromId(flagDoc && flagDoc.raceId);
+        if (!key) return;
+        if (flagDoc) state.raceFlags.set(key, flagDoc);
+        if (effects) state.raceEffects.set(key, effects);
+    }
+
+    function isRaceSuspended(raceId) {
+        const key = raceKeyFromId(raceId);
+        if (!key) return false;
+        const effects = state.raceEffects.get(key);
+        if (effects && effects.raceSuspended === true) return true;
+        const flag = state.raceFlags.get(key);
+        return !!(flag && flag.active !== false && String(flag.flag || '').toUpperCase() === 'RED');
+    }
+
+    function rawCarState(car, standing) {
+        return (car && car.state) || (standing && standing.state) || 'LIVE';
+    }
+
+    function displayCarState(car, standing) {
+        const raw = rawCarState(car, standing);
+        if (isRaceSuspended((car && car.raceId) || (standing && standing.raceId)) &&
+            raw !== 'RETIRED' && raw !== 'FINISHED') {
+            return 'SUSPENDED';
+        }
+        return raw;
+    }
+
+    function telemetrySensorsOff(car, standing) {
+        const raw = rawCarState(car, standing);
+        if (raw === 'RETIRED' || raw === 'FINISHED') return true;
+        return isRaceSuspended((car && car.raceId) || (standing && standing.raceId));
     }
 
     function toneForSpeed(value) {
@@ -366,7 +536,12 @@
         container.appendChild(item);
     }
 
-    function telemetryMetricRows(car) {
+    function telemetryMetricRows(car, sensorsOff) {
+        const labels = ['Speed', 'RPM', 'Gear', 'Throttle', 'Brake', 'DRS', 'Fuel', 'Track', 'Tyre FL', 'Tyre FR', 'Tyre RL', 'Tyre RR'];
+        if (sensorsOff) {
+            return labels.map((label) => ({ label, value: 'OFF', tone: 'muted' }));
+        }
+
         const tireTemp = car && car.tireTemp && typeof car.tireTemp === 'object' ? car.tireTemp : {};
         return [
             { label: 'Speed', value: formatTelemetryNumber(car && car.speed, 1, 'km/h'), tone: toneForSpeed(car && car.speed) },
@@ -412,8 +587,9 @@
         head.appendChild(identity);
 
         const stateLabel = document.createElement('span');
-        stateLabel.className = 'telemetry-popup__state telemetry-value--' + toneForState(car.state || standing.state);
-        stateLabel.textContent = car.state || standing.state || 'LIVE';
+        const visibleState = displayCarState(car, standing);
+        stateLabel.className = 'telemetry-popup__state telemetry-value--' + toneForState(visibleState);
+        stateLabel.textContent = visibleState;
         head.appendChild(stateLabel);
         popup.appendChild(head);
 
@@ -427,7 +603,7 @@
 
         const grid = document.createElement('div');
         grid.className = 'telemetry-popup__grid';
-        for (const row of telemetryMetricRows(car)) {
+        for (const row of telemetryMetricRows(car, telemetrySensorsOff(car, standing))) {
             addTelemetryMetric(grid, row.label, row.value, row.tone);
         }
         popup.appendChild(grid);
@@ -675,6 +851,7 @@
         state.pathLength = path.getTotalLength();
 
         renderSectorOverlay();
+        renderTrackAnnotations();
 
         const layer = document.createElementNS(SVG_NS, 'g');
         layer.setAttribute('id', 'car-markers');
@@ -691,13 +868,31 @@
             line.setAttribute('class', 'sector-overlay__line sector-overlay__line--s' + sector.id);
             line.setAttribute('points', sectorPolylinePoints(sector.start, sector.end));
             layer.appendChild(line);
+        }
 
-            const labelPoint = state.path.getPointAtLength(((sector.start + sector.end) / 2) * state.pathLength);
+        state.svg.appendChild(layer);
+    }
+
+    function renderTrackAnnotations() {
+        const layer = document.createElementNS(SVG_NS, 'g');
+        layer.setAttribute('class', 'track-annotations');
+
+        for (const item of TRACK_ANNOTATIONS.labels) {
             const label = document.createElementNS(SVG_NS, 'text');
-            label.setAttribute('class', 'sector-overlay__label sector-overlay__label--s' + sector.id);
-            label.setAttribute('x', labelPoint.x);
-            label.setAttribute('y', labelPoint.y);
-            label.textContent = 'S' + sector.id;
+            label.setAttribute('class', 'track-annotation__label');
+            label.setAttribute('x', item.x);
+            label.setAttribute('y', item.y);
+            label.setAttribute('text-anchor', item.anchor || 'middle');
+            label.setAttribute('aria-label', item.lines.join(' '));
+
+            const firstDy = item.lines.length > 1 ? -4 : 0;
+            for (let i = 0; i < item.lines.length; i += 1) {
+                const tspan = document.createElementNS(SVG_NS, 'tspan');
+                tspan.setAttribute('x', item.x);
+                tspan.setAttribute('dy', String(i === 0 ? firstDy : 8));
+                tspan.textContent = item.lines[i];
+                label.appendChild(tspan);
+            }
             layer.appendChild(label);
         }
 
@@ -784,7 +979,7 @@
         }
 
         const stateClasses = ['car-marker'];
-        const stateClass = STATE_CLASS[car.state];
+        const stateClass = STATE_CLASS[displayCarState(car, null)];
         if (stateClass) stateClasses.push(stateClass);
         marker.group.setAttribute('class', stateClasses.join(' '));
 
@@ -923,7 +1118,7 @@
         const flag = String(flagDoc.flag || '').toUpperCase();
         const active = flagDoc.active !== false;
         const meta = ['Race ' + flagDoc.raceId];
-        if (flagDoc.sector != null) meta.push(sectorLabel(flagDoc.sector));
+        if (flagDoc.sector != null) meta.push(sectorFullLabel(flagDoc.sector));
         if (flagDoc.reason) meta.push(String(flagDoc.reason));
         meta.push(formatClock(flagDoc.timestamp));
 
@@ -936,8 +1131,12 @@
 
     function renderRaceControlFromSnapshot(snapshot) {
         const races = snapshot.races || [];
+        for (const item of races) {
+            if (item && item.flag) rememberRaceControl(item.flag, item.effects);
+        }
         const race = races.find((item) => item && item.flag) || races[0];
         renderFlagIndicator(race && race.flag ? race.flag : null, race ? race.effects : null);
+        renderRaceProgress(race || null);
     }
 
     function renderSnapshot(snapshot) {
@@ -1020,7 +1219,8 @@
         for (const car of sortedCars) {
             const pill = document.createElement('div');
             pill.className = 'car-state-pill';
-            pill.setAttribute('data-state', car.state || 'INIT');
+            const visibleState = displayCarState(car, null) || 'INIT';
+            pill.setAttribute('data-state', visibleState);
 
             const num = document.createElement('div');
             num.className = 'car-number';
@@ -1028,7 +1228,7 @@
             num.style.color = teamColor(car.teamId);
 
             const stateText = document.createElement('div');
-            stateText.textContent = car.state || 'INIT';
+            stateText.textContent = visibleState;
 
             pill.appendChild(num);
             pill.appendChild(stateText);
@@ -1077,11 +1277,15 @@
 
             const tdGap = document.createElement('td');
             tdGap.className = 'leaderboard-gap';
-            if (row.state && row.state !== 'RUNNING') {
-                tdGap.textContent = row.state;
-                if (row.state === 'PIT') tdGap.style.color = '#fbbf24';
-                else if (row.state === 'FAULT' || row.state === 'RETIRED') tdGap.style.color = '#f87171';
-                else if (row.state === 'FINISHED') tdGap.style.color = '#5cd39c';
+            const visibleState = displayCarState(
+                { raceId: classification.raceId, state: row.state },
+                { raceId: classification.raceId, state: row.state }
+            );
+            if (visibleState && visibleState !== 'RUNNING') {
+                tdGap.textContent = visibleState;
+                if (visibleState === 'PIT' || visibleState === 'SUSPENDED') tdGap.style.color = '#fbbf24';
+                else if (visibleState === 'FAULT' || visibleState === 'RETIRED') tdGap.style.color = '#f87171';
+                else if (visibleState === 'FINISHED') tdGap.style.color = '#5cd39c';
             } else {
                 tdGap.textContent = formatGap(row.gap, row.position);
             }
@@ -1139,13 +1343,117 @@
         return 'event';
     }
 
-    function eventTitle(data) {
+    function prettyReason(reason) {
+        const text = String(reason || '');
+        if (!text) return '';
+        if (text.startsWith('low-fuel:')) return 'Low fuel (' + text.slice('low-fuel:'.length) + ')';
+        if (text === 'low-fuel') return 'Low fuel';
+        if (text.startsWith('scheduled-pit:lap=')) return 'Scheduled pit (lap ' + text.slice('scheduled-pit:lap='.length) + ')';
+        if (text.startsWith('tire-overheat:max=')) return 'Tire overheat (max ' + text.slice('tire-overheat:max='.length) + ')';
+        if (text === 'engine-failure') return 'Engine failure';
+        if (text === 'unrecoverable') return 'Unrecoverable damage';
+        if (text === 'pit-out') return 'Pit exit';
+        if (text === 'race-end') return 'Race end';
+        if (text.startsWith('mass-incident:')) return humanizeToken(text.replace(':', ' '));
+        if (text.startsWith('debris-retirement:')) return humanizeToken(text.replace(':', ' '));
+        return humanizeToken(text);
+    }
+
+    function formatDuration(value, digits) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        if (n < 60) return n.toFixed(digits) + 's';
+        const minutes = Math.floor(n / 60);
+        const seconds = (n - minutes * 60).toFixed(digits);
+        return minutes + ':' + seconds.padStart(3 + digits, '0');
+    }
+
+    function latestCarForEvent(data) {
+        if (!data || data.raceId == null || data.carId == null) return null;
+        return state.latestCars.get(data.raceId + ':' + data.carId) || null;
+    }
+
+    function eventTrackPosition(data) {
+        if (!data) return null;
+        const details = data && data.details ? data.details : {};
+        const detailPos = normalizedTrackPos(details.trackPos);
+        if (detailPos != null) return detailPos;
+
+        if (data.type === 'pit-entry') return 0.950;
+        if (data.type === 'pit-stop') return 0.985;
+        if (data.type === 'pit-exit') return 0.040;
+        if (data.type === 'lap-completed') return 0;
+
         if (data.type === 'sector-completed') {
-            const details = data.details || {};
-            const sector = details.sector != null ? details.sector : data.sector;
-            return '#' + data.carId + ' ' + sectorLabel(sector) + ' Completed';
+            const sectorId = Number(details.sector);
+            const sector = TRACK_SECTORS.find((item) => item.id === sectorId);
+            if (sector) return normalizedTrackPos(sector.end);
         }
-        return '#' + data.carId + ' ' + humanizeToken(data.type);
+
+        const car = latestCarForEvent(data);
+        return normalizedTrackPos(car && car.trackPos);
+    }
+
+    function eventLocationLabel(data) {
+        if (!data) return '';
+        if (data.type === 'pit-entry') return 'Pit entry';
+        if (data.type === 'pit-stop') return 'Pit box';
+        if (data.type === 'pit-exit') return 'Pit exit';
+        if (data.type === 'lap-completed') return 'Finish line';
+        if (data.type === 'sector-completed') return sectorFullLabel(data.details && data.details.sector);
+
+        const trackPos = eventTrackPosition(data);
+        return trackPos == null ? '' : trackLocationAt(trackPos);
+    }
+
+    function eventTitle(data) {
+        const car = '#' + data.carId;
+        const details = data.details || {};
+        if (data.type === 'pit-entry') return car + ' Pit Entry';
+        if (data.type === 'pit-stop') return car + ' Pit Stop';
+        if (data.type === 'pit-exit') return car + ' Pit Exit';
+        if (data.type === 'fault') return car + ' Fault';
+        if (data.type === 'retirement') return car + ' Retired';
+        if (data.type === 'lap-completed') return car + ' Lap ' + (details.lap || '?') + ' Completed';
+        if (data.type === 'sector-completed') {
+            return car + ' ' + sectorLabel(details.sector) + ' Completed';
+        }
+        if (data.type === 'state-change') {
+            if (details.to === 'FINISHED') return car + ' Finished';
+            if (details.reason === 'low-fuel') return car + ' Low Fuel Warning';
+            return car + ' State Change';
+        }
+        return car + ' ' + humanizeToken(data.type);
+    }
+
+    function isRaceStartStateChange(data) {
+        const details = data && data.details ? data.details : {};
+        return data && data.type === 'state-change' &&
+            details.to === 'RUNNING' &&
+            (details.reason === 'race-start' || details.reason === 'race start');
+    }
+
+    function hasCompanionRaceEvent(data) {
+        if (!data || data.type !== 'state-change') return false;
+        const reason = String((data.details && data.details.reason) || '');
+        return reason === 'pit-out' ||
+            reason === 'engine-failure' ||
+            reason === 'unrecoverable' ||
+            reason.startsWith('scheduled-pit:') ||
+            reason.startsWith('low-fuel:') ||
+            reason.startsWith('tire-overheat:');
+    }
+
+    function shouldHideRaceEvent(data) {
+        return isRaceStartStateChange(data) || hasCompanionRaceEvent(data);
+    }
+
+    function raceControlTitle(data) {
+        const flag = String(data.flag || '').toUpperCase();
+        if (data.active !== false && flag === 'GREEN' && data.reason === 'race-start') {
+            return 'Race Started';
+        }
+        return (data.active === false ? 'Cleared ' : '') + flagLabel(flag);
     }
 
     function eventDetails(data) {
@@ -1153,30 +1461,33 @@
         if (data.type === 'state-change') {
             const parts = [];
             if (details.from || details.to) parts.push((details.from || '?') + ' -> ' + (details.to || '?'));
-            if (details.reason) parts.push(details.reason);
+            if (details.reason) parts.push(prettyReason(details.reason));
             return parts.join(' | ');
         }
         if (data.type === 'fault' || data.type === 'retirement') {
-            return details.reason || '';
+            return prettyReason(details.reason);
         }
         if (data.type === 'pit-stop') {
             const parts = [];
-            const duration = formatNumber(details.duration, 2);
-            if (duration != null) parts.push(duration + 's');
+            const duration = formatDuration(details.duration, 2);
+            if (duration != null) parts.push(duration + ' stop');
             if (details.tyreCompound) parts.push(details.tyreCompound);
             if (details.fuelAdded != null) parts.push(details.fuelAdded + 'kg fuel');
             return parts.join(' | ');
         }
         if (data.type === 'lap-completed') {
-            const lapTime = formatNumber(details.lapTime, 3);
-            return 'Lap ' + details.lap + (lapTime != null ? ' | ' + lapTime + 's' : '');
+            const lapTime = formatDuration(details.lapTime, 3);
+            return lapTime != null ? 'Lap time ' + lapTime : '';
         }
         if (data.type === 'sector-completed') {
-            const sectorTime = formatNumber(details.sectorTime, 3);
-            const sector = details.sector != null ? details.sector : data.sector;
-            return sectorLabel(sector) + (sectorTime != null ? ' | ' + sectorTime + 's' : '');
+            const parts = [];
+            const sectorTime = formatDuration(details.sectorTime, 3);
+            if (sectorTime != null) parts.push(sectorTime);
+            const split = sectorSplitLabel(details.sector);
+            if (split) parts.push(split);
+            return parts.join(' | ');
         }
-        if (details.reason) return details.reason;
+        if (details.reason) return prettyReason(details.reason);
         return '';
     }
 
@@ -1184,6 +1495,8 @@
         if (!elements.eventLog || !frame || !frame.data) return;
 
         const data = frame.data;
+        if (shouldHideRaceEvent(data)) return;
+
         const kind = frame.type === 'race-control' ? 'race-control' : 'event';
         const id = raceEventIdentity(kind, frame, data);
         if (!rememberRaceEvent(id)) return;
@@ -1204,8 +1517,7 @@
         const title = document.createElement('div');
         title.className = 'race-event-title';
         if (kind === 'race-control') {
-            const flag = String(data.flag || '').toUpperCase();
-            title.textContent = (data.active === false ? 'Cleared ' : '') + flagLabel(flag);
+            title.textContent = raceControlTitle(data);
         } else {
             title.textContent = eventTitle(data);
         }
@@ -1214,8 +1526,13 @@
         meta.className = 'race-event-meta';
         const metaParts = ['Race ' + data.raceId];
         if (data.teamId) metaParts.push(data.teamId);
-        if (data.sector != null) metaParts.push(sectorLabel(data.sector));
-        if (kind === 'race-control' && data.reason) metaParts.push(data.reason);
+        if (kind === 'race-control') {
+            if (data.sector != null) metaParts.push(sectorFullLabel(data.sector));
+            if (data.reason) metaParts.push(prettyReason(data.reason));
+        } else {
+            const location = eventLocationLabel(data);
+            if (location) metaParts.push(location);
+        }
         meta.textContent = metaParts.filter(Boolean).join(' | ');
 
         body.appendChild(title);
@@ -1256,8 +1573,10 @@
         } else if (frame && frame.type === 'event') {
             appendRaceEvent(frame);
         } else if (frame && frame.type === 'race-control') {
+            rememberRaceControl(frame.data, frame.effects);
             renderFlagIndicator(frame.data, frame.effects);
             appendRaceEvent(frame);
+            refreshTelemetryPopup();
         }
     }
 
