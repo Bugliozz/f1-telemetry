@@ -43,7 +43,6 @@ class Orchestrator {
         teamId: entry.teamId,
         carId: entry.carId,
         driver: entry.driver,
-        pitStrategy: entry.pitStrategy,
         rng,
         config,
       });

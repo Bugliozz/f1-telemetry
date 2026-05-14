@@ -11,7 +11,6 @@ const {
   initialConditionsTracker,
   maxTireTemp,
   isLowFuel,
-  isScheduledPit,
   tireOverheatNextTicks,
   isTireOverheatLatched,
   isEngineFailure,
@@ -53,20 +52,18 @@ test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
 console.log('\nconditions.initialConditionsTracker');
 // ----------------------------------------------------------------------------
 
-test('tracker iniziale: contatori azzerati, timer null, lista vuota', () => {
+test('tracker iniziale: contatori azzerati e timer null', () => {
   const t = initialConditionsTracker();
   assert.equal(t.tireOverheatTicks, 0);
   assert.equal(t.faultEnteredAtS, null);
   assert.equal(t.pitEnteredAtS, null);
   assert.equal(t.pitDurationS, null);
-  assert.deepEqual(t.scheduledPitTriggeredLaps, []);
 });
 
 test('initialConditionsTracker ritorna istanze indipendenti', () => {
   const a = initialConditionsTracker();
   const b = initialConditionsTracker();
   assert.notStrictEqual(a, b);
-  assert.notStrictEqual(a.scheduledPitTriggeredLaps, b.scheduledPitTriggeredLaps);
 });
 
 // ----------------------------------------------------------------------------
@@ -110,33 +107,6 @@ test('input non numerico -> false', () => {
   assert.equal(isLowFuel(undefined), false);
   assert.equal(isLowFuel(NaN), false);
   assert.equal(isLowFuel('5'), false);
-});
-
-// ----------------------------------------------------------------------------
-console.log('\nconditions.isScheduledPit');
-// ----------------------------------------------------------------------------
-
-test('lap incluso in pitStrategy e mai triggerato -> true', () => {
-  assert.equal(isScheduledPit(8, [8, 18], []), true);
-});
-
-test('lap non incluso -> false', () => {
-  assert.equal(isScheduledPit(7, [8, 18], []), false);
-});
-
-test('lap incluso ma gia triggerato -> false (no double-fire)', () => {
-  assert.equal(isScheduledPit(8, [8, 18], [8]), false);
-});
-
-test('pitStrategy vuota o non array -> false', () => {
-  assert.equal(isScheduledPit(8, [], []), false);
-  assert.equal(isScheduledPit(8, null, []), false);
-  assert.equal(isScheduledPit(8, undefined, []), false);
-});
-
-test('lap non finito -> false', () => {
-  assert.equal(isScheduledPit(NaN, [8], []), false);
-  assert.equal(isScheduledPit(undefined, [8], []), false);
 });
 
 // ----------------------------------------------------------------------------
@@ -314,7 +284,6 @@ const baseRunningObs = {
   checkeredActive: false,
   nowS: 100,
   rng: () => 0.5, // niente engine-failure
-  scheduledPitLaps: [],
 };
 
 test('RUNNING senza condizioni: trigger null, contatore tire-overheat aggiornato', () => {
@@ -330,21 +299,6 @@ test('RUNNING -> low-fuel quando fuel < 8 kg', () => {
   const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
   assert.equal(out.trigger, TRIGGERS.LOW_FUEL);
   assert.match(out.reason, /^low-fuel:5\.00kg$/);
-});
-
-test('RUNNING -> scheduled-pit quando lap in pitStrategy', () => {
-  const obs = { ...baseRunningObs, lap: 8, scheduledPitLaps: [8, 18] };
-  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
-  assert.equal(out.trigger, TRIGGERS.SCHEDULED_PIT);
-  assert.equal(out.reason, 'scheduled-pit:lap=8');
-  assert.deepEqual(out.tracker.scheduledPitTriggeredLaps, [8]);
-});
-
-test('RUNNING -> scheduled-pit non ri-fira sullo stesso lap', () => {
-  const obs = { ...baseRunningObs, lap: 8, scheduledPitLaps: [8, 18] };
-  const trackerAfter = { ...initialConditionsTracker(), scheduledPitTriggeredLaps: [8] };
-  const out = evaluate(STATES.RUNNING, obs, trackerAfter);
-  assert.equal(out.trigger, null);
 });
 
 test('RUNNING -> tire-overheat solo dopo 3 tick consecutivi sopra soglia', () => {
@@ -465,19 +419,6 @@ test('priorita: tire-overheat batte low-fuel', () => {
   assert.equal(out.trigger, TRIGGERS.TIRE_OVERHEAT);
 });
 
-test('priorita: low-fuel batte scheduled-pit', () => {
-  const obs = {
-    ...baseRunningObs,
-    fuel: 1,
-    lap: 8,
-    scheduledPitLaps: [8],
-  };
-  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
-  assert.equal(out.trigger, TRIGGERS.LOW_FUEL);
-  // scheduled-pit non e' stato consumato
-  assert.deepEqual(out.tracker.scheduledPitTriggeredLaps, []);
-});
-
 // ----------------------------------------------------------------------------
 console.log('\nconditions.evaluate - PIT');
 // ----------------------------------------------------------------------------
@@ -525,15 +466,9 @@ test('PIT -> race-end al lap finale (pit nel giro CHECKERED)', () => {
   assert.equal(out.trigger, TRIGGERS.RACE_END);
 });
 
-test('PIT: low-fuel/scheduled-pit non si valutano (sei gia in pit)', () => {
+test('PIT: low-fuel non si valuta (sei gia in pit)', () => {
   const t = onEnterPit(initialConditionsTracker(), 100, 2.5);
-  const obs = {
-    ...baseRunningObs,
-    nowS: 101,
-    fuel: 1,
-    lap: 8,
-    scheduledPitLaps: [8],
-  };
+  const obs = { ...baseRunningObs, nowS: 101, fuel: 1 };
   const out = evaluate(STATES.PIT, obs, t);
   assert.equal(out.trigger, null);
 });
@@ -597,7 +532,7 @@ test('input observation/tracker non mutati', () => {
   const obs = { ...baseRunningObs, fuel: 1 };
   const obsSnap = { ...obs };
   const t = initialConditionsTracker();
-  const tSnap = { ...t, scheduledPitTriggeredLaps: [...t.scheduledPitTriggeredLaps] };
+  const tSnap = { ...t };
   evaluate(STATES.RUNNING, obs, t);
   assert.deepEqual(obs, obsSnap);
   assert.deepEqual(t, tSnap);

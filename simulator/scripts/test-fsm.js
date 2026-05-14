@@ -85,13 +85,6 @@ test('RUNNING -> PIT via low-fuel', () => {
   assert.equal(out.changed, true);
 });
 
-test('RUNNING -> PIT via scheduled-pit', () => {
-  const out = transition({ state: 'RUNNING', previousState: null, reason: null }, 'scheduled-pit');
-  assert.equal(out.state, 'PIT');
-  assert.equal(out.reason, 'scheduled-pit');
-  assert.equal(out.changed, true);
-});
-
 test('PIT -> RUNNING via pit-out', () => {
   const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'pit-out');
   assert.equal(out.state, 'RUNNING');
@@ -137,7 +130,7 @@ test('RUNNING -> FINISHED via race-end', () => {
 });
 
 test('PIT -> FINISHED via race-end (pit-stop nel giro finale)', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'scheduled-pit' }, 'race-end');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'race-end');
   assert.equal(out.state, 'FINISHED');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -182,7 +175,7 @@ test('internal-error da RUNNING -> FAULT', () => {
 });
 
 test('internal-error da PIT -> FAULT', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'scheduled-pit' }, 'internal-error');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'internal-error');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -363,7 +356,7 @@ console.log('\nfsm.transition - scenari di gara end-to-end');
 test('flusso normale: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
-  f = transition(f, 'scheduled-pit'); assert.equal(f.state, 'PIT');
+  f = transition(f, 'low-fuel'); assert.equal(f.state, 'PIT');
   f = transition(f, 'pit-out'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'race-end'); assert.equal(f.state, 'FINISHED');
 });

@@ -10,7 +10,6 @@
 //   | Da          | A        | Condizione                                                    | reason            |
 //   |-------------|----------|---------------------------------------------------------------|-------------------|
 //   | RUNNING     | PIT      | fuel < FUEL_PIT_THRESHOLD_KG (default 8 kg)                   | low-fuel          |
-//   | RUNNING     | PIT      | currentLap incluso in pitStrategy                             | scheduled-pit     |
 //   | PIT         | RUNNING  | timer pit elapsed (2.0-3.5 s sorteggiati)                     | pit-out           |
 //   | RUNNING     | FAULT    | max(tireTemp) > 180 C per 3 tick consecutivi                  | tire-overheat     |
 //   | RUNNING/PIT | FAULT    | random engine failure (probabilita' < 1e-4 per tick)          | engine-failure    |
@@ -40,7 +39,6 @@
 //       4. unrecoverable  (in FAULT, dopo timer diagnose)
 //       5. pit-out        (in PIT, dopo timer durata)
 //       6. low-fuel
-//       7. scheduled-pit
 //
 //   onEnterPit(tracker, nowS, durationS)
 //   onEnterFault(tracker, nowS)
@@ -85,21 +83,12 @@ function initialConditionsTracker() {
     faultEnteredAtS: null,
     pitEnteredAtS: null,
     pitDurationS: null,
-    scheduledPitTriggeredLaps: [],
   };
 }
 
 function isLowFuel(fuelKg, threshold) {
   const thr = isFiniteNumber(threshold) ? threshold : FUEL_PIT_THRESHOLD_KG;
   return isFiniteNumber(fuelKg) && fuelKg < thr;
-}
-
-function isScheduledPit(currentLap, scheduledPitLaps, alreadyTriggeredLaps) {
-  if (!Array.isArray(scheduledPitLaps) || scheduledPitLaps.length === 0) return false;
-  if (!isFiniteNumber(currentLap)) return false;
-  if (!scheduledPitLaps.includes(currentLap)) return false;
-  if (Array.isArray(alreadyTriggeredLaps) && alreadyTriggeredLaps.includes(currentLap)) return false;
-  return true;
 }
 
 function tireOverheatNextTicks(tireTemp, prevTicks, threshold) {
@@ -188,7 +177,6 @@ function readObservation(obs) {
     checkeredActive: o.checkeredActive === true,
     nowS: o.nowS,
     rng: o.rng,
-    scheduledPitLaps: Array.isArray(o.scheduledPitLaps) ? o.scheduledPitLaps : [],
     pitEntryPos: isFiniteNumber(o.pitEntryPos) ? o.pitEntryPos : 0.95,
     pitExitReached: o.pitExitReached !== false,
     fuelPitThreshold: isFiniteNumber(o.fuelPitThreshold) ? o.fuelPitThreshold : FUEL_PIT_THRESHOLD_KG,
@@ -244,16 +232,6 @@ function evaluate(fsmState, observation, tracker) {
         tracker: nextTracker,
       };
     }
-    if (canEnterPit && isScheduledPit(safe.lap, safe.scheduledPitLaps, nextTracker.scheduledPitTriggeredLaps)) {
-      return {
-        trigger: TRIGGERS.SCHEDULED_PIT,
-        reason: `scheduled-pit:lap=${safe.lap}`,
-        tracker: {
-          ...nextTracker,
-          scheduledPitTriggeredLaps: [...nextTracker.scheduledPitTriggeredLaps, safe.lap],
-        },
-      };
-    }
     return noTrigger(nextTracker);
   }
 
@@ -302,7 +280,6 @@ module.exports = {
   initialConditionsTracker,
   maxTireTemp,
   isLowFuel,
-  isScheduledPit,
   tireOverheatNextTicks,
   isTireOverheatLatched,
   isEngineFailure,

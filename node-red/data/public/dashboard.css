@@ -674,6 +674,19 @@ body {
     margin-bottom: 2px;
 }
 
+.car-state-reason {
+    max-width: 100%;
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 7px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.78;
+}
+
 .car-state-pill[data-state="RUNNING"] {
     border-color: #2a2f3d;
     background: #161926;

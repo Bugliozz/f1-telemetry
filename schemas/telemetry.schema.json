@@ -104,8 +104,8 @@
     "fuel": {
       "type": "number",
       "minimum": 0,
-      "maximum": 110,
-      "description": "Carburante residuo in kg."
+      "maximum": 30,
+      "description": "Carburante residuo in kg. Serbatoio sprint 22 kg (±4 kg jitter), max 30 kg dopo pit."
     },
     "state": {
       "type": "string",

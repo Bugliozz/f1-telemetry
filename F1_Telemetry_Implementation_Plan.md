@@ -170,13 +170,5 @@
 
 ---
 
-## Riepilogo Effort per Modello
 
-| Modello | Simbolo | Tipo di task | N° task |
-|---------|---------|-------------|---------|
-| **Opus** | 🔴 | Architettura, logica complessa, algoritmi core, FSM, ottimizzazione | ~14 |
-| **Sonnet** | 🟠 | Implementazione standard, integrazione, flow, UI components | ~33 |
-| **Haiku** | 🟢 | Config, boilerplate, setup, query semplici, documentazione base | ~16 |
-
----
 

@@ -28,11 +28,10 @@ const { LENGTH_M, targetSpeed, racingControls } = require('../track/monza');
 const MS2_TO_KMH_PER_S = 3.6;
 
 class Car {
-  constructor({ teamId, carId, driver, pitStrategy, rng, config }) {
+  constructor({ teamId, carId, driver, rng, config }) {
     this.teamId = teamId;
     this.carId = carId;
     this.driver = driver || `Car ${carId}`;
-    this.pitStrategy = Array.isArray(pitStrategy) ? pitStrategy : [];
     this.rng = typeof rng === 'function' ? rng : Math.random;
     this.config = config || {};
 
@@ -42,7 +41,6 @@ class Car {
     this.lap = 0;
     this.speed = 0;          // km/h
     this.tireTemp = initialTireTemp();
-    this.fuel = INITIAL_FUEL_KG;
     this.condTracker = initialConditionsTracker();
 
     // Timing
@@ -54,6 +52,9 @@ class Car {
     // Variabilita' per-auto (calcolata una volta, fissa per tutta la gara)
     const jitterKmh = this.config.speedJitterKmh || 3;
     this._speedOffset = (this.rng() - 0.5) * 2 * jitterKmh;
+
+    const fuelJitterKg = this.config.initialFuelJitterKg || 4;
+    this.fuel = Math.max(0, INITIAL_FUEL_KG + (this.rng() - 0.5) * 2 * fuelJitterKg);
     this._teamFactor = (this.config.teamPerformanceFactor && this.config.teamPerformanceFactor[teamId]) || 1.0;
 
     // Pit refuel/reset tracking
@@ -126,7 +127,9 @@ class Car {
 
       // Refuel e reset gomme solo quando viene raggiunta la box position.
       if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
-        this.fuel = Math.min(INITIAL_FUEL_KG, this.fuel + (this.config.fuelAddedOnPit || 50));
+        const fuelBefore = this.fuel;
+        this.fuel = Math.min(INITIAL_FUEL_KG, this.fuel + (this.config.fuelAddedOnPit || 22));
+        const fuelAdded = Math.round((this.fuel - fuelBefore) * 10) / 10;
         this.tireTemp = initialTireTemp(this.config.tireResetTempC || 90);
         this._pitServiced = true;
         this.speed = 0;
@@ -138,7 +141,7 @@ class Car {
           details: {
             duration: this.condTracker.pitDurationS || 2.4,
             tyreCompound: 'medium',
-            fuelAdded: this.config.fuelAddedOnPit || 50,
+            fuelAdded,
           },
         });
       }
@@ -413,7 +416,6 @@ class Car {
       checkeredActive: ctx.checkeredActive || false,
       nowS: this.simulatedTimeS,
       rng: this.rng,
-      scheduledPitLaps: this.pitStrategy,
       pitEntryPos: this.config.pitEntryPos,
       pitExitReached: ctx && ctx.activeFlag === 'RED' ? false : this._pitExitReached(),
       fuelPitThreshold: this.config.fuelPitThresholdKg,
@@ -530,7 +532,7 @@ class Car {
       messages.events.push({
         timestamp, raceId, teamId: this.teamId, carId: this.carId,
         type: 'pit-entry',
-        details: {},
+        details: { lap: this.lap },
       });
     }
 
@@ -557,7 +559,7 @@ class Car {
       messages.events.push({
         timestamp, raceId, teamId: this.teamId, carId: this.carId,
         type: 'pit-exit',
-        details: {},
+        details: { lap: this.lap },
       });
     }
   }

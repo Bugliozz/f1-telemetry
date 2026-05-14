@@ -53,7 +53,7 @@ const config = Object.freeze({
   pitBoxPos: 0.985,       // trackPos stimata del box nella pit-lane
   pitExitPos: 0.04,       // trackPos di uscita pit-lane (giro successivo)
   pitLaneSpeedKmh: 80,    // velocita' pit-lane limit
-  fuelAddedOnPit: 50,     // kg riforniti a ogni pit
+  fuelAddedOnPit: 22,     // rabbocco massimo per pit — valore effettivo calcolato in car.js (fuelDopo - fuelPrima)
   tireResetTempC: 90,     // temperatura gomme dopo pit-stop
 
   // --- Settori Monza ---
@@ -74,6 +74,8 @@ const config = Object.freeze({
   rpmJitterRange: 200,
   // Jitter su velocita' target (±3 km/h per auto, fisso per sessione)
   speedJitterKmh: 3,
+  // Jitter carburante iniziale per-auto (±4 kg) → range effettivo 18–26 kg
+  initialFuelJitterKg: 4,
   // Jitter temperatura gomme (asimmetria left/right, ±1.5 C)
   tireTempJitterC: 1.5,
   // Jitter fuel rate (±5%)

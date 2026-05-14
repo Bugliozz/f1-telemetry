@@ -34,11 +34,11 @@
 // modella consumi accessori (pompa, pre-load), il termine `load` la potenza
 // erogata dal motore in funzione di velocita' e apertura acceleratore.
 // Costanti scelte in modo che a regime medio (200 km/h, throttle 0.7) si
-// consumino ~5 kg/giro a Monza (~110 s/giro), portando una partenza da
-// 105 kg verso ~25-30 kg residui sui 15 giri di test.
+// consumino ~5 kg/giro a Monza (~110 s/giro). Serbatoio sprint da ~22 kg
+// (±4 kg jitter per-auto) → soglia low-fuel (8 kg) toccata al giro 3.
 
 const INITIAL_TIRE_TEMP_C = 95;
-const INITIAL_FUEL_KG = 105;
+const INITIAL_FUEL_KG = 22;
 const AMBIENT_C = 25;
 
 const K_HEAT_SPEED = 6;

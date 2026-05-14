@@ -232,15 +232,17 @@ test('giro a Monza ~110 s a regime medio: ~5 kg/giro', () => {
   assert.ok(consumed > 3 && consumed < 7, `consumo per giro: ${consumed}`);
 });
 
-test('15 giri non azzerano il serbatoio (gara di test)', () => {
+test('3 giri sprint: fuel scende sotto soglia low-fuel (8 kg) senza azzerarsi', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   const lapTimeS = 110;
-  const ticks = (lapTimeS / dt) * 15;
+  const ticks = (lapTimeS / dt) * 3;
   for (let i = 0; i < ticks; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
   }
-  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel residuo: ${fuel}`);
+  // Con ~22 kg e ~5 kg/giro, dopo 3 giri restano ~6-7 kg: vivo ma sotto soglia pit
+  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel dopo 3 giri: ${fuel}`);
+  assert.ok(fuel < 8, `atteso fuel < 8 kg (soglia low-fuel) dopo 3 giri: ${fuel}`);
 });
 
 test('rispetta i limiti dello schema telemetry [0, 110]', () => {
@@ -250,6 +252,46 @@ test('rispetta i limiti dello schema telemetry [0, 110]', () => {
     fuel = consumeFuel(fuel, { speedKmh: 300, throttle: 1 }, dt);
     assert.ok(fuel >= 0 && fuel <= 110, `fuel fuori range: ${fuel}`);
   }
+});
+
+console.log('\ntire-fuel.consumeFuel — modello sprint');
+
+test('carburante ridotto + jitter: low-fuel raggiungibile entro 5 giri, pit scaglionati', () => {
+  const pitThreshold = 8;   // kg, coerente con config.fuelPitThresholdKg
+  const jitterKg = 4;       // ±4 kg, coerente con config.initialFuelJitterKg
+  const pitLaps = [];
+
+  for (let carIdx = 0; carIdx < 10; carIdx += 1) {
+    // Jitter deterministico linearmente distribuito tra -1 e +1 (18–26 kg)
+    const jitterFraction = (carIdx / 9) * 2 - 1;
+    let fuel = INITIAL_FUEL_KG + jitterFraction * jitterKg;
+    const dt = 0.25;
+    const lapTimeS = 110;
+    let pitLap = null;
+
+    for (let lap = 1; lap <= 5; lap += 1) {
+      const ticks = lapTimeS / dt;
+      for (let i = 0; i < ticks; i += 1) {
+        fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
+        if (pitLap === null && fuel < pitThreshold) {
+          pitLap = lap;
+        }
+      }
+    }
+    pitLaps.push(pitLap);
+  }
+
+  // Tutte le auto raggiungono la soglia entro 5 giri
+  assert.ok(
+    pitLaps.every((l) => l !== null),
+    `alcune auto non raggiungono la soglia entro 5 giri: ${pitLaps}`,
+  );
+  // Effetto jitter: i pit si scaglionano su almeno 2 giri diversi
+  const uniqueLaps = new Set(pitLaps);
+  assert.ok(
+    uniqueLaps.size >= 2,
+    `tutte le auto convergono allo stesso giro: giro ${[...uniqueLaps][0]}`,
+  );
 });
 
 console.log(`\n${passed} test passati`);

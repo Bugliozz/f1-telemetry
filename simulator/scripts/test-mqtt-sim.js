@@ -81,7 +81,6 @@ const car = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [8],
   rng: singleRng,
   config: singleConfig,
 });
@@ -194,7 +193,6 @@ const serraglioCar = new Car({
   teamId: 'alpine',
   carId: 31,
   driver: 'E. Ocon',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -225,7 +223,6 @@ const startApproachCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -264,7 +261,6 @@ const firstVariantCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -294,7 +290,6 @@ const roggiaApproachCar = new Car({
   teamId: 'mclaren',
   carId: 4,
   driver: 'L. Norris',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -322,7 +317,6 @@ const curvaGrandeCar = new Car({
   teamId: 'redbull',
   carId: 1,
   driver: 'M. Verstappen',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -350,7 +344,6 @@ const parabolicaCar = new Car({
   teamId: 'mercedes',
   carId: 44,
   driver: 'L. Hamilton',
-  pitStrategy: [],
   rng: () => 0.5,
   config: {
     ...config,
@@ -378,7 +371,6 @@ const lapCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(777, 16),
   config: { ...config, engineFailureProbPerTick: 0 },
 });
@@ -406,7 +398,6 @@ const pitCar = new Car({
   teamId: 'ferrari',
   carId: 55,
   driver: 'C. Sainz',
-  pitStrategy: [1],
   rng: createCarPrng(888, 55),
   config: pitConfig,
 });
@@ -461,7 +452,6 @@ const scLeader = new Car({
   teamId: 'redbull',
   carId: 1,
   driver: 'M. Verstappen',
-  pitStrategy: [],
   rng: createCarPrng(1001, 1),
   config: scConfig,
 });
@@ -483,7 +473,6 @@ const scChaser = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(1002, 16),
   config: scConfig,
 });
@@ -509,7 +498,6 @@ const scClose = new Car({
   teamId: 'mercedes',
   carId: 44,
   driver: 'L. Hamilton',
-  pitStrategy: [],
   rng: createCarPrng(1003, 44),
   config: scConfig,
 });
@@ -529,8 +517,8 @@ assert(scClose.speed < scConfig.safetyCarSpeedKmh,
 
 const scOrchestrator = new Orchestrator({
   roster: [
-    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen', pitStrategy: [] },
-    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc', pitStrategy: [] },
+    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen' },
+    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc' },
   ],
   config: scConfig,
   publisher: new MockPublisher(),
@@ -564,7 +552,6 @@ const vscLeader = new Car({
   teamId: 'redbull',
   carId: 1,
   driver: 'M. Verstappen',
-  pitStrategy: [],
   rng: createCarPrng(1101, 1),
   config: vscConfig,
 });
@@ -590,7 +577,6 @@ const vscChaser = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(1102, 16),
   config: vscConfig,
 });
@@ -611,8 +597,8 @@ assert(chaserProgress <= maxVscProgress + 1e-9,
 
 const vscOrchestrator = new Orchestrator({
   roster: [
-    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen', pitStrategy: [] },
-    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc', pitStrategy: [] },
+    { teamId: 'redbull', carId: 1, driver: 'M. Verstappen' },
+    { teamId: 'ferrari', carId: 16, driver: 'C. Leclerc' },
   ],
   config: vscConfig,
   publisher: new MockPublisher(),
@@ -645,7 +631,6 @@ const greenFlagCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(1201, 16),
   config: flagConfig,
 });
@@ -669,7 +654,6 @@ const yellowFlagCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(1201, 16),
   config: flagConfig,
 });
@@ -694,7 +678,6 @@ const yellowOtherSectorCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [],
   rng: createCarPrng(1201, 16),
   config: flagConfig,
 });
@@ -719,7 +702,6 @@ const redFlagCar = new Car({
   teamId: 'mercedes',
   carId: 44,
   driver: 'L. Hamilton',
-  pitStrategy: [],
   rng: createCarPrng(1202, 44),
   config: flagConfig,
 });
@@ -764,7 +746,6 @@ const checkeredFlagCar = new Car({
   teamId: 'mclaren',
   carId: 4,
   driver: 'L. Norris',
-  pitStrategy: [],
   rng: createCarPrng(1203, 4),
   config: flagConfig,
 });
@@ -801,7 +782,6 @@ const pitUnderScCar = new Car({
   teamId: 'ferrari',
   carId: 16,
   driver: 'C. Leclerc',
-  pitStrategy: [1],
   rng: createCarPrng(1301, 16),
   config: combinedConfig,
 });
@@ -809,6 +789,7 @@ pitUnderScCar.startRace(1, ctx.timestamp);
 pitUnderScCar.lap = 1;
 pitUnderScCar.trackPos = combinedConfig.pitEntryPos;
 pitUnderScCar.speed = 60;
+pitUnderScCar.fuel = 4; // sotto soglia low-fuel per innescare l'entrata in pit
 const scPitEntryMsgs = pitUnderScCar.tick(0.25, {
   raceId: 1,
   timestamp: new Date().toISOString(),
@@ -817,7 +798,7 @@ const scPitEntryMsgs = pitUnderScCar.tick(0.25, {
   activeFlag: 'GREEN',
 });
 assert(scPitEntryMsgs.state && scPitEntryMsgs.state.state === 'PIT',
-  'scheduled pit enters PIT before Safety Car phase');
+  'low-fuel pit enters PIT before Safety Car phase');
 const scPitMsgs = pitUnderScCar.tick(0.25, {
   raceId: 1,
   timestamp: new Date().toISOString(),
@@ -837,12 +818,11 @@ const redPitCar = new Car({
   teamId: 'mercedes',
   carId: 44,
   driver: 'L. Hamilton',
-  pitStrategy: [],
   rng: createCarPrng(1302, 44),
   config: combinedConfig,
 });
 redPitCar.startRace(1, ctx.timestamp);
-redPitCar.fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'scheduled-pit' };
+redPitCar.fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' };
 redPitCar._pitServiced = true;
 redPitCar._pitEntryLap = 1;
 redPitCar.lap = 2;
@@ -901,7 +881,6 @@ const redScenarioCar = new Car({
   teamId: 'redbull',
   carId: 1,
   driver: 'M. Verstappen',
-  pitStrategy: [],
   rng: () => 0,
   config: redScenarioConfig,
 });

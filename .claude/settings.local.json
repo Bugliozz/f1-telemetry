@@ -21,7 +21,16 @@
       "Bash(node scripts/seed.js)",
       "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" status)",
       "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" log --oneline -5)",
-      "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" diff F1_Telemetry_Implementation_Plan.md mongo/init/01-init.js)"
+      "Bash(git -C \"c:/Users/marco/Desktop/f1-telemetry\" diff F1_Telemetry_Implementation_Plan.md mongo/init/01-init.js)",
+      "Bash(node simulator/scripts/test-race-modes.js)",
+      "Bash(node -e ' *)",
+      "Bash(npm test *)",
+      "Bash(node simulator/scripts/test-fsm.js)",
+      "Bash(node simulator/scripts/test-conditions.js)",
+      "Bash(node simulator/scripts/test-tire-fuel.js)",
+      "Bash(node simulator/scripts/test-mqtt-sim.js)",
+      "Bash(node simulator/scripts/test-e2e-fase4.js)",
+      "Bash(git -C \"c:\\\\Users\\\\marco\\\\Desktop\\\\f1-telemetry\" diff --stat HEAD)"
     ]
   }
 }

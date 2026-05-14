@@ -197,7 +197,7 @@ SIGTERM    stop():
 | `throttle`, `brake` | `[0,1]` | profilo pedali Monza + differenza speed/targetSpeed per safety/pit/fault |
 | `drs` | bool | true sui rettilinei lunghi (settore 1 e 3 di Monza) |
 | `tireTemp.{fl,fr,rl,rr}` | C | partono ~95°C, salgono con velocita' e curve, scendono in pit |
-| `fuel` | kg | parte 105 kg, decrementa con throttle + speed |
+| `fuel` | kg | parte 22 kg (±4 kg jitter per-auto), decrementa con throttle + speed |
 | `pitStateTimer` | s \| null | per la durata del pit-stop |
 | `lapStartTime` | timestamp | per calcolare `lapTime` su `lap-completed` |
 
@@ -303,8 +303,7 @@ successivo. Mentre `state == PIT`:
    bootstrap -->| INIT   |---------------->| RUNNING |---------+
                 +--------+                 +---------+         |
                                             |  ^               |
-                                fuel<thr OR |  | pit-exit      |
-                                 lap%pitInt |  |               |
+                                   fuel<thr |  | pit-exit      |
                                             v  |               |
                                           +-----+              |
                                           | PIT |              |
@@ -336,7 +335,6 @@ successivo. Mentre `state == PIT`:
 |---|---|---|---|
 | INIT | RUNNING | flag GREEN attiva (race-start) | `race-start` |
 | RUNNING | PIT | `fuel < FUEL_PIT_THRESHOLD` (default 8 kg) | `low-fuel` |
-| RUNNING | PIT | giro pianificato in `pitStrategy` (es. lap 18) | `scheduled-pit` |
 | PIT | RUNNING | timer pit elapsed (durata sorteggiata 2.0-3.5 s) | `pit-out` |
 | RUNNING | FAULT | `max(tireTemp) > 180°C` per 3 tick consecutivi | `tire-overheat` |
 | RUNNING | FAULT | random engine failure (probabilita' < 1e-4 per tick) | `engine-failure` |
@@ -531,9 +529,10 @@ in JavaScript "vanilla" coerentemente con la scala del progetto.
 
 ## 14. Open points (da chiudere nelle sotto-task della Fase 3)
 
-- [x] **Pit strategy**: implementata lap-based in `config/roster.json`.
-  Verstappen lap 7, Ferrari 16 lap 8, Perez lap 8, Sainz/McLaren lap 9,
-  Mercedes lap 10, Alpine lap 11. Strategia adattiva rinviata.
+- [x] **Pit strategy**: sensor-based (low-fuel) — la sosta emerge unicamente dal
+  livello carburante (`fuel < fuelPitThresholdKg`, default 8 kg). Il carburante
+  iniziale e' 22 kg (±4 kg jitter per-auto); i pit cadono al giro 3-4 a seconda
+  del consumo. `config/roster.json` non contiene piu' il campo `pitStrategy`.
 - [x] **Coefficiente degrado gomme**: `wearPerLap = 0.03` in
   `config/default.js`. `wearFactor = 1 + lap * 0.03` → a lap 15 vale
   1.45 (+45% riscaldamento). Percepibile: la temperatura sale sensibilmente

@@ -109,6 +109,8 @@
         'drs',
         'fuel',
         'state',
+        'previousState',
+        'reason',
         'timestamp',
         'receivedAt'
     ]);
@@ -1245,6 +1247,14 @@
 
             pill.appendChild(num);
             pill.appendChild(stateText);
+
+            if (car.reason && visibleState !== 'RUNNING') {
+                const reasonText = document.createElement('div');
+                reasonText.className = 'car-state-reason';
+                reasonText.textContent = prettyReason(car.reason);
+                reasonText.title = prettyReason(car.reason);
+                pill.appendChild(reasonText);
+            }
             fragment.appendChild(pill);
         }
 
@@ -1361,7 +1371,6 @@
         if (!text) return '';
         if (text.startsWith('low-fuel:')) return 'Low fuel (' + text.slice('low-fuel:'.length) + ')';
         if (text === 'low-fuel') return 'Low fuel';
-        if (text.startsWith('scheduled-pit:lap=')) return 'Scheduled pit (lap ' + text.slice('scheduled-pit:lap='.length) + ')';
         if (text.startsWith('tire-overheat:max=')) return 'Tire overheat (max ' + text.slice('tire-overheat:max='.length) + ')';
         if (text === 'engine-failure') return 'Engine failure';
         if (text === 'unrecoverable') return 'Unrecoverable damage';
@@ -1433,7 +1442,7 @@
         }
         if (data.type === 'state-change') {
             if (details.to === 'FINISHED') return car + ' Finished';
-            if (details.reason === 'low-fuel') return car + ' Low Fuel Warning';
+            if (String(details.reason || '').startsWith('low-fuel')) return car + ' Low Fuel Warning';
             return car + ' State Change';
         }
         return car + ' ' + humanizeToken(data.type);
@@ -1452,7 +1461,6 @@
         return reason === 'pit-out' ||
             reason === 'engine-failure' ||
             reason === 'unrecoverable' ||
-            reason.startsWith('scheduled-pit:') ||
             reason.startsWith('low-fuel:') ||
             reason.startsWith('tire-overheat:');
     }

@@ -65,7 +65,7 @@ Note di design:
   consegna ("eterogeneita' analogico/digitale").
 
 Range numerici applicati come bound nel validator:
-`speed in [0,400]`, `rpm in [0,16000]`, `fuel in [0,110]`,
+`speed in [0,400]`, `rpm in [0,16000]`, `fuel in [0,30]`,
 `gear in [0,8]`, `throttle/brake/trackPos in [0,1]`.
 
 ### 3.2 Stato FSM (`state.schema.json`)

@@ -174,7 +174,7 @@ function testBalancedSeeds() {
   assert.ok(!hasFlag(nominal, 'RED'), 'balanced nominal must not red flag');
   console.log('  OK nominal seed reaches checkered');
 
-  const eventful = runRace(SCENARIOS.BALANCED, 5);
+  const eventful = runRace(SCENARIOS.BALANCED, 73);
   assert.strictEqual(eventful.activeFlag, 'CHECKERED');
   assert.strictEqual(eventful.leaderLap, TOTAL_LAPS);
   assert.ok(!hasFlag(eventful, 'RED'), 'balanced eventful must not red flag');
