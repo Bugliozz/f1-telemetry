@@ -112,6 +112,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[smoke-test] errore non gestito:', err.message);
+  console.error('[smoke-test] unhandled error:', err.message);
   process.exitCode = 1;
 });

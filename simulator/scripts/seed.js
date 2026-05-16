@@ -2,17 +2,17 @@
  * Seed - Fase 2
  * Popola MongoDB con dati di esempio coerenti con i $jsonSchema validator.
  *
- *   - 5 team x 2 auto = 10 entries (Monza, gara 1)
- *   - ~50 campioni di telemetria per auto, su ~2 giri
- *   - 1 stato FSM per auto
+ *   - 5 teams x 2 cars = 10 entries (Monza, race 1)
+ *   - ~50 telemetry samples per car, over ~2 laps
+ *   - 1 FSM state per car
  *   - alcuni eventi tipici (lap-completed, pit-stop, state-change)
- *   - 1 classifica corrente
- *   - 1 evento race-control (green flag iniziale)
+ *   - 1 current classification
+ *   - 1 race-control event (initial green flag)
  *
  * Uso:
  *   node simulator/scripts/seed.js
  *   MONGO_URL=mongodb://localhost:27017 node simulator/scripts/seed.js
- *   RACE_ID=2 node simulator/scripts/seed.js   # gara diversa
+ *   RACE_ID=2 node simulator/scripts/seed.js   # different race
  */
 
 const { MongoClient } = require('mongodb');
@@ -42,13 +42,13 @@ const FSM_STATES = ['INIT', 'RUNNING', 'PIT', 'FAULT', 'RETIRED', 'FINISHED'];
 // rendere il dataset deterministico ma realistico.
 function buildTelemetrySamples(car, baseTime) {
   const samples = [];
-  // Velocita media leggermente diversa per auto -> classifica non banale.
+  // Slightly different average speed per car -> non-trivial classification.
   const speedBias = ((car.carId * 7) % 13) - 6; // -6..+6
   let lap = 1;
   let trackPos = 0;
   for (let i = 0; i < SAMPLES_PER_CAR; i++) {
     const t = new Date(baseTime.getTime() + i * SAMPLE_INTERVAL_MS);
-    // Profilo velocita con due curve di Monza (Lesmo + Parabolica).
+    // Speed profile with two Monza corners (Lesmo + Parabolica).
     const phase = trackPos * Math.PI * 2;
     const speed = 240 + speedBias + 50 * Math.sin(phase) + 8 * Math.cos(phase * 3);
     const throttle = Math.max(0, Math.min(1, 0.7 + 0.3 * Math.sin(phase)));
@@ -90,7 +90,7 @@ function buildTelemetrySamples(car, baseTime) {
 
 function buildEvents(car, baseTime) {
   const events = [];
-  // Inizio gara: state-change INIT -> RUNNING.
+  // Race start: state-change INIT -> RUNNING.
   events.push({
     timestamp: new Date(baseTime.getTime() - 1000),
     raceId: RACE_ID,
@@ -182,7 +182,7 @@ async function main() {
       db.collection('race_control').deleteMany({ raceId: RACE_ID }),
     ]);
 
-    // Telemetria.
+    // Telemetry.
     const allTelemetry = ROSTER.flatMap((car) => buildTelemetrySamples(car, baseTime));
     const telemRes = await db.collection('telemetry').insertMany(allTelemetry, { ordered: false });
     console.log(`[seed] telemetry: ${telemRes.insertedCount} documenti`);
@@ -203,7 +203,7 @@ async function main() {
     }
     console.log(`[seed] states: ${ROSTER.length} upsert`);
 
-    // Classifica (upsert per raceId).
+    // Classification (upsert by raceId).
     const classification = buildClassification(baseTime);
     await db.collection('classifications').updateOne(
       { raceId: RACE_ID },
@@ -215,11 +215,11 @@ async function main() {
     // Race-control: green flag iniziale.
     const flag = buildRaceStartFlag(baseTime);
     await db.collection('race_control').insertOne(flag);
-    console.log('[seed] race_control: 1 evento (GREEN)');
+    console.log('[seed] race_control: 1 event (GREEN)');
 
     console.log('[seed] OK - dataset pronto per i test della Fase 5.');
   } catch (err) {
-    console.error('[seed] errore:', err.message);
+    console.error('[seed] error:', err.message);
     process.exitCode = 1;
   } finally {
     await client.close();

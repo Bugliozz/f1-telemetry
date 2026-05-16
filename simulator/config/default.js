@@ -2,7 +2,7 @@
 //
 // I valori possono essere sovrascritti da variabili d'ambiente (vedi §9.1
 // dell'architettura). Qui si definiscono i default ragionevoli per una
-// gara di test di 5 giri a Monza con 10 auto.
+// 5-lap Monza test race with 10 cars.
 
 function intEnvInRange(name, fallback, min, max) {
   const value = parseInt(process.env[name], 10);
@@ -23,7 +23,7 @@ const config = Object.freeze({
   // --- Tick rate (fisica = publish) ---
   tickMs: intEnvInRange('TICK_MS', 250, 200, 500),  // 4 Hz default, clamp 2-5 Hz
 
-  // --- Gara ---
+  // --- Race ---
   totalLaps: parseInt(process.env.TOTAL_LAPS, 10) || 5,
   autoStart: process.env.AUTO_START === 'true',
   resetRaceOnStart: process.env.RESET_RACE_ON_START === 'true',
@@ -44,17 +44,17 @@ const config = Object.freeze({
   pitDurationMinS: 2.0,
   pitDurationMaxS: 3.5,
 
-  // --- Degrado gomme ---
+  // --- Tire degradation ---
   // wearFactor = 1 + lap * wearPerLap  →  a lap 15: 1.45
   wearPerLap: 0.03,
 
   // --- Pit lane ---
   pitEntryPos: 0.95,      // trackPos di ingresso pit-lane
-  pitBoxPos: 0.985,       // trackPos stimata del box nella pit-lane
+  pitBoxPos: 0.985,       // estimated pit box trackPos in the pit lane
   pitExitPos: 0.04,       // trackPos di uscita pit-lane (giro successivo)
-  pitLaneSpeedKmh: 80,    // velocita' pit-lane limit
+  pitLaneSpeedKmh: 80,    // pit-lane speed limit
   fuelAddedOnPit: 22,     // rabbocco massimo per pit — valore effettivo calcolato in car.js (fuelDopo - fuelPrima)
-  tireResetTempC: 90,     // temperatura gomme dopo pit-stop
+  tireResetTempC: 90,     // tire temperature after pit stop
 
   // --- Settori Monza ---
   sectors: [
@@ -66,22 +66,22 @@ const config = Object.freeze({
   // --- DRS zones (rettilinei lunghi settore 1 e 3, §5.1) ---
   drsZones: [
     { start: 0.000, end: 0.089 },   // rettilineo start/finish fino alla staccata Rettifilo
-    { start: 0.910, end: 1.000 },   // rettilineo arrivo
+    { start: 0.910, end: 1.000 },   // start/finish straight
   ],
 
   // --- Variabilita' e randomness ---
   // Jitter su RPM (±200 rpm random per tick)
   rpmJitterRange: 200,
-  // Jitter su velocita' target (±3 km/h per auto, fisso per sessione)
+  // Target speed jitter (±3 km/h per car, fixed per session)
   speedJitterKmh: 3,
-  // Jitter carburante iniziale per-auto (±4 kg) → range effettivo 18–26 kg
+  // Initial fuel jitter per car (±4 kg) -> effective range 18-26 kg
   initialFuelJitterKg: 4,
-  // Jitter temperatura gomme (asimmetria left/right, ±1.5 C)
+  // Tire temperature jitter (left/right asymmetry, ±1.5 C)
   tireTempJitterC: 1.5,
   // Jitter fuel rate (±5%)
   fuelRateJitterPct: 0.05,
   // Differenziale di prestazione per team (fattore moltiplicativo su target speed)
-  // Simula che alcune auto siano intrinsecamente piu' veloci
+  // Simulates that some cars are intrinsically faster
   teamPerformanceFactor: {
     redbull: 1.012,
     ferrari: 1.008,
@@ -108,9 +108,9 @@ const config = Object.freeze({
 
   // --- Race Control trigger (Fase 4) ---
   raceControlTriggers: {
-    retirementScProbability: 0.40,   // prob. SC per ogni ritiro
-    multiFaultVscThreshold: 2,       // N auto in FAULT → VSC
-    massIncidentThreshold: 3,        // N auto FAULT+RETIRED → RED FLAG
+    retirementScProbability: 0.40,   // SC probability for each retirement
+    multiFaultVscThreshold: 2,       // N cars in FAULT -> VSC
+    massIncidentThreshold: 3,        // N cars in FAULT+RETIRED -> RED FLAG
     scMinDurationS: 30,              // durata minima SC prima di clearance
     vscMinDurationS: 20,             // durata minima VSC prima di clearance
     yellowMinDurationS: 10,          // durata minima YELLOW prima di clearance
