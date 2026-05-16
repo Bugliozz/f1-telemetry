@@ -1,4 +1,4 @@
-// Test race modes a 5 giri senza MQTT reale.
+// Test 5-lap race modes without a real MQTT broker.
 //
 // Usa Orchestrator/Car/RaceController reali con clock e publisher finti.
 // Eseguire con: node scripts/test-race-modes.js

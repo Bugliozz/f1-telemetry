@@ -21,7 +21,7 @@ function test(name, fn) {
 
 console.log('fsm.initialFsm');
 
-test('stato iniziale e INIT, previousState null, reason null', () => {
+test('initial state is INIT, previousState null, reason null', () => {
   const f = initialFsm();
   assert.equal(f.state, 'INIT');
   assert.equal(f.previousState, null);
@@ -40,7 +40,7 @@ test('STATE_VALUES contiene tutti i 6 stati', () => {
   assert.deepEqual([...STATE_VALUES].sort(), ['FAULT', 'FINISHED', 'INIT', 'PIT', 'RETIRED', 'RUNNING']);
 });
 
-test('isValidState true per ogni stato dichiarato', () => {
+test('isValidState true for every declared state', () => {
   for (const s of STATE_VALUES) {
     assert.equal(isValidState(s), true, `${s} dovrebbe essere valido`);
   }
@@ -231,7 +231,7 @@ test('FINISHED non transita: nessun trigger lo smuove', () => {
   }
 });
 
-console.log('\nfsm.transition - transizioni non ammesse');
+console.log('\nfsm.transition - disallowed transitions');
 
 test('INIT -> PIT non ammesso (low-fuel)', () => {
   const out = transition(initialFsm(), 'low-fuel');
@@ -294,7 +294,7 @@ test('customReason vuoto o non-stringa: usa il trigger', () => {
   assert.equal(transition(fsm, 'race-start', 42).reason, 'race-start');
 });
 
-test('input null o malformato: trattato come stato iniziale', () => {
+test('null or malformed input: treated as initial state', () => {
   assert.equal(transition(null, 'race-start').state, 'RUNNING');
   assert.equal(transition(undefined, 'race-start').state, 'RUNNING');
   assert.equal(transition({ state: 'NOT_A_STATE' }, 'race-start').state, 'RUNNING');
@@ -351,9 +351,9 @@ test('canTransition false per stati non validi', () => {
   assert.equal(canTransition(null, 'race-start'), false);
 });
 
-console.log('\nfsm.transition - scenari di gara end-to-end');
+console.log('\nfsm.transition - end-to-end race scenarios');
 
-test('flusso normale: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
+test('normal flow: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'low-fuel'); assert.equal(f.state, 'PIT');
@@ -361,7 +361,7 @@ test('flusso normale: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
   f = transition(f, 'race-end'); assert.equal(f.state, 'FINISHED');
 });
 
-test('flusso ritiro: INIT -> RUNNING -> FAULT -> RETIRED', () => {
+test('retirement flow: INIT -> RUNNING -> FAULT -> RETIRED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'tire-overheat'); assert.equal(f.state, 'FAULT');
@@ -371,14 +371,14 @@ test('flusso ritiro: INIT -> RUNNING -> FAULT -> RETIRED', () => {
   assert.equal(f.changed, false);
 });
 
-test('flusso DNS: INIT -> RETIRED via manual-retire', () => {
+test('DNS flow: INIT -> RETIRED via manual-retire', () => {
   let f = initialFsm();
   f = transition(f, 'manual-retire');
   assert.equal(f.state, 'RETIRED');
   assert.equal(f.previousState, 'INIT');
 });
 
-test('flusso eccezione: any -> FAULT via internal-error, poi RETIRED', () => {
+test('exception flow: any -> FAULT via internal-error, then RETIRED', () => {
   let f = { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' };
   f = transition(f, 'internal-error'); assert.equal(f.state, 'FAULT');
   f = transition(f, 'unrecoverable'); assert.equal(f.state, 'RETIRED');
@@ -386,7 +386,7 @@ test('flusso eccezione: any -> FAULT via internal-error, poi RETIRED', () => {
 
 console.log('\nfsm - sanity matrice TRANSITIONS');
 
-test('ogni transizione referenzia stati validi', () => {
+test('each transition references valid states', () => {
   for (const t of TRANSITIONS) {
     assert.ok(t.from === '*' || isValidState(t.from), `from non valido: ${t.from}`);
     assert.ok(isValidState(t.to), `to non valido: ${t.to}`);
@@ -401,10 +401,10 @@ test('ogni trigger dichiarato in TRIGGERS appare nella matrice', () => {
   }
 });
 
-test('nessun stato terminale ha transizioni uscenti specifiche', () => {
+test('no terminal state has specific outgoing transitions', () => {
   for (const t of TRANSITIONS) {
     if (t.from !== '*') {
-      assert.ok(!TERMINAL_STATES.includes(t.from), `transizione uscente da stato terminale: ${t.from}`);
+      assert.ok(!TERMINAL_STATES.includes(t.from), `outgoing transition from terminal state: ${t.from}`);
     }
   }
 });

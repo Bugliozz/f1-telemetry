@@ -1,16 +1,16 @@
 // Verifica end-to-end Fase 4 — pit sensor-based (low-fuel).
 //
-// Esegue una gara completa da 5 giri con tutte le 10 auto in modalità
+// Runs a complete 5-lap race with all 10 cars in
 // headless (nessun broker MQTT reale) e controlla:
 //
 //   1. Ogni auto esegue almeno una sequenza pit-entry → pit-stop.
 //   2. Il trigger di ogni pit inizia con "low-fuel" (nessun scheduled-pit).
-//   3. I pit sono scaglionati su almeno 2 giri distinti (effetto jitter).
+//   3. Pit stops are staggered across at least 2 different laps (jitter effect).
 //   4. Ogni auto raggiunge FINISHED.
 //   5. Nessun riferimento a `scheduled-pit` in nessun messaggio.
 //   6. `fuelAdded` in ogni pit-stop è un valore reale (>0, <40 kg).
 //   7. pit-entry e pit-stop bilanciati (ogni entrata è servita).
-//   8. pit-exit ≤ pit-entry (alcune auto finiscono dallo stato PIT via race-end).
+//   8. pit-exit <= pit-entry (some cars finish from PIT state via race-end).
 
 'use strict';
 
@@ -64,7 +64,7 @@ function section(title) {
 }
 
 // ─────────────────────────────────────────────
-// Esecuzione gara sincrona con dt deterministico.
+// Synchronous race execution with deterministic dt.
 //
 // `_tick()` usa `clock.nowMs()` (wall time). In un tight loop sincrono,
 // rawDtMs ≈ 0 → clampato a tickMs*0.5 = 125ms.
@@ -102,7 +102,7 @@ function runRace(seed, totalLaps) {
   clearInterval(orch._intervalId);
   orch._intervalId = null;
 
-  // 5 giri × ~150 s/giro (con pit) / 0.25 s per tick + ampio margine
+  // 5 laps × ~150 s/lap (with pit) / 0.25 s per tick + large margin
   const maxTicks = Math.ceil((totalLaps * 150) / (raceConfig.tickMs / 1000)) + 500;
 
   for (let i = 0; i < maxTicks; i++) {
@@ -119,37 +119,37 @@ function runRace(seed, totalLaps) {
 // SUITE
 // ─────────────────────────────────────────────
 
-section('Fase 4 — E2E: gara 5 giri, seed deterministico (20260514)');
+section('Phase 4 - E2E: 5-lap race, deterministic seed (20260514)');
 
 const SEED = 20260514;
 const TOTAL_LAPS = 5;
 const { publisher, orch } = runRace(SEED, TOTAL_LAPS);
 
-// ── 1. La gara si è conclusa
-ok(orch._raceFinished, 'la gara si è conclusa (allTerminal → _raceFinished)');
+// -- 1. The race has finished
+ok(orch._raceFinished, 'the race has finished (allTerminal -> _raceFinished)');
 
-// ── 2. Tutte le auto in stato FINISHED
+// -- 2. All cars are in FINISHED state
 const carStates = orch.cars.map((c) => ({ carId: c.carId, state: c.fsm.state }));
 const allFinished = carStates.every((c) => c.state === 'FINISHED');
 ok(
   allFinished,
-  `tutte le 10 auto in stato FINISHED (${carStates.map((c) => `#${c.carId}:${c.state}`).join(', ')})`,
+  `all 10 cars are in FINISHED state (${carStates.map((c) => `#${c.carId}:${c.state}`).join(', ')})`,
 );
 
-// ── 3. Nessun riferimento a scheduled-pit in nessun evento
+// -- 3. No reference to scheduled-pit in any event
 const scheduledPitRefs = publisher.allEvents.filter((e) =>
   (e.type && e.type.includes('scheduled-pit')) ||
   (e.reason && String(e.reason).includes('scheduled-pit')) ||
   (e.details && JSON.stringify(e.details).includes('scheduled-pit'))
 );
-ok(scheduledPitRefs.length === 0, `nessun evento contiene "scheduled-pit" (trovati: ${scheduledPitRefs.length})`);
+ok(scheduledPitRefs.length === 0, `no event contains "scheduled-pit" (found: ${scheduledPitRefs.length})`);
 
 const scheduledPitInStates = publisher.allStates.filter((s) =>
   s.reason && String(s.reason).includes('scheduled-pit')
 );
 ok(scheduledPitInStates.length === 0, `nessuno state payload contiene "scheduled-pit" (trovati: ${scheduledPitInStates.length})`);
 
-// ── 4. Ogni auto ha fatto almeno un pit-entry e almeno un pit-stop
+// -- 4. Each car has at least one pit-entry and one pit-stop
 const pitEntryEvents = publisher.allEvents.filter((e) => e.type === 'pit-entry');
 const pitStopEvents = publisher.allEvents.filter((e) => e.type === 'pit-stop');
 const pitExitEvents = publisher.allEvents.filter((e) => e.type === 'pit-exit');
@@ -166,7 +166,7 @@ ok(
 );
 ok(
   pitExitEvents.length <= pitEntryEvents.length,
-  `pit-exit (${pitExitEvents.length}) ≤ pit-entry (${pitEntryEvents.length}) — alcune auto finiscono da PIT via race-end`,
+  `pit-exit (${pitExitEvents.length}) <= pit-entry (${pitEntryEvents.length}) - some cars finish from PIT via race-end`,
 );
 
 // ── 5. Il trigger di pit è sempre low-fuel (reason inizia con "low-fuel")
@@ -181,12 +181,12 @@ ok(
   `tutti gli ingressi in PIT hanno reason che inizia con "low-fuel" (trovati ${pitStateChanges.length})`,
 );
 
-// ── 6. I pit sono scaglionati su almeno 2 giri distinti
+// -- 6. Pit stops are staggered across at least 2 different laps
 const pitLapsByEvent = pitEntryEvents.map((e) => e.details && e.details.lap);
 const uniquePitLaps = [...new Set(pitLapsByEvent.filter((l) => l != null))];
 ok(
   uniquePitLaps.length >= 2,
-  `pit scaglionati su ≥2 giri distinti — giri di pit: [${[...uniquePitLaps].sort((a, b) => a - b).join(', ')}]`,
+  `pit stops staggered across >=2 different laps - pit laps: [${[...uniquePitLaps].sort((a, b) => a - b).join(', ')}]`,
 );
 
 // Distribuzione pit per giro (informativa)
@@ -197,7 +197,7 @@ for (const lap of pitLapsByEvent) {
 console.log(`\n  Distribuzione pit per giro: ${JSON.stringify(lapBuckets)}`);
 const secondStopCars = pitEntryEvents.length - 10;
 if (secondStopCars > 0) {
-  console.log(`  (${secondStopCars} auto con carburante iniziale basso fanno 2 soste — fisicamente corretto)`);
+  console.log(`  (${secondStopCars} cars with low initial fuel make 2 stops - physically correct)`);
 }
 
 // ── 7. Per ogni auto: il primo pit-exit è in un giro successivo al primo pit-entry
@@ -212,12 +212,12 @@ for (const car of orch.cars) {
       `car #${car.carId}: pit-exit (L${exitLap}) dopo pit-entry (L${entryLap})`,
     );
   } else if (firstEntry && !firstExit) {
-    // Auto che ha fatto la seconda sosta a fine gara e finito via race-end da PIT:
+    // Car that made the second stop at race end and finished from PIT via race-end:
     // non ha pit-exit ma ha sicuramente un pit-stop
     const firstStop = pitStopEvents.find((e) => e.carId === car.carId);
     ok(
       firstStop != null,
-      `car #${car.carId}: nessun pit-exit (finita via race-end da PIT) ma pit-stop presente`,
+      `car #${car.carId}: no pit-exit (finished via race-end from PIT) but pit-stop is present`,
     );
   } else {
     ok(false, `car #${car.carId}: pit-entry mancante`);

@@ -52,7 +52,7 @@ test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
 console.log('\nconditions.initialConditionsTracker');
 // ----------------------------------------------------------------------------
 
-test('tracker iniziale: contatori azzerati e timer null', () => {
+test('initial tracker: counters reset and timers null', () => {
   const t = initialConditionsTracker();
   assert.equal(t.tireOverheatTicks, 0);
   assert.equal(t.faultEnteredAtS, null);
@@ -86,18 +86,18 @@ test('input nulli o non numerici ritornano 0', () => {
 console.log('\nconditions.isLowFuel');
 // ----------------------------------------------------------------------------
 
-test('fuel < soglia (default 8 kg) -> true', () => {
+test('fuel < threshold (default 8 kg) -> true', () => {
   assert.equal(isLowFuel(7.99), true);
   assert.equal(isLowFuel(0), true);
 });
 
-test('fuel >= soglia -> false (estremo strettamente <)', () => {
+test('fuel >= threshold -> false (strictly lower edge)', () => {
   assert.equal(isLowFuel(8), false);
   assert.equal(isLowFuel(8.01), false);
   assert.equal(isLowFuel(105), false);
 });
 
-test('soglia custom rispettata', () => {
+test('custom threshold respected', () => {
   assert.equal(isLowFuel(9, 10), true);
   assert.equal(isLowFuel(10, 10), false);
 });
@@ -113,12 +113,12 @@ test('input non numerico -> false', () => {
 console.log('\nconditions.tireOverheatNextTicks / isTireOverheatLatched');
 // ----------------------------------------------------------------------------
 
-test('temperatura > 180 incrementa il contatore', () => {
+test('temperature > 180 increments the counter', () => {
   assert.equal(tireOverheatNextTicks({ fl: 181, fr: 100, rl: 100, rr: 100 }, 0), 1);
   assert.equal(tireOverheatNextTicks({ fl: 181, fr: 100, rl: 100, rr: 100 }, 2), 3);
 });
 
-test('temperatura <= 180 azzera il contatore (no degradazione)', () => {
+test('temperature <= 180 resets the counter (no degradation)', () => {
   assert.equal(tireOverheatNextTicks({ fl: 180, fr: 180, rl: 180, rr: 180 }, 5), 0);
   assert.equal(tireOverheatNextTicks({ fl: 100, fr: 100, rl: 100, rr: 100 }, 5), 0);
 });
@@ -130,7 +130,7 @@ test('isTireOverheatLatched true sse ticks >= 3', () => {
   assert.equal(isTireOverheatLatched(10), true);
 });
 
-test('soglia ticks custom', () => {
+test('custom tick threshold', () => {
   assert.equal(isTireOverheatLatched(2, 5), false);
   assert.equal(isTireOverheatLatched(5, 5), true);
 });
@@ -166,7 +166,7 @@ test('grace assente o zero -> fault abilitati subito', () => {
   assert.equal(isFaultGraceElapsed(10, undefined), true);
 });
 
-test('grace positiva protegge fino alla soglia', () => {
+test('positive grace protects until the threshold', () => {
   assert.equal(isFaultGraceElapsed(44.99, 45), false);
   assert.equal(isFaultGraceElapsed(45, 45), true);
   assert.equal(isFaultGraceElapsed(60, 45), true);
@@ -209,7 +209,7 @@ test('timer non inizializzato (null) -> false', () => {
   assert.equal(isFaultUnrecoverable(10, null), false);
 });
 
-test('soglia diagnose custom', () => {
+test('custom diagnose threshold', () => {
   assert.equal(isFaultUnrecoverable(0, 3, 3), true);
   assert.equal(isFaultUnrecoverable(0, 2.99, 3), false);
 });
@@ -301,7 +301,7 @@ test('RUNNING -> low-fuel quando fuel < 8 kg', () => {
   assert.match(out.reason, /^low-fuel:5\.00kg$/);
 });
 
-test('RUNNING -> tire-overheat solo dopo 3 tick consecutivi sopra soglia', () => {
+test('RUNNING -> tire-overheat only after 3 consecutive ticks above threshold', () => {
   const hot = { ...baseRunningObs, tireTemp: { fl: 185, fr: 100, rl: 100, rr: 100 } };
   let t = initialConditionsTracker();
 
@@ -322,7 +322,7 @@ test('RUNNING -> tire-overheat solo dopo 3 tick consecutivi sopra soglia', () =>
   assert.equal(out.tracker.tireOverheatTicks, 0);
 });
 
-test('RUNNING -> tire-overheat: contatore decade se la temperatura rientra', () => {
+test('RUNNING -> tire-overheat: counter decays when temperature returns below threshold', () => {
   const hot = { ...baseRunningObs, tireTemp: { fl: 185, fr: 100, rl: 100, rr: 100 } };
   const cool = { ...baseRunningObs, tireTemp: { fl: 100, fr: 100, rl: 100, rr: 100 } };
   let t = initialConditionsTracker();
@@ -508,7 +508,7 @@ test('FAULT: engine-failure non si valuta (sei gia in fault)', () => {
 console.log('\nconditions.evaluate - INIT / RETIRED / FINISHED');
 // ----------------------------------------------------------------------------
 
-test('INIT: nessuna condizione di stato (race-start e esterno)', () => {
+test('INIT: no state condition (race-start is external)', () => {
   const obs = { ...baseRunningObs, fuel: 1, lap: 100, totalLaps: 15, checkeredActive: true };
   const out = evaluate(STATES.INIT, obs, initialConditionsTracker());
   assert.equal(out.trigger, null);
@@ -538,7 +538,7 @@ test('input observation/tracker non mutati', () => {
   assert.deepEqual(t, tSnap);
 });
 
-test('tracker null/undefined: trattato come iniziale', () => {
+test('null/undefined tracker: treated as initial', () => {
   const out = evaluate(STATES.RUNNING, baseRunningObs, null);
   assert.equal(out.trigger, null);
   assert.equal(out.tracker.tireOverheatTicks, 0);
@@ -597,7 +597,7 @@ test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', (
   assert.equal(fsm.state, STATES.FINISHED);
 });
 
-test('flusso ritiro: INIT -> RUNNING -> FAULT (tire-overheat 3 tick) -> RETIRED', () => {
+test('retirement flow: INIT -> RUNNING -> FAULT (tire-overheat 3 ticks) -> RETIRED', () => {
   let fsm = initialFsm();
   let t = initialConditionsTracker();
 
@@ -615,7 +615,7 @@ test('flusso ritiro: INIT -> RUNNING -> FAULT (tire-overheat 3 tick) -> RETIRED'
   assert.equal(fsm.state, STATES.FAULT);
   t = onEnterFault(r3.tracker, 50);
 
-  // Ancora dentro la finestra diagnose
+  // Still inside the diagnose window
   let r = evaluate(fsm.state, { ...hot, nowS: 53 }, t);
   assert.equal(r.trigger, null);
   t = r.tracker;
