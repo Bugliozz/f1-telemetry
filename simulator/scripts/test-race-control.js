@@ -1,7 +1,7 @@
 // Test Race Control — flag-state, triggers, race-controller.
 //
 // Verifica:
-//   1. flag-state: transizioni ammesse/negate, stato terminale
+//   1. flag-state: allowed/denied transitions, terminal state
 //   2. triggers: tutti i trigger automatici
 //   3. race-controller: integrazione tick + forceFlag
 //

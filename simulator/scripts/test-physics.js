@@ -23,7 +23,7 @@ function test(name, fn) {
 
 console.log('physics.advance');
 
-test('velocita zero: nessun avanzamento', () => {
+test('zero speed: no progress', () => {
   const out = advance({ trackPos: 0.5, lap: 3 }, 0, 0.25);
   assert.equal(out.trackPos, 0.5);
   assert.equal(out.lap, 3);
@@ -55,9 +55,9 @@ test('wrap: trackPos>=1 riporta a [0,1) e incrementa lap', () => {
   assert.ok(out.trackPos >= 0 && out.trackPos < 0.02, `trackPos=${out.trackPos}`);
 });
 
-test('wrap multiplo: dt enorme completa piu giri (difensivo)', () => {
+test('multiple wrap: huge dt completes multiple laps (defensive)', () => {
   // 360 km/h = 100 m/s. dt = 600 s -> 60 km. Monza ≈ 5.793 km/giro.
-  // Giri completi attesi: 60000/5793 ≈ 10.36 -> 10 giri completi.
+  // Expected full laps: 60000/5793 ≈ 10.36 -> 10 full laps.
   const out = advance({ trackPos: 0, lap: 0 }, 360, 600);
   assert.equal(out.lapsCompleted, 10);
   assert.equal(out.lap, 10);
@@ -88,7 +88,7 @@ test('immutabilita: input non modificato', () => {
   assert.equal(input.lap, 2);
 });
 
-test('velocita negativa clampata a 0', () => {
+test('negative speed clamped to 0', () => {
   const out = advance({ trackPos: 0.3, lap: 1 }, -50, 0.25);
   assert.equal(out.trackPos, 0.3);
   assert.equal(out.lap, 1);
@@ -188,7 +188,7 @@ test('Curva Grande resta pieno gas senza frenata', () => {
   assert.equal(controls.throttle, 1);
 });
 
-test('Parabolica riapre il gas prima della fine curva', () => {
+test('Parabolica reopens throttle before the end of the corner', () => {
   const ramp = racingControls(0.855);
   const exit = racingControls(0.886);
   assert.equal(ramp.brake, 0);
@@ -240,7 +240,7 @@ test('target raggiunto in frenata se delta entro il limite del tick', () => {
   assert.equal(updateSpeed(200, 190, 0.25), 190);
 });
 
-test('velocita corrente negativa clamp-ata a 0 prima di accelerare', () => {
+test('negative current speed clamped to 0 before accelerating', () => {
   // Da -10 verso 50, dt = 1 s: parte da 0, max accel 28.8 -> 28.8.
   const v = updateSpeed(-10, 50, 1);
   assert.ok(Math.abs(v - 28.8) < 1e-9, `got=${v}`);
@@ -278,7 +278,7 @@ test('integrazione frenata 340 -> 95 km/h impiega ~1.6 s', () => {
   assert.ok(Math.abs(v - 95) < 1e-9, `v finale=${v}`);
 });
 
-test('giro completo a Monza in finestra di lap-time realistico', () => {
+test('complete Monza lap within realistic lap-time window', () => {
   // Integra speed (verso targetSpeed) e posizione tick per tick.
   // Il profilo include punti di hold sui rettilinei e braking zone corte,
   // quindi il pure target-following non anticipa la frenata su tutto il
@@ -300,11 +300,11 @@ test('giro completo a Monza in finestra di lap-time realistico', () => {
 
 console.log('\nphysics.gearForSpeed');
 
-test('velocita zero -> marcia minima (1)', () => {
+test('zero speed -> minimum gear (1)', () => {
   assert.equal(gearForSpeed(0), GEAR_MIN);
 });
 
-test('velocita molto bassa -> marcia 1 (clamp inferiore)', () => {
+test('very low speed -> gear 1 (lower clamp)', () => {
   assert.equal(gearForSpeed(20), GEAR_MIN);
   assert.equal(gearForSpeed(40), GEAR_MIN);
 });
@@ -314,14 +314,14 @@ test('arrotondamento a meta intervallo', () => {
   assert.equal(gearForSpeed(125), 3);
 });
 
-test('velocita tipiche di Monza', () => {
+test('typical Monza speeds', () => {
   assert.equal(gearForSpeed(95), 2);
   assert.equal(gearForSpeed(200), 4);
   assert.equal(gearForSpeed(290), 6);
   assert.equal(gearForSpeed(340), 7);
 });
 
-test('velocita oltre il top di scala -> clamp a GEAR_MAX', () => {
+test('speed above top scale -> clamp to GEAR_MAX', () => {
   assert.equal(gearForSpeed(400), GEAR_MAX);
   assert.equal(gearForSpeed(1000), GEAR_MAX);
 });
@@ -359,7 +359,7 @@ test('rpm clampato sotto RPM_MAX anche con jitter alto', () => {
   assert.equal(rpmForSpeed(400, 500), RPM_MAX);
 });
 
-test('rpm correlato monotonicamente alla velocita', () => {
+test('rpm monotonically correlated with speed', () => {
   const speeds = [0, 50, 100, 150, 200, 250, 300, 340];
   for (let i = 1; i < speeds.length; i += 1) {
     assert.ok(

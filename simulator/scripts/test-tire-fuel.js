@@ -61,7 +61,7 @@ test('immutabilita: input non modificato', () => {
   assert.equal(prev.rr, 100);
 });
 
-test('a velocita zero senza pedali: raffreddamento verso ambient', () => {
+test('zero speed without pedals: cooling toward ambient', () => {
   const prev = initialTireTemp(150);
   const out = updateTireTemp(prev, { speedKmh: 0, throttle: 0, brake: 0 }, 1);
   // dT = -K_COOL * (T - ambient) * dt = -0.1 * 125 * 1 = -12.5
@@ -70,7 +70,7 @@ test('a velocita zero senza pedali: raffreddamento verso ambient', () => {
   assert.ok(Math.abs(out.rr - expected) < 1e-9, `rr=${out.rr} expected=${expected}`);
 });
 
-test('alta velocita scalda: T cresce vs. tick precedente', () => {
+test('high speed heats tires: T increases vs. previous tick', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 300, throttle: 0.8, brake: 0 }, 0.25);
   // Heat rear = K_HEAT_SPEED + K_HEAT_THROTTLE * 0.8 = 12 + 2 = 14
@@ -128,7 +128,7 @@ test('wearFactor amplifica il riscaldamento', () => {
   assert.ok(worn.fl > baseline.fl, `worn.fl=${worn.fl} baseline.fl=${baseline.fl}`);
 });
 
-test('wearFactor=0 disattiva il termine di velocita (solo pedali e raffreddamento)', () => {
+test('wearFactor=0 disables the speed term (pedals and cooling only)', () => {
   const prev = initialTireTemp(120);
   const out = updateTireTemp(prev, {
     speedKmh: 300,
@@ -166,16 +166,16 @@ test('idle: speed 0 throttle 0 -> rate base', () => {
   assert.ok(Math.abs(fuelRateKgPerS(0, 0) - K_FUEL_BASE) < 1e-12);
 });
 
-test('throttle 0 a qualsiasi velocita: solo base', () => {
+test('throttle 0 at any speed: base consumption only', () => {
   assert.ok(Math.abs(fuelRateKgPerS(300, 0) - K_FUEL_BASE) < 1e-12);
 });
 
-test('rate massimo a velocita di riferimento e throttle pieno', () => {
+test('maximum rate at reference speed and full throttle', () => {
   const r = fuelRateKgPerS(SPEED_REF_KMH, 1);
   assert.ok(Math.abs(r - (K_FUEL_BASE + K_FUEL_LOAD)) < 1e-12);
 });
 
-test('monotonia: rate cresce con la velocita a throttle pieno', () => {
+test('monotonicity: rate increases with speed at full throttle', () => {
   const speeds = [50, 100, 150, 200, 250, 300];
   for (let i = 1; i < speeds.length; i += 1) {
     assert.ok(fuelRateKgPerS(speeds[i], 1) > fuelRateKgPerS(speeds[i - 1], 1));
@@ -232,7 +232,7 @@ test('giro a Monza ~110 s a regime medio: ~5 kg/giro', () => {
   assert.ok(consumed > 3 && consumed < 7, `consumo per giro: ${consumed}`);
 });
 
-test('3 giri sprint: fuel scende sotto soglia low-fuel (8 kg) senza azzerarsi', () => {
+test('3-lap sprint: fuel drops below low-fuel threshold (8 kg) without reaching zero', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   const lapTimeS = 110;
@@ -240,9 +240,9 @@ test('3 giri sprint: fuel scende sotto soglia low-fuel (8 kg) senza azzerarsi', 
   for (let i = 0; i < ticks; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
   }
-  // Con ~22 kg e ~5 kg/giro, dopo 3 giri restano ~6-7 kg: vivo ma sotto soglia pit
-  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel dopo 3 giri: ${fuel}`);
-  assert.ok(fuel < 8, `atteso fuel < 8 kg (soglia low-fuel) dopo 3 giri: ${fuel}`);
+  // With ~22 kg and ~5 kg/lap, after 3 laps ~6-7 kg remain: alive but below pit threshold
+  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel after 3 laps: ${fuel}`);
+  assert.ok(fuel < 8, `expected fuel < 8 kg (low-fuel threshold) after 3 laps: ${fuel}`);
 });
 
 test('rispetta i limiti dello schema telemetry [0, 110]', () => {
@@ -256,7 +256,7 @@ test('rispetta i limiti dello schema telemetry [0, 110]', () => {
 
 console.log('\ntire-fuel.consumeFuel — modello sprint');
 
-test('carburante ridotto + jitter: low-fuel raggiungibile entro 5 giri, pit scaglionati', () => {
+test('reduced fuel + jitter: low-fuel reachable within 5 laps, staggered pit stops', () => {
   const pitThreshold = 8;   // kg, coerente con config.fuelPitThresholdKg
   const jitterKg = 4;       // ±4 kg, coerente con config.initialFuelJitterKg
   const pitLaps = [];
@@ -281,16 +281,16 @@ test('carburante ridotto + jitter: low-fuel raggiungibile entro 5 giri, pit scag
     pitLaps.push(pitLap);
   }
 
-  // Tutte le auto raggiungono la soglia entro 5 giri
+  // All cars reach the threshold within 5 laps
   assert.ok(
     pitLaps.every((l) => l !== null),
-    `alcune auto non raggiungono la soglia entro 5 giri: ${pitLaps}`,
+    `some cars do not reach the threshold within 5 laps: ${pitLaps}`,
   );
-  // Effetto jitter: i pit si scaglionano su almeno 2 giri diversi
+  // Jitter effect: pit stops are staggered across at least 2 different laps
   const uniqueLaps = new Set(pitLaps);
   assert.ok(
     uniqueLaps.size >= 2,
-    `tutte le auto convergono allo stesso giro: giro ${[...uniqueLaps][0]}`,
+    `all cars converge on the same lap: lap ${[...uniqueLaps][0]}`,
   );
 });
 
