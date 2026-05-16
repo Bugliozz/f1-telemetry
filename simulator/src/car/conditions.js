@@ -12,7 +12,7 @@
 //   | RUNNING     | PIT      | fuel < FUEL_PIT_THRESHOLD_KG (default 8 kg)                   | low-fuel          |
 //   | PIT         | RUNNING  | timer pit elapsed (2.0-3.5 s sorteggiati)                     | pit-out           |
 //   | RUNNING     | FAULT    | max(tireTemp) > 180 C per 3 tick consecutivi                  | tire-overheat     |
-//   | RUNNING/PIT | FAULT    | random engine failure (probabilita' < 1e-4 per tick)          | engine-failure    |
+//   | RUNNING/PIT | FAULT    | random engine failure (probability < 1e-4 per tick)          | engine-failure    |
 //   | FAULT       | RETIRED  | timer diagnostico >= 5 s (in F3 ogni fault e' non riparabile) | unrecoverable     |
 //   | RUNNING/PIT | FINISHED | lap >= TOTAL_LAPS && flag CHECKERED ricevuta                  | race-end          |
 //
