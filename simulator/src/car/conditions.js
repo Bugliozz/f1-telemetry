@@ -1,11 +1,11 @@
-// Condizioni di transizione di stato della FSM auto.
+// Car FSM state transition conditions.
 //
 // Modulo puro, senza I/O e senza mutazione degli input. Coerente con
-// `fsm.js`, `physics.js`, `tire-fuel.js`: l'orchestrator passa lo stato
+// `fsm.js`, `physics.js`, `tire-fuel.js`: the orchestrator passes the state
 // corrente piu' un'osservazione del tick e riceve un eventuale trigger da
 // applicare alla FSM.
 //
-// Fonte: docs/simulator-architecture.md §7.1 (tabella delle transizioni).
+// Source: docs/simulator-architecture.md §7.1 (transition table).
 //
 //   | Da          | A        | Condizione                                                    | reason            |
 //   |-------------|----------|---------------------------------------------------------------|-------------------|
@@ -19,7 +19,7 @@
 // I trigger generati esternamente alla FSM (`race-start` da flag GREEN,
 // `manual-retire` da Race Control, `internal-error` da exception handler)
 // non sono valutati qui: vivono nell'orchestrator perche' dipendono da
-// sorgenti esterne all'osservazione di stato dell'auto.
+// external sources outside car state observation.
 //
 // API:
 //
@@ -42,14 +42,14 @@
 //
 //   onEnterPit(tracker, nowS, durationS)
 //   onEnterFault(tracker, nowS)
-//     da chiamare dall'orchestrator subito dopo la transizione FSM verso
+//     to be called by the orchestrator immediately after the FSM transition to
 //     PIT/FAULT, per inizializzare i timer del tracker.
 //
 //   samplePitDurationS(rng)
 //     ritorna una durata pit in [PIT_DURATION_MIN_S, PIT_DURATION_MAX_S]
 //     usando il PRNG passato (xorshift32 o Math.random).
 //
-// I predicati sono esposti singolarmente (`isLowFuel`, `isTireOverheatLatched`,
+// Predicates are exposed individually (`isLowFuel`, `isTireOverheatLatched`,
 // ...) per consentire test unitari mirati e per documentare in modo
 // dichiarativo le condizioni della tabella sopra.
 
@@ -263,7 +263,7 @@ function evaluate(fsmState, observation, tracker) {
     return noTrigger(nextTracker);
   }
 
-  // INIT, RETIRED, FINISHED: nessuna condizione di stato-osservato qui
+  // INIT, RETIRED, FINISHED: no observed-state condition here
   // (race-start, manual-retire, internal-error sono trigger esterni).
   return noTrigger(nextTracker);
 }

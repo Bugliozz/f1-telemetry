@@ -1,7 +1,7 @@
-// Classe Car — orchestratore dello stato interno di una singola auto.
+// Car class - orchestrates the internal state of a single car.
 //
 // Integra physics.js, tire-fuel.js, fsm.js e conditions.js in un unico
-// metodo `tick(dt, ctx)` che aggiorna lo stato e produce i messaggi
+// `tick(dt, ctx)` method that updates state and produces messages
 // pendenti (telemetry, state, events). Nessun I/O diretto: i messaggi
 // vengono ritornati all'Orchestrator che li passa al MqttPublisher.
 //
@@ -35,7 +35,7 @@ class Car {
     this.rng = typeof rng === 'function' ? rng : Math.random;
     this.config = config || {};
 
-    // Stato interno
+    // Internal state
     this.fsm = initialFsm();
     this.trackPos = 0;
     this.lap = 0;
@@ -49,7 +49,7 @@ class Car {
     this.currentSector = 1;
     this.simulatedTimeS = 0;
 
-    // Variabilita' per-auto (calcolata una volta, fissa per tutta la gara)
+    // Per-car variability (computed once, fixed for the whole race)
     const jitterKmh = this.config.speedJitterKmh || 3;
     this._speedOffset = (this.rng() - 0.5) * 2 * jitterKmh;
 
@@ -71,7 +71,7 @@ class Car {
 
     this.simulatedTimeS += dt;
 
-    // Auto in stato terminale: niente piu' telemetria (§7.2)
+    // Car in terminal state: no more telemetry (§7.2)
     if (isTerminal(this.fsm.state)) {
       return messages;
     }
@@ -82,7 +82,7 @@ class Car {
       return messages;
     }
 
-    // --- FAULT: decelera a 0, telemetria ridotta ---
+    // --- FAULT: decelerates to 0, reduced telemetry ---
     if (this.fsm.state === STATES.FAULT) {
       const prevSpeed = this.speed;
       this.speed = updateSpeed(this.speed, 0, dt);
@@ -104,7 +104,7 @@ class Car {
       return messages;
     }
 
-    // --- PIT: velocita' limitata, attende timer ---
+    // --- PIT: limited speed, waits for timer ---
     if (this.fsm.state === STATES.PIT) {
       const pitTarget = this.config.pitLaneSpeedKmh || 80;
       const pitStopElapsed = this._pitServiced && this.condTracker.pitEnteredAtS != null
@@ -125,7 +125,7 @@ class Car {
       this.trackPos = posResult.trackPos;
       this.lap = posResult.lap;
 
-      // Refuel e reset gomme solo quando viene raggiunta la box position.
+      // Refuel and tire reset only when the pit box position is reached.
       if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
         const fuelBefore = this.fuel;
         this.fuel = Math.min(INITIAL_FUEL_KG, this.fuel + (this.config.fuelAddedOnPit || 22));
@@ -157,7 +157,7 @@ class Car {
       return messages;
     }
 
-    // --- RUNNING: il cuore della simulazione ---
+    // --- RUNNING: the core of the simulation ---
     this._tickRunning(dt, ctx, raceId, timestamp, messages);
     return messages;
   }
@@ -184,7 +184,7 @@ class Car {
     }
 
     // Throttle e brake derivati dalla fisica, poi rifiniti con il profilo
-    // pedali di Monza in condizioni di gara verde.
+    // Monza pedal profile under green-flag race conditions.
     let { throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt);
     ({ throttle, brake } = this._applyRacingControls({ throttle, brake }, ctx, yellowLimited));
 
@@ -209,7 +209,7 @@ class Car {
     this.trackPos = posResult.trackPos;
     this.lap = posResult.lap;
 
-    // Degrado gomme con variabilita'
+    // Tire degradation with variability
     const wearPerLap = this.config.wearPerLap || 0.03;
     const wearFactor = 1 + this.lap * wearPerLap;
     const tireTempJitter = this.config.tireTempJitterC || 1.5;
@@ -230,14 +230,14 @@ class Car {
       rr: this.tireTemp.rr - lrBias * 0.2,
     };
 
-    // Consumo carburante con variabilita'
+    // Fuel consumption with variability
     const fuelJitter = 1 + (this.rng() - 0.5) * 2 * (this.config.fuelRateJitterPct || 0.05);
     this.fuel = consumeFuel(this.fuel, {
       speedKmh: this.speed * fuelJitter,
       throttle,
     }, dt);
 
-    // Valuta condizioni di transizione FSM
+    // Evaluate FSM transition conditions
     const evalResult = evaluate(this.fsm.state, this._buildObservation(ctx), this.condTracker);
     this.condTracker = evalResult.tracker;
     if (evalResult.trigger) {
@@ -359,7 +359,7 @@ class Car {
     }
 
     // Fuori dalle braking zone evitiamo piccole correzioni di freno prodotte
-    // dal jitter del target: in gara reale il pilota resta sul gas.
+    // from target jitter: in a real race the driver stays on throttle.
     if (baseBrake > 0.25) {
       return { throttle: 0, brake: baseBrake };
     }
@@ -443,7 +443,7 @@ class Car {
       }
     }
 
-    // Throttle/brake per telemetria
+    // Throttle/brake for telemetry
     const rawTarget = targetSpeed(this.trackPos);
     const diff = rawTarget * this._teamFactor - this.speed;
     let throttle, brake;
@@ -517,7 +517,7 @@ class Car {
       },
     });
 
-    // Post-transizione: inizializza timer
+    // Post-transition: initialize timer
     if (fsmResult.state === STATES.PIT) {
       const pitDuration = samplePitDurationS(this.rng,
         this.config.pitDurationMinS, this.config.pitDurationMaxS);
@@ -618,7 +618,7 @@ class Car {
     for (const s of sectors) {
       if (trackPos >= s.start && trackPos < s.end) return s.id;
     }
-    return 3; // Fallback: fine giro
+    return 3; // Fallback: end of lap
   }
 
   _onLapCompleted(posResult, raceId, timestamp, messages) {

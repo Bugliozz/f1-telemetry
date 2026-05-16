@@ -1,10 +1,10 @@
-// Modello termico delle gomme e consumo carburante.
+// Tire thermal model and fuel consumption.
 //
 // Funzioni pure, senza I/O e senza mutazione degli input. Coerenti con il
 // resto di `simulator/src/car/` (cfr. physics.js): l'orchestrator passa lo
-// stato corrente piu' gli input del tick e riceve un nuovo stato.
+// current state plus tick inputs and returns a new state.
 //
-// Modello gomme (`updateTireTemp`):
+// Tire model (`updateTireTemp`):
 //
 //   dT/dt = heating - cooling
 //   heating_axle = K_HEAT_SPEED * (speed/300)^2 * wearFactor
@@ -12,30 +12,30 @@
 //                + K_HEAT_THROTTLE * throttle  [solo asse posteriore]
 //   cooling_axle = K_COOL * (T - ambient)
 //
-// Le gomme partono a INITIAL_TIRE_TEMP_C (~95°C, gia' in temperatura dopo
+// Tires start at INITIAL_TIRE_TEMP_C (~95°C, already up to temperature after
 // il giro di formazione) e tendono asintoticamente a un valore di
 // equilibrio dipendente dalla guida. Convenzione angoli: front = (fl, fr)
 // e rear = (rl, rr); per la Fase 3 left e right sono trattati simmetrici
 // (il modello di carico in curva left/right e' rinviato a Fase 4 con
-// l'arrivo del lateralG da Race Control).
+// the arrival of lateralG from Race Control).
 //
 // `wearFactor` (default 1) e' un moltiplicatore del termine di riscaldamento
 // che l'orchestrator alza giro dopo giro per simulare il degrado progressivo
 // (es. wearFactor = 1 + lap * WEAR_PER_LAP). A parita' di input la gomma
 // si scalda di piu' man mano che il giro avanza, ma uno stint normale deve
-// restare nel range operativo: il tire-overheat FSM e' un guasto grave, non
-// un evento inevitabile dopo pochi giri.
+// stay within the operating range: the tire-overheat FSM condition is a severe fault, not
+// an inevitable event after a few laps.
 //
 // Modello fuel (`consumeFuel`):
 //
 //   dFuel/dt = -( K_FUEL_BASE + K_FUEL_LOAD * (speed/300)^2 * throttle )
 //
-// Il carburante decresce monotonamente, clampato a 0. Il termine `base`
+// Fuel decreases monotonically, clamped at 0. The `base` term
 // modella consumi accessori (pompa, pre-load), il termine `load` la potenza
-// erogata dal motore in funzione di velocita' e apertura acceleratore.
+// delivered by the engine as a function of speed and throttle opening.
 // Costanti scelte in modo che a regime medio (200 km/h, throttle 0.7) si
 // consumino ~5 kg/giro a Monza (~110 s/giro). Serbatoio sprint da ~22 kg
-// (±4 kg jitter per-auto) → soglia low-fuel (8 kg) toccata al giro 3.
+// (±4 kg per-car jitter) -> low-fuel threshold (8 kg) reached around lap 3.
 
 const INITIAL_TIRE_TEMP_C = 95;
 const INITIAL_FUEL_KG = 22;
