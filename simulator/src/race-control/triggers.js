@@ -1,6 +1,6 @@
 // Trigger automatici di Race Control — condizioni che innescano le flag.
 //
-// Modulo puro. Riceve lo snapshot delle auto e dello stato di gara e
+// Pure module. Receives the car snapshot and race state and
 // ritorna un eventuale cambio di flag da applicare. L'Orchestrator
 // invoca `evaluateTriggers()` a ogni tick *prima* di far avanzare le
 // auto, cosi' che le flag influenzino il comportamento nello stesso tick.
@@ -9,22 +9,22 @@
 //
 //   1. RETIREMENT_SC
 //      Un'auto si ritira (RETIRED) e il detrito/pericolo richiede Safety
-//      Car. Probabilita' configurabile (default 40% per ritiro).
+//      Car. Configurable probability (default 40% per retirement).
 //
 //   2. MULTI_FAULT_VSC
 //      Due o piu' auto in FAULT contemporaneamente → Virtual Safety Car
 //      automatica per pericolo diffuso.
 //
 //   3. RED_FLAG_MASS_INCIDENT
-//      3+ auto in RETIRED/FAULT nella stessa finestra temporale breve
+//      3+ cars in RETIRED/FAULT within the same short time window
 //      → Red Flag (incidente multiplo grave).
 //
 //   4. CHECKERED_FLAG
-//      Il leader completa totalLaps giri → Checkered Flag.
+//      The leader completes totalLaps laps -> Checkered Flag.
 //
 //   5. SC/VSC_CLEARANCE
 //      Dopo una durata minima sotto SC o VSC, se le condizioni si sono
-//      normalizzate (nessun auto in FAULT), la direzione gara riporta
+//      normalized (no car in FAULT), Race Control returns
 //      GREEN. Durata minima configurabile.
 //
 // Ogni trigger ritorna null (nessun cambio) oppure un oggetto
@@ -33,7 +33,7 @@
 // I trigger vengono valutati in ordine di priorita' (alta → bassa):
 //   CHECKERED > RED_FLAG > SC > VSC > CLEARANCE > GREEN
 //
-// Nessun trigger viene valutato se la flag attiva e' CHECKERED (terminale)
+// No trigger is evaluated if the active flag is CHECKERED (terminal)
 // o RED (richiede clearance manuale per restart).
 
 const { FLAGS, isTerminalFlag } = require('./flag-state');
@@ -42,7 +42,7 @@ const { STATES } = require('../car/fsm');
 // --- Configurazione default trigger ---
 
 const DEFAULT_TRIGGER_CONFIG = Object.freeze({
-  // Probabilita' che un ritiro causi SC (0-1)
+  // Probability that a retirement causes SC (0-1)
   retirementScProbability: 0.40,
   // Numero minimo di auto in FAULT per attivare VSC
   multiFaultVscThreshold: 2,
@@ -57,7 +57,7 @@ const DEFAULT_TRIGGER_CONFIG = Object.freeze({
 });
 
 /**
- * Stato del tracker per i trigger automatici.
+ * Tracker state for automatic triggers.
  * Tiene traccia di conteggi e timing per le decisioni.
  */
 function initialTriggerTracker() {
@@ -67,13 +67,13 @@ function initialTriggerTracker() {
     processedRetirements: [],
     // Contatore di auto in FAULT al tick precedente
     prevFaultCount: 0,
-    // Timestamp dell'ultimo evento di retirement processato
+    // Timestamp of the last processed retirement event
     lastRetirementCheckS: null,
   };
 }
 
 /**
- * Conta le auto in un dato stato.
+ * Counts cars in a given state.
  */
 function countCarsInState(cars, state) {
   let count = 0;
@@ -113,10 +113,10 @@ function findNewRetirements(cars, processedRetirements) {
  * Valuta tutti i trigger automatici e restituisce un eventuale
  * cambio di flag.
  *
- * @param {object} flagState     - stato flag corrente (da flag-state.js)
+ * @param {object} flagState     - current flag state (from flag-state.js)
  * @param {Car[]}  cars          - array di tutte le auto
  * @param {object} raceState     - { leaderLap, totalLaps, nowS, rng }
- * @param {object} tracker       - stato del tracker
+ * @param {object} tracker       - tracker state
  * @param {object} triggerConfig - configurazione (default: DEFAULT_TRIGGER_CONFIG)
  *
  * @returns {{ action: { flag, sector, reason }|null, tracker: object }}
@@ -127,7 +127,7 @@ function evaluateTriggers(flagState, cars, raceState, tracker, triggerConfig) {
   const nowS = raceState.nowS || 0;
   const rng = typeof raceState.rng === 'function' ? raceState.rng : Math.random;
 
-  // Flag terminale: nessuna valutazione
+  // Terminal flag: no evaluation
   if (isTerminalFlag(flagState.flag)) {
     return { action: null, tracker: t };
   }
@@ -171,10 +171,10 @@ function evaluateTriggers(flagState, cars, raceState, tracker, triggerConfig) {
     }
   }
 
-  // --- 3. SAFETY CAR — innescata da ritiro con detrito ---
+  // --- 3. SAFETY CAR - triggered by retirement with debris ---
   if (flagState.flag === FLAGS.GREEN || flagState.flag === FLAGS.YELLOW) {
     if (newRetirements.length > 0) {
-      // Ogni nuovo ritiro ha una probabilita' di causare SC
+      // Each new retirement has a probability of causing SC
       for (const carId of newRetirements) {
         if (rng() < cfg.retirementScProbability) {
           return {
@@ -204,7 +204,7 @@ function evaluateTriggers(flagState, cars, raceState, tracker, triggerConfig) {
     }
   }
 
-  // --- 5. YELLOW FLAG — singola auto in FAULT (solo se GREEN) ---
+  // --- 5. YELLOW FLAG - single car in FAULT (only if GREEN)
   if (flagState.flag === FLAGS.GREEN) {
     if (faultCount === 1) {
       // Trova il settore dell'auto in FAULT per yellow locale

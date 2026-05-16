@@ -92,8 +92,8 @@ const BRAKING_ZONES = Object.freeze([
   }),
 ]);
 
-// Lookup table del giro. I punti di braking start mantengono la velocita' di
-// arrivo, poi il target cala rapidamente fino all'apice. Tra una staccata e la
+// Lap lookup table. Braking-start points keep the entry speed,
+// then the target quickly drops to the apex. Between one braking zone and the
 // successiva il profilo resta in accelerazione o in hold, cosi' il freno non
 // viene generato sui rettilinei.
 const SPEED_PROFILE = Object.freeze([
@@ -130,7 +130,7 @@ const SPEED_PROFILE = Object.freeze([
   Object.freeze({ pos: 0.832, kmh: 250 }),
   Object.freeze({ pos: 0.840, kmh: 185 }), // Apice Parabolica
   Object.freeze({ pos: 0.860, kmh: 245 }),
-  Object.freeze({ pos: 0.880, kmh: 290 }), // Gas riaperto prima della fine
+  Object.freeze({ pos: 0.880, kmh: 290 }), // Throttle reopened before the end
   Object.freeze({ pos: 0.940, kmh: 340 }),
   Object.freeze({ pos: 1.000, kmh: 345 }), // = 0.000 (chiusura periodica)
 ]);
