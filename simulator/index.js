@@ -87,7 +87,7 @@ async function startSimulation(scenarioId, source) {
 
     orchestrator.start();
 
-    // Avvia il subscriber per flag esterne dopo il GREEN iniziale.
+    // Start the external flag subscriber after the initial GREEN flag.
     rcSubscriber = new RaceControlSubscriber({
       mqttClient: client,
       raceId: scenarioConfig.raceId,

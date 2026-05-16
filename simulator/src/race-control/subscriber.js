@@ -5,8 +5,8 @@
 // da una sorgente esterna (es. Node-RED, CLI), lo passa al RaceController
 // come trigger manuale.
 //
-// Questo permette di controllare la gara anche dall'esterno del
-// simulatore (modalita' "direzione gara manuale").
+// This allows the race to be controlled from outside the
+// simulator (manual race-control mode).
 //
 // Il subscriber gestisce anche la riconnessione: alla riconnessione
 // si ri-sottoscrive automaticamente.
@@ -16,7 +16,7 @@
 class RaceControlSubscriber {
   /**
    * @param {object} opts
-   * @param {object} opts.mqttClient   - client MQTT gia' connesso
+   * @param {object} opts.mqttClient   - already connected MQTT client
    * @param {number} opts.raceId
    * @param {object} opts.raceController - istanza di RaceController
    * @param {object} [opts.logger]
@@ -49,7 +49,7 @@ class RaceControlSubscriber {
     this._started = true;
     this._subscribe();
 
-    // Gestione messaggi in arrivo
+    // Incoming message handling
     this.client.on('message', (topic, message) => {
       if (topic !== this._topic) return;
       this._handleMessage(message);
@@ -67,7 +67,7 @@ class RaceControlSubscriber {
   _subscribe() {
     this.client.subscribe(this._topic, { qos: 1 }, (err) => {
       if (err) {
-        this.log.error('[RaceControlSubscriber] Errore subscribe:', err.message);
+        this.log.error('[RaceControlSubscriber] Subscribe error:', err.message);
         this._subscribed = false;
       } else {
         this._subscribed = true;
@@ -85,7 +85,7 @@ class RaceControlSubscriber {
       return;
     }
 
-    // Ignora messaggi che NON hanno la struttura attesa
+    // Ignore messages that do NOT have the expected structure
     if (!payload || typeof payload.flag !== 'string') {
       this.log.warn('[RaceControlSubscriber] Payload senza campo "flag"');
       return;
@@ -109,14 +109,14 @@ class RaceControlSubscriber {
     const result = this.raceController.forceFlag(payload.flag, {
       sector: payload.sector != null ? payload.sector : undefined,
       reason: payload.reason || `external-${payload.flag.toLowerCase()}`,
-      nowS: undefined, // verra' settato dal prossimo tick
+      nowS: undefined, // will be set by the next tick
       timestamp: payload.timestamp,
     });
 
     if (result.flagChanged) {
       this.log.info(`[RaceControlSubscriber] Flag applicata: ${payload.flag}`);
     } else {
-      this.log.debug(`[RaceControlSubscriber] Flag non applicabile dallo stato corrente`);
+      this.log.debug(`[RaceControlSubscriber] Flag not applicable from current state`);
     }
   }
 

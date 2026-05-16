@@ -212,7 +212,7 @@ async function main() {
     );
     console.log('[seed] classifications: 1 upsert');
 
-    // Race-control: green flag iniziale.
+    // Race-control: initial green flag.
     const flag = buildRaceStartFlag(baseTime);
     await db.collection('race_control').insertOne(flag);
     console.log('[seed] race_control: 1 event (GREEN)');

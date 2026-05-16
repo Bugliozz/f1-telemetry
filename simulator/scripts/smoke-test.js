@@ -74,7 +74,7 @@ async function testMongoDB() {
     const expected = ['telemetry', 'events', 'states', 'classifications', 'race_control'];
     for (const col of expected) {
       if (names.includes(col)) {
-        ok(`Collection '${col}' presente`);
+        ok(`Collection '${col}' present`);
       } else {
         fail(`Collection '${col}'`, new Error('non trovata'));
       }

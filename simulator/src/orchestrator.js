@@ -67,11 +67,11 @@ class Orchestrator {
   }
 
   start() {
-    this.log.info(`[Orchestrator] Avvio simulazione: ${this.cars.length} auto, ${this.totalLaps} giri, ${1000 / this.tickMs} Hz`);
+    this.log.info(`[Orchestrator] Starting simulation: ${this.cars.length} cars, ${this.totalLaps} laps, ${1000 / this.tickMs} Hz`);
     this._startTimeMs = this.clock.nowMs();
     this._lastTickMs = this._startTimeMs;
 
-    // Pubblica la flag iniziale GREEN (retained, cosi' i subscriber la
+    // Publish the initial GREEN flag (retained, so subscribers
     // ricevono immediatamente alla connessione)
     const greenPayload = {
       timestamp: this.clock.isoNow(),
@@ -84,7 +84,7 @@ class Orchestrator {
     this.publisher.publishFlag(greenPayload);
     this._totalPublished++;
 
-    // Race start: transizione INIT → RUNNING per tutte le auto
+    // Race start: INIT -> RUNNING transition for all cars
     const timestamp = this.clock.isoNow();
     for (const car of this.cars) {
       const startMessages = car.startRace(this.raceId, timestamp);
@@ -98,7 +98,7 @@ class Orchestrator {
       this._tick();
     }, this.tickMs);
 
-    this.log.info('[Orchestrator] Gara iniziata! 🏁');
+    this.log.info('[Orchestrator] Race started! 🏁');
   }
 
   stop() {
@@ -109,7 +109,7 @@ class Orchestrator {
 
     const elapsed = ((this.clock.nowMs() - this._startTimeMs) / 1000).toFixed(1);
     const flagHistory = this.raceController.history;
-    this.log.info(`[Orchestrator] Simulazione terminata dopo ${elapsed}s, ${this._tickCount} tick, ${this._totalPublished} messaggi pubblicati`);
+    this.log.info(`[Orchestrator] Simulation finished after ${elapsed}s, ${this._tickCount} ticks, ${this._totalPublished} published messages`);
     if (flagHistory.length > 0) {
       this.log.info(`[Orchestrator] Flag history (${flagHistory.length} cambi):`);
       for (const entry of flagHistory) {
@@ -135,7 +135,7 @@ class Orchestrator {
 
     this._applyScenarioFaults(timestamp);
 
-    // Controlla se il leader ha completato tutti i giri
+    // Check whether the leader has completed all laps
     this._updateLeaderLap();
 
     // --- RACE CONTROL: valuta trigger automatici PRIMA delle auto ---
@@ -189,7 +189,7 @@ class Orchestrator {
           allTerminal = false;
         }
       } catch (err) {
-        this.log.error(`[Orchestrator] Errore in Car ${car.carId}:`, err.message);
+        this.log.error(`[Orchestrator] Error in Car ${car.carId}:`, err.message);
         // FSM → FAULT con reason internal-error (§12.2)
         try {
           const { transition: fsmTransition, TRIGGERS } = require('./car/fsm');
@@ -203,10 +203,10 @@ class Orchestrator {
       this._logStatus();
     }
 
-    // Fine gara: tutte le auto in stato terminale
+    // Race end: all cars are in a terminal state
     if (allTerminal && this._raceStarted && !this._raceFinished) {
       this._raceFinished = true;
-      this.log.info('[Orchestrator] 🏆 Tutte le auto hanno terminato la gara!');
+      this.log.info('[Orchestrator] 🏆 All cars have finished the race!');
       this.stop();
     }
   }

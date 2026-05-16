@@ -34,7 +34,7 @@ const config = Object.freeze({
   // --- Logging ---
   logLevel: process.env.LOG_LEVEL || 'info',
 
-  // --- Soglie fisiche (condizioni di transizione, §7.1) ---
+  // --- Physical thresholds (transition conditions, §7.1) ---
   fuelPitThresholdKg: 8,
   tireOverheatThresholdC: 180,
   tireOverheatTicksRequired: 3,
