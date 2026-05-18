@@ -53,7 +53,7 @@ class Car {
     const jitterKmh = this.config.speedJitterKmh || 3;
     this._speedOffset = (this.rng() - 0.5) * 2 * jitterKmh;
 
-    const fuelJitterKg = this.config.initialFuelJitterKg || 4;
+    const fuelJitterKg = this.config.initialFuelJitterKg || 2;
     this.fuel = Math.max(0, INITIAL_FUEL_KG + (this.rng() - 0.5) * 2 * fuelJitterKg);
     this._teamFactor = (this.config.teamPerformanceFactor && this.config.teamPerformanceFactor[teamId]) || 1.0;
 
@@ -175,8 +175,9 @@ class Car {
     const nominalTarget = Math.max(0, adjustedTarget + instantJitter);
     const maxRaceSpeed = this._numberConfig('maxRaceSpeedKmh', 350);
     const cappedTarget = Math.min(nominalTarget, maxRaceSpeed);
+    const fuelAdjustedTarget = cappedTarget * this._fuelPerformanceMultiplier();
     const yellowLimited = this._isYellowActiveForCurrentSector(ctx);
-    const finalTarget = this._applySafetyCarTarget(cappedTarget, ctx, yellowLimited);
+    const finalTarget = this._applySafetyCarTarget(fuelAdjustedTarget, ctx, yellowLimited);
 
     const prevSpeed = this.speed;
     this.speed = updateSpeed(this.speed, finalTarget, dt);
@@ -238,6 +239,16 @@ class Car {
       throttle,
     }, dt);
 
+    if (this._isOutOfFuel()) {
+      this._applyTransition(TRIGGERS.MANUAL_RETIRE, 'out-of-fuel', raceId, timestamp, messages);
+      messages.telemetry = this._buildTelemetry(raceId, timestamp, {
+        throttle: 0,
+        brake: 1,
+        drsAllowed: false,
+      });
+      return;
+    }
+
     // Evaluate FSM transition conditions
     const evalResult = evaluate(this.fsm.state, this._buildObservation(ctx), this.condTracker);
     this.condTracker = evalResult.tracker;
@@ -254,6 +265,24 @@ class Car {
   }
 
   // --- Helpers ---
+
+  _fuelPerformanceMultiplier() {
+    const fuel = Number.isFinite(this.fuel) ? this.fuel : INITIAL_FUEL_KG;
+    const lowThreshold = Math.max(0, this._numberConfig('lowFuelWarningThresholdKg', 12));
+    const criticalThreshold = Math.max(0, this._numberConfig('criticalFuelThresholdKg', 3));
+    const lowMultiplier = Math.max(0, Math.min(1, this._numberConfig('lowFuelSpeedMultiplier', 0.97)));
+    const criticalMultiplier = Math.max(0, Math.min(1, this._numberConfig('criticalFuelSpeedMultiplier', 0.85)));
+
+    if (fuel <= criticalThreshold) return criticalMultiplier;
+    if (fuel <= lowThreshold) return lowMultiplier;
+    return 1;
+  }
+
+  _isOutOfFuel() {
+    const fuel = Number.isFinite(this.fuel) ? this.fuel : INITIAL_FUEL_KG;
+    const threshold = Math.max(0, this._numberConfig('outOfFuelThresholdKg', 0.1));
+    return fuel <= threshold;
+  }
 
   _applySafetyCarTarget(targetKmh, ctx, yellowLimited = false) {
     if (ctx && ctx.activeFlag === 'RED') {

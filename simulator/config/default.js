@@ -35,7 +35,11 @@ const config = Object.freeze({
   logLevel: process.env.LOG_LEVEL || 'info',
 
   // --- Physical thresholds (transition conditions, §7.1) ---
-  lowFuelWarningThresholdKg: 8,
+  lowFuelWarningThresholdKg: 12,
+  criticalFuelThresholdKg: 3,
+  outOfFuelThresholdKg: 0.1,
+  lowFuelSpeedMultiplier: 0.97,
+  criticalFuelSpeedMultiplier: 0.85,
   tireServiceLap: 2,
   tireOverheatThresholdC: 180,
   tireOverheatTicksRequired: 3,
@@ -75,8 +79,8 @@ const config = Object.freeze({
   rpmJitterRange: 200,
   // Target speed jitter (±3 km/h per car, fixed per session)
   speedJitterKmh: 3,
-  // Initial fuel jitter per car (±4 kg) -> effective range 18-26 kg
-  initialFuelJitterKg: 4,
+  // Initial fuel jitter per car (±2 kg) -> effective range 36-40 kg
+  initialFuelJitterKg: 2,
   // Tire temperature jitter (left/right asymmetry, ±1.5 C)
   tireTempJitterC: 1.5,
   // Jitter fuel rate (±5%)
