@@ -43,9 +43,9 @@ const { STATES } = require('../car/fsm');
 
 const DEFAULT_TRIGGER_CONFIG = Object.freeze({
   // Probability that a retirement causes SC (0-1)
-  retirementScProbability: 0.40,
+  retirementScProbability: 0,
   // Numero minimo di auto in FAULT per attivare VSC
-  multiFaultVscThreshold: 2,
+  multiFaultVscThreshold: 1,
   // Numero di auto RETIRED+FAULT per RED FLAG
   massIncidentThreshold: 3,
   // Durata minima SC in secondi prima di poter tornare a GREEN
@@ -190,21 +190,23 @@ function evaluateTriggers(flagState, cars, raceState, tracker, triggerConfig) {
     }
   }
 
-  // --- 4. VSC — auto multiple in FAULT ---
+  // --- 4. VSC — car stopped or faulty on track ---
   if (flagState.flag === FLAGS.GREEN || flagState.flag === FLAGS.YELLOW) {
     if (faultCount >= cfg.multiFaultVscThreshold) {
       return {
         action: {
           flag: FLAGS.VSC,
           sector: null,
-          reason: `multi-fault:${faultCount}-cars-in-fault`,
+          reason: faultCount === 1
+            ? 'fault-on-track'
+            : `multi-fault:${faultCount}-cars-in-fault`,
         },
         tracker: nextTracker,
       };
     }
   }
 
-  // --- 5. YELLOW FLAG - single car in FAULT (only if GREEN)
+  // --- 5. YELLOW FLAG - local caution fallback when VSC threshold is configured above 1
   if (flagState.flag === FLAGS.GREEN) {
     if (faultCount === 1) {
       // Trova il settore dell'auto in FAULT per yellow locale

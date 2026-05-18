@@ -109,8 +109,8 @@ const config = Object.freeze({
 
   // --- Race Control trigger (Fase 4) ---
   raceControlTriggers: {
-    retirementScProbability: 0.40,   // SC probability for each retirement
-    multiFaultVscThreshold: 2,       // N cars in FAULT -> VSC
+    retirementScProbability: 0,      // no automatic physical Safety Car in 5-lap simulation
+    multiFaultVscThreshold: 1,       // any car in FAULT on track -> VSC
     massIncidentThreshold: 3,        // N cars in FAULT+RETIRED -> RED FLAG
     scMinDurationS: 30,              // durata minima SC prima di clearance
     vscMinDurationS: 20,             // durata minima VSC prima di clearance
