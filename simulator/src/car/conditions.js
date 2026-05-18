@@ -9,7 +9,7 @@
 //
 //   | Da          | A        | Condizione                                                    | reason            |
 //   |-------------|----------|---------------------------------------------------------------|-------------------|
-//   | RUNNING     | PIT      | fuel < FUEL_PIT_THRESHOLD_KG (default 8 kg)                   | low-fuel          |
+//   | RUNNING     | PIT      | tire-service lap reached and pit-entry window                 | tire-service      |
 //   | PIT         | RUNNING  | timer pit elapsed (2.0-3.5 s sorteggiati)                     | pit-out           |
 //   | RUNNING     | FAULT    | max(tireTemp) > 180 C per 3 tick consecutivi                  | tire-overheat     |
 //   | RUNNING/PIT | FAULT    | random engine failure (probability < 1e-4 per tick)          | engine-failure    |
@@ -38,7 +38,7 @@
 //       3. tire-overheat  (catastrofico, latched a 3 tick)
 //       4. unrecoverable  (in FAULT, dopo timer diagnose)
 //       5. pit-out        (in PIT, dopo timer durata)
-//       6. low-fuel
+//       6. tire-service
 //
 //   onEnterPit(tracker, nowS, durationS)
 //   onEnterFault(tracker, nowS)
@@ -56,6 +56,7 @@
 const { STATES, TRIGGERS } = require('./fsm');
 
 const FUEL_PIT_THRESHOLD_KG = 8;
+const TIRE_SERVICE_LAP = 2;
 const TIRE_OVERHEAT_THRESHOLD_C = 180;
 const TIRE_OVERHEAT_TICKS_REQUIRED = 3;
 const ENGINE_FAILURE_PROB_PER_TICK = 1e-4;
@@ -139,6 +140,13 @@ function isPitEntryWindow(trackPos, pitEntryPos) {
   return trackPos >= entry;
 }
 
+function isTireServiceDue(lap, serviceLap, completed) {
+  if (completed === true) return false;
+  const currentLap = isFiniteNumber(lap) ? lap : 0;
+  const targetLap = isFiniteNumber(serviceLap) ? serviceLap : TIRE_SERVICE_LAP;
+  return currentLap >= targetLap;
+}
+
 function onEnterPit(tracker, nowS, durationS) {
   const t = tracker || initialConditionsTracker();
   return {
@@ -180,6 +188,8 @@ function readObservation(obs) {
     pitEntryPos: isFiniteNumber(o.pitEntryPos) ? o.pitEntryPos : 0.95,
     pitExitReached: o.pitExitReached !== false,
     fuelPitThreshold: isFiniteNumber(o.fuelPitThreshold) ? o.fuelPitThreshold : FUEL_PIT_THRESHOLD_KG,
+    tireServiceLap: isFiniteNumber(o.tireServiceLap) ? o.tireServiceLap : TIRE_SERVICE_LAP,
+    tireServiceCompleted: o.tireServiceCompleted === true,
     tireOverheatThreshold: isFiniteNumber(o.tireOverheatThreshold) ? o.tireOverheatThreshold : TIRE_OVERHEAT_THRESHOLD_C,
     tireOverheatTicksRequired: isFiniteNumber(o.tireOverheatTicksRequired) ? o.tireOverheatTicksRequired : TIRE_OVERHEAT_TICKS_REQUIRED,
     engineFailureProb: isFiniteNumber(o.engineFailureProb) ? o.engineFailureProb : ENGINE_FAILURE_PROB_PER_TICK,
@@ -224,11 +234,10 @@ function evaluate(fsmState, observation, tracker) {
       };
     }
     const canEnterPit = isPitEntryWindow(safe.trackPos, safe.pitEntryPos);
-    if (canEnterPit && isLowFuel(safe.fuel, safe.fuelPitThreshold)) {
-      const fuelStr = isFiniteNumber(safe.fuel) ? safe.fuel.toFixed(2) : '0.00';
+    if (canEnterPit && isTireServiceDue(safe.lap, safe.tireServiceLap, safe.tireServiceCompleted)) {
       return {
-        trigger: TRIGGERS.LOW_FUEL,
-        reason: `low-fuel:${fuelStr}kg`,
+        trigger: TRIGGERS.TIRE_SERVICE,
+        reason: `tire-service:lap-${safe.lap}`,
         tracker: nextTracker,
       };
     }
@@ -270,6 +279,7 @@ function evaluate(fsmState, observation, tracker) {
 
 module.exports = {
   FUEL_PIT_THRESHOLD_KG,
+  TIRE_SERVICE_LAP,
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
@@ -288,6 +298,7 @@ module.exports = {
   isFaultUnrecoverable,
   isRaceEnd,
   isPitEntryWindow,
+  isTireServiceDue,
   onEnterPit,
   onEnterFault,
   samplePitDurationS,

@@ -57,8 +57,9 @@ class Car {
     this.fuel = Math.max(0, INITIAL_FUEL_KG + (this.rng() - 0.5) * 2 * fuelJitterKg);
     this._teamFactor = (this.config.teamPerformanceFactor && this.config.teamPerformanceFactor[teamId]) || 1.0;
 
-    // Pit refuel/reset tracking
+    // Pit tire-service tracking
     this._pitServiced = false;
+    this._tireServiceCompleted = false;
     this._pitEntryLap = null;
   }
 
@@ -125,13 +126,11 @@ class Car {
       this.trackPos = posResult.trackPos;
       this.lap = posResult.lap;
 
-      // Refuel and tire reset only when the pit box position is reached.
+      // Tire service only: modern F1 pit stops do not refuel the car.
       if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
-        const fuelBefore = this.fuel;
-        this.fuel = Math.min(INITIAL_FUEL_KG, this.fuel + (this.config.fuelAddedOnPit || 22));
-        const fuelAdded = Math.round((this.fuel - fuelBefore) * 10) / 10;
         this.tireTemp = initialTireTemp(this.config.tireResetTempC || 90);
         this._pitServiced = true;
+        this._tireServiceCompleted = true;
         this.speed = 0;
         this.condTracker = onEnterPit(this.condTracker, this.simulatedTimeS, this.condTracker.pitDurationS || 2.4);
 
@@ -140,8 +139,10 @@ class Car {
           type: 'pit-stop',
           details: {
             duration: this.condTracker.pitDurationS || 2.4,
+            service: 'tire-change',
             tyreCompound: 'medium',
-            fuelAdded,
+            refuelling: false,
+            fuelAddedKg: 0,
           },
         });
       }
@@ -418,7 +419,8 @@ class Car {
       rng: this.rng,
       pitEntryPos: this.config.pitEntryPos,
       pitExitReached: ctx && ctx.activeFlag === 'RED' ? false : this._pitExitReached(),
-      fuelPitThreshold: this.config.fuelPitThresholdKg,
+      tireServiceLap: this.config.tireServiceLap,
+      tireServiceCompleted: this._tireServiceCompleted === true,
       tireOverheatThreshold: this.config.tireOverheatThresholdC,
       tireOverheatTicksRequired: this.config.tireOverheatTicksRequired,
       engineFailureProb: this.config.engineFailureProbPerTick,

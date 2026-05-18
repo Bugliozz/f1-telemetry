@@ -35,7 +35,8 @@ const config = Object.freeze({
   logLevel: process.env.LOG_LEVEL || 'info',
 
   // --- Physical thresholds (transition conditions, §7.1) ---
-  fuelPitThresholdKg: 8,
+  lowFuelWarningThresholdKg: 8,
+  tireServiceLap: 2,
   tireOverheatThresholdC: 180,
   tireOverheatTicksRequired: 3,
   engineFailureProbPerTick: 2e-6,
@@ -53,7 +54,7 @@ const config = Object.freeze({
   pitBoxPos: 0.985,       // estimated pit box trackPos in the pit lane
   pitExitPos: 0.04,       // trackPos di uscita pit-lane (giro successivo)
   pitLaneSpeedKmh: 80,    // pit-lane speed limit
-  fuelAddedOnPit: 22,     // rabbocco massimo per pit — valore effettivo calcolato in car.js (fuelDopo - fuelPrima)
+  refuellingAllowed: false, // modern F1 pit stops are tire-service only
   tireResetTempC: 90,     // tire temperature after pit stop
 
   // --- Settori Monza ---

@@ -15,7 +15,7 @@
 //
 // Triggers (transition causes, mapped 1:1 to the state payload `reason`):
 //
-//   race-start, low-fuel, pit-out, tire-overheat,
+//   race-start, tire-service, pit-out, tire-overheat,
 //   engine-failure, unrecoverable, race-end, manual-retire, internal-error
 //
 // La matrice e' definita in TRANSITIONS. La fase successiva del piano
@@ -73,6 +73,7 @@ const TERMINAL_STATES = Object.freeze([STATES.RETIRED, STATES.FINISHED]);
 const TRIGGERS = Object.freeze({
   RACE_START: 'race-start',
   LOW_FUEL: 'low-fuel',
+  TIRE_SERVICE: 'tire-service',
   PIT_OUT: 'pit-out',
   TIRE_OVERHEAT: 'tire-overheat',
   ENGINE_FAILURE: 'engine-failure',
@@ -86,7 +87,7 @@ const WILDCARD = '*';
 
 const TRANSITIONS = Object.freeze([
   { from: STATES.INIT,    to: STATES.RUNNING,  trigger: TRIGGERS.RACE_START },
-  { from: STATES.RUNNING, to: STATES.PIT,      trigger: TRIGGERS.LOW_FUEL },
+  { from: STATES.RUNNING, to: STATES.PIT,      trigger: TRIGGERS.TIRE_SERVICE },
   { from: STATES.PIT,     to: STATES.RUNNING,  trigger: TRIGGERS.PIT_OUT },
   { from: STATES.RUNNING, to: STATES.FAULT,    trigger: TRIGGERS.TIRE_OVERHEAT },
   { from: STATES.RUNNING, to: STATES.FAULT,    trigger: TRIGGERS.ENGINE_FAILURE },
