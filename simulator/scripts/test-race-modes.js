@@ -146,9 +146,9 @@ function testScenarioTuning() {
   assert.strictEqual(balanced.wearPerLap, 0.06);
   assert.strictEqual(balanced.tireOverheatThresholdC, 145);
   assert.strictEqual(balanced.tireOverheatTicksRequired, 8);
-  assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0.08);
-  assert.strictEqual(balanced.raceControlTriggers.multiFaultVscThreshold, 3);
-  assert.strictEqual(balanced.raceControlTriggers.massIncidentThreshold, 3);
+  assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0);
+  assert.strictEqual(balanced.raceControlTriggers.multiFaultVscThreshold, 1);
+  assert.strictEqual(balanced.raceControlTriggers.massIncidentThreshold, 99);
 
   const failureLikely = raceConfig(SCENARIOS.RED_FLAG, 1);
   assert.strictEqual(failureLikely.scenario.label, 'Failure likely');
@@ -157,8 +157,8 @@ function testScenarioTuning() {
   assert.strictEqual(failureLikely.wearPerLap, 0.08);
   assert.strictEqual(failureLikely.tireOverheatThresholdC, 142);
   assert.strictEqual(failureLikely.tireOverheatTicksRequired, 8);
-  assert.strictEqual(failureLikely.raceControlTriggers.retirementScProbability, 0.35);
-  assert.strictEqual(failureLikely.raceControlTriggers.multiFaultVscThreshold, 2);
+  assert.strictEqual(failureLikely.raceControlTriggers.retirementScProbability, 0);
+  assert.strictEqual(failureLikely.raceControlTriggers.multiFaultVscThreshold, 1);
   assert.strictEqual(failureLikely.raceControlTriggers.massIncidentThreshold, 3);
 
   assert.strictEqual(normalizeScenarioId('checkered'), SCENARIOS.BALANCED);
@@ -179,8 +179,8 @@ function testBalancedSeeds() {
   assert.strictEqual(eventful.leaderLap, TOTAL_LAPS);
   assert.ok(!hasFlag(eventful, 'RED'), 'balanced eventful must not red flag');
   assert.ok(
-    countEvents(eventful, 'fault') > 0 || hasFlag(eventful, 'YELLOW') || hasFlag(eventful, 'SC'),
-    'balanced eventful seed should produce a race-control event',
+    countEvents(eventful, 'fault') > 0 || hasFlag(eventful, 'VSC'),
+    'balanced eventful seed should produce a fault or VSC event',
   );
   console.log('  OK eventful seed stays below red flag');
 }

@@ -156,8 +156,15 @@ function testTriggers() {
       makeCar(2, STATES.RUNNING),
     ];
     const tracker = initialTriggerTracker();
-    // rng returns 0.1 < 0.4 threshold → SC triggered
-    const r = evaluateTriggers(green, cars, { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.1 }, tracker);
+    // The delivery default disables automatic SC from retirements; this test enables it explicitly.
+    // rng returns 0.1 < 0.4 threshold → SC triggered.
+    const r = evaluateTriggers(
+      green,
+      cars,
+      { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.1 },
+      tracker,
+      { retirementScProbability: 0.4 },
+    );
     assert.strictEqual(r.action.flag, 'SC');
     assert.ok(r.action.reason.includes('debris-retirement'));
     console.log('  ✅ SC trigger on retirement (probability hit)');
@@ -170,10 +177,16 @@ function testTriggers() {
       makeCar(2, STATES.RUNNING),
     ];
     const tracker = initialTriggerTracker();
-    // rng returns 0.9 > 0.4 threshold → SC NOT triggered
-    const r = evaluateTriggers(green, cars, { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.9 }, tracker);
-    // Might get YELLOW instead (single fault = 0 faults here, just retired)
-    // No FAULT cars, so should be null
+    // The delivery default disables automatic SC from retirements; this test enables the branch explicitly.
+    // rng returns 0.9 > 0.4 threshold → SC NOT triggered.
+    const r = evaluateTriggers(
+      green,
+      cars,
+      { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.9 },
+      tracker,
+      { retirementScProbability: 0.4 },
+    );
+    // No FAULT cars, so the retirement alone should not produce a flag.
     assert.strictEqual(r.action, null);
     console.log('  ✅ SC NOT triggered when probability miss');
   }
@@ -192,7 +205,7 @@ function testTriggers() {
     console.log('  ✅ VSC trigger on multiple faults');
   }
 
-  // YELLOW trigger — single fault
+  // VSC trigger — single on-track fault under the delivery threshold
   {
     const cars = [
       makeCar(1, STATES.FAULT, 2),
@@ -200,9 +213,30 @@ function testTriggers() {
     ];
     const tracker = initialTriggerTracker();
     const r = evaluateTriggers(green, cars, { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.99 }, tracker);
+    assert.strictEqual(r.action.flag, 'VSC');
+    assert.strictEqual(r.action.sector, null);
+    assert.strictEqual(r.action.reason, 'fault-on-track');
+    console.log('  ✅ VSC trigger on single on-track fault');
+  }
+
+  // YELLOW fallback — available only when VSC requires more than one FAULT car
+  {
+    const cars = [
+      makeCar(1, STATES.FAULT, 2),
+      makeCar(2, STATES.RUNNING),
+    ];
+    const tracker = initialTriggerTracker();
+    const r = evaluateTriggers(
+      green,
+      cars,
+      { leaderLap: 5, totalLaps: 15, nowS: 50, rng: () => 0.99 },
+      tracker,
+      { multiFaultVscThreshold: 2 },
+    );
     assert.strictEqual(r.action.flag, 'YELLOW');
     assert.strictEqual(r.action.sector, 2);
-    console.log('  ✅ YELLOW trigger on single fault (sector local)');
+    assert.strictEqual(r.action.reason, 'car-fault-on-track');
+    console.log('  ✅ YELLOW fallback when VSC threshold is above one fault');
   }
 
   // Clearance — GREEN after SC min duration and no faults
