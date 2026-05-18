@@ -77,16 +77,16 @@ test('INIT -> RUNNING via race-start', () => {
   assert.equal(out.changed, true);
 });
 
-test('RUNNING -> PIT via low-fuel', () => {
-  const out = transition({ state: 'RUNNING', previousState: 'INIT', reason: 'race-start' }, 'low-fuel');
+test('RUNNING -> PIT via tire-service', () => {
+  const out = transition({ state: 'RUNNING', previousState: 'INIT', reason: 'race-start' }, 'tire-service');
   assert.equal(out.state, 'PIT');
   assert.equal(out.previousState, 'RUNNING');
-  assert.equal(out.reason, 'low-fuel');
+  assert.equal(out.reason, 'tire-service');
   assert.equal(out.changed, true);
 });
 
 test('PIT -> RUNNING via pit-out', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'pit-out');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'pit-out');
   assert.equal(out.state, 'RUNNING');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.reason, 'pit-out');
@@ -108,7 +108,7 @@ test('RUNNING -> FAULT via engine-failure', () => {
 });
 
 test('PIT -> FAULT via engine-failure', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'engine-failure');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'engine-failure');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -129,8 +129,8 @@ test('RUNNING -> FINISHED via race-end', () => {
   assert.equal(out.changed, true);
 });
 
-test('PIT -> FINISHED via race-end (pit-stop nel giro finale)', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'race-end');
+test('PIT -> FINISHED via race-end during final-lap pit stop', () => {
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'race-end');
   assert.equal(out.state, 'FINISHED');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -153,7 +153,7 @@ test('manual-retire da RUNNING -> RETIRED', () => {
 });
 
 test('manual-retire da PIT -> RETIRED', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'manual-retire');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'manual-retire');
   assert.equal(out.state, 'RETIRED');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -175,7 +175,7 @@ test('internal-error da RUNNING -> FAULT', () => {
 });
 
 test('internal-error da PIT -> FAULT', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'internal-error');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'internal-error');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -233,7 +233,7 @@ test('FINISHED non transita: nessun trigger lo smuove', () => {
 
 console.log('\nfsm.transition - disallowed transitions');
 
-test('INIT -> PIT non ammesso (low-fuel)', () => {
+test('INIT -> PIT is not allowed through legacy low-fuel trigger', () => {
   const out = transition(initialFsm(), 'low-fuel');
   assert.equal(out.state, 'INIT');
   assert.equal(out.changed, false);
@@ -260,7 +260,7 @@ test('FAULT -> FINISHED non ammesso (race-end)', () => {
 });
 
 test('PIT -> FAULT solo via engine-failure, non tire-overheat', () => {
-  const fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' };
+  const fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' };
   const out = transition(fsm, 'tire-overheat');
   assert.equal(out.state, 'PIT');
   assert.equal(out.changed, false);
@@ -326,7 +326,8 @@ test('canTransition coerente con transition().changed', () => {
   const cases = [
     { state: 'INIT',    trigger: 'race-start',     expected: true },
     { state: 'INIT',    trigger: 'low-fuel',       expected: false },
-    { state: 'RUNNING', trigger: 'low-fuel',       expected: true },
+    { state: 'RUNNING', trigger: 'low-fuel',       expected: false },
+    { state: 'RUNNING', trigger: 'tire-service',   expected: true },
     { state: 'RUNNING', trigger: 'tire-overheat',  expected: true },
     { state: 'RUNNING', trigger: 'pit-out',        expected: false },
     { state: 'PIT',     trigger: 'pit-out',        expected: true },
@@ -356,7 +357,7 @@ console.log('\nfsm.transition - end-to-end race scenarios');
 test('normal flow: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
-  f = transition(f, 'low-fuel'); assert.equal(f.state, 'PIT');
+  f = transition(f, 'tire-service'); assert.equal(f.state, 'PIT');
   f = transition(f, 'pit-out'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'race-end'); assert.equal(f.state, 'FINISHED');
 });
@@ -394,10 +395,15 @@ test('each transition references valid states', () => {
   }
 });
 
-test('ogni trigger dichiarato in TRIGGERS appare nella matrice', () => {
+test('each operational trigger is used by at least one transition', () => {
   const usedTriggers = new Set(TRANSITIONS.map((t) => t.trigger));
-  for (const trig of Object.values(TRIGGERS)) {
-    assert.ok(usedTriggers.has(trig), `trigger ${trig} non usato in TRANSITIONS`);
+  const legacyNonOperationalTriggers = new Set([
+    TRIGGERS.LOW_FUEL,
+  ]);
+
+  for (const trigger of Object.values(TRIGGERS)) {
+    if (legacyNonOperationalTriggers.has(trigger)) continue;
+    assert.ok(usedTriggers.has(trigger), `trigger ${trigger} not used in TRANSITIONS`);
   }
 });
 

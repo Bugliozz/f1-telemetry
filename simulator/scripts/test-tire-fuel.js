@@ -232,7 +232,7 @@ test('giro a Monza ~110 s a regime medio: ~5 kg/giro', () => {
   assert.ok(consumed > 3 && consumed < 7, `consumo per giro: ${consumed}`);
 });
 
-test('3-lap sprint: fuel drops below low-fuel threshold (8 kg) without reaching zero', () => {
+test('3-lap sprint: fuel remains positive with the no-refuelling race load', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   const lapTimeS = 110;
@@ -240,9 +240,8 @@ test('3-lap sprint: fuel drops below low-fuel threshold (8 kg) without reaching 
   for (let i = 0; i < ticks; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
   }
-  // With ~22 kg and ~5 kg/lap, after 3 laps ~6-7 kg remain: alive but below pit threshold
   assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel after 3 laps: ${fuel}`);
-  assert.ok(fuel < 8, `expected fuel < 8 kg (low-fuel threshold) after 3 laps: ${fuel}`);
+  assert.ok(fuel > 8, `expected fuel to stay above the legacy low-fuel threshold after 3 laps: ${fuel}`);
 });
 
 test('rispetta i limiti dello schema telemetry [0, 110]', () => {
@@ -256,42 +255,31 @@ test('rispetta i limiti dello schema telemetry [0, 110]', () => {
 
 console.log('\ntire-fuel.consumeFuel — modello sprint');
 
-test('reduced fuel + jitter: low-fuel reachable within 5 laps, staggered pit stops', () => {
-  const pitThreshold = 8;   // kg, coerente con config.fuelPitThresholdKg
-  const jitterKg = 4;       // ±4 kg, coerente con config.initialFuelJitterKg
-  const pitLaps = [];
+test('initial fuel jitter still covers a 5-lap no-refuelling sprint', () => {
+  const jitterKg = 2; // current delivery calibration: 36-40 kg range
+  const finalFuels = [];
 
   for (let carIdx = 0; carIdx < 10; carIdx += 1) {
-    // Jitter deterministico linearmente distribuito tra -1 e +1 (18–26 kg)
     const jitterFraction = (carIdx / 9) * 2 - 1;
-    let fuel = INITIAL_FUEL_KG + jitterFraction * jitterKg;
+    const initialFuel = INITIAL_FUEL_KG + jitterFraction * jitterKg;
+    let fuel = initialFuel;
     const dt = 0.25;
     const lapTimeS = 110;
-    let pitLap = null;
 
     for (let lap = 1; lap <= 5; lap += 1) {
       const ticks = lapTimeS / dt;
       for (let i = 0; i < ticks; i += 1) {
         fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
-        if (pitLap === null && fuel < pitThreshold) {
-          pitLap = lap;
-        }
       }
     }
-    pitLaps.push(pitLap);
+
+    assert.ok(fuel > 0, `car ${carIdx} depleted fuel: ${fuel}`);
+    assert.ok(fuel < initialFuel, `car ${carIdx} did not consume fuel: ${fuel}`);
+    finalFuels.push(fuel);
   }
 
-  // All cars reach the threshold within 5 laps
-  assert.ok(
-    pitLaps.every((l) => l !== null),
-    `some cars do not reach the threshold within 5 laps: ${pitLaps}`,
-  );
-  // Jitter effect: pit stops are staggered across at least 2 different laps
-  const uniqueLaps = new Set(pitLaps);
-  assert.ok(
-    uniqueLaps.size >= 2,
-    `all cars converge on the same lap: lap ${[...uniqueLaps][0]}`,
-  );
+  const spread = Math.max(...finalFuels) - Math.min(...finalFuels);
+  assert.ok(spread > 3.5 && spread < 4.5, `unexpected final fuel spread: ${spread}`);
 });
 
 console.log(`\n${passed} test passati`);

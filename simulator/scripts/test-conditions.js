@@ -279,11 +279,15 @@ console.log('\nconditions.evaluate - RUNNING');
 const baseRunningObs = {
   fuel: 50,
   tireTemp: { fl: 110, fr: 110, rl: 110, rr: 110 },
-  lap: 5,
+  lap: 1,
+  trackPos: 0.50,
+  pitEntryPos: 0.95,
+  tireServiceLap: 2,
+  tireServiceCompleted: false,
   totalLaps: 15,
   checkeredActive: false,
   nowS: 100,
-  rng: () => 0.5, // niente engine-failure
+  rng: () => 0.5, // no engine failure
 };
 
 test('RUNNING senza condizioni: trigger null, contatore tire-overheat aggiornato', () => {
@@ -294,11 +298,25 @@ test('RUNNING senza condizioni: trigger null, contatore tire-overheat aggiornato
   assert.equal(out.tracker.tireOverheatTicks, 0);
 });
 
-test('RUNNING -> low-fuel quando fuel < 8 kg', () => {
+test('RUNNING keeps low fuel as telemetry, not as an operational PIT trigger', () => {
   const obs = { ...baseRunningObs, fuel: 5 };
   const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
-  assert.equal(out.trigger, TRIGGERS.LOW_FUEL);
-  assert.match(out.reason, /^low-fuel:5\.00kg$/);
+  assert.equal(isLowFuel(obs.fuel), true);
+  assert.equal(out.trigger, null);
+  assert.equal(out.reason, null);
+});
+
+test('RUNNING -> tire-service when service lap reaches pit-entry window', () => {
+  const obs = {
+    ...baseRunningObs,
+    fuel: 30,
+    lap: 2,
+    trackPos: 0.96,
+    tireServiceCompleted: false,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, TRIGGERS.TIRE_SERVICE);
+  assert.match(out.reason, /^tire-service:lap-2$/);
 });
 
 test('RUNNING -> tire-overheat only after 3 consecutive ticks above threshold', () => {
@@ -408,7 +426,7 @@ test('priorita: engine-failure batte tire-overheat', () => {
   assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
 });
 
-test('priorita: tire-overheat batte low-fuel', () => {
+test('priority: tire-overheat beats non-critical fuel telemetry', () => {
   const t = { ...initialConditionsTracker(), tireOverheatTicks: 2 };
   const obs = {
     ...baseRunningObs,
@@ -558,7 +576,7 @@ test('fsmState sconosciuto: no trigger', () => {
 console.log('\nconditions.integration - giro completo con FSM reale');
 // ----------------------------------------------------------------------------
 
-test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', () => {
+test('normal race flow: INIT -> RUNNING -> PIT through tire service -> RUNNING -> FINISHED', () => {
   let fsm = initialFsm();
   let t = initialConditionsTracker();
 
@@ -566,9 +584,15 @@ test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', (
   fsm = transition(fsm, TRIGGERS.RACE_START);
   assert.equal(fsm.state, STATES.RUNNING);
 
-  // RUNNING con fuel basso
-  let result = evaluate(fsm.state, { ...baseRunningObs, fuel: 4 }, t);
-  assert.equal(result.trigger, TRIGGERS.LOW_FUEL);
+  // Scheduled tire service at the pit-entry window.
+  let result = evaluate(fsm.state, {
+    ...baseRunningObs,
+    fuel: 30,
+    lap: 2,
+    trackPos: 0.96,
+    tireServiceCompleted: false,
+  }, t);
+  assert.equal(result.trigger, TRIGGERS.TIRE_SERVICE);
   fsm = transition(fsm, result.trigger, result.reason);
   assert.equal(fsm.state, STATES.PIT);
   t = onEnterPit(result.tracker, 200, 2.5);
