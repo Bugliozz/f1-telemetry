@@ -15,8 +15,8 @@ const PROFILES = Object.freeze({
       faultDiagnoseS: 5,
       wearPerLap: 0.08,
       raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.35,
-        multiFaultVscThreshold: 2,
+        retirementScProbability: 0,
+        multiFaultVscThreshold: 1,
         massIncidentThreshold: 3,
       }),
     }),
@@ -32,9 +32,9 @@ const PROFILES = Object.freeze({
       tireOverheatThresholdC: 145,
       tireOverheatTicksRequired: 8,
       raceControlTriggers: Object.freeze({
-        retirementScProbability: 0.08,
-        multiFaultVscThreshold: 3,
-        massIncidentThreshold: 3,
+        retirementScProbability: 0,
+        multiFaultVscThreshold: 1,
+        massIncidentThreshold: 99,
       }),
     }),
     scheduledFaults: Object.freeze([]),
