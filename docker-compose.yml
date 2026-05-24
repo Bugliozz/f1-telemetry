@@ -1,42 +1,46 @@
 services:
   mosquitto:
     image: eclipse-mosquitto:2.0.18
-    container_name: f1-mosquitto
+    container_name: f1-final-mosquitto
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - "1884:1883"
+      - "9002:9001"
     volumes:
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
+      - ./mosquitto/config:/mosquitto/config:ro
+      - f1-final-mosquitto-data:/mosquitto/data
+      - f1-final-mosquitto-log:/mosquitto/log
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_sub -h localhost -p 1883 -t '$$SYS/#' -C 1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - f1-final-network
 
   mongodb:
     image: mongo:7.0
-    container_name: f1-mongodb
+    container_name: f1-final-mongodb
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
-      - mongodb_data:/data/db
+      - f1-final-mongo-data:/data/db
       - ./mongo/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - f1-final-network
 
   nodered:
     build:
       context: ./node-red
-    container_name: f1-nodered
+    container_name: f1-final-nodered
     ports:
-      - "1880:1880"
-    environment:
-      - F1_TELEMETRY_CRYPTO_KEY_B64=${F1_TELEMETRY_CRYPTO_KEY_B64:-}
+      - "1881:1880"
+    env_file:
+      - .env.delivery
     volumes:
       - ./node-red/data:/data
     depends_on:
@@ -44,11 +48,13 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+    networks:
+      - f1-final-network
 
   simulator:
     build:
       context: ./simulator
-    container_name: f1-simulator
+    container_name: f1-final-simulator
     environment:
       - MQTT_BROKER=mqtt://mosquitto:1883
       - MONGO_URL=mongodb://mongodb:27017
@@ -63,6 +69,17 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+    networks:
+      - f1-final-network
+
+networks:
+  f1-final-network:
+    name: f1-final-network
 
 volumes:
-  mongodb_data:
+  f1-final-mongo-data:
+    name: f1-final-mongo-data
+  f1-final-mosquitto-data:
+    name: f1-final-mosquitto-data
+  f1-final-mosquitto-log:
+    name: f1-final-mosquitto-log

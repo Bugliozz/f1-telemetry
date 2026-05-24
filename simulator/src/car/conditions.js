@@ -1,61 +1,65 @@
-// Condizioni di transizione di stato della FSM auto.
+// Car FSM state transition conditions.
 //
-// Modulo puro, senza I/O e senza mutazione degli input. Coerente con
-// `fsm.js`, `physics.js`, `tire-fuel.js`: l'orchestrator passa lo stato
-// corrente piu' un'osservazione del tick e riceve un eventuale trigger da
-// applicare alla FSM.
+// Pure module, without I/O and without input mutations. Consistent with
+// `fsm.js`, `physics.js`, `tire-fuel.js`: the orchestrator passes the current
+// state plus a tick observation and receives an optional trigger to apply
+// to the FSM.
 //
-// Fonte: docs/simulator-architecture.md §7.1 (tabella delle transizioni).
+// Source: docs/simulator-architecture.md §7.1 (transition table).
 //
-//   | Da          | A        | Condizione                                                    | reason            |
+//   | From        | To       | Condition                                                     | reason            |
 //   |-------------|----------|---------------------------------------------------------------|-------------------|
-//   | RUNNING     | PIT      | fuel < FUEL_PIT_THRESHOLD_KG (default 8 kg)                   | low-fuel          |
-//   | PIT         | RUNNING  | timer pit elapsed (2.0-3.5 s sorteggiati)                     | pit-out           |
-//   | RUNNING     | FAULT    | max(tireTemp) > 180 C per 3 tick consecutivi                  | tire-overheat     |
-//   | RUNNING/PIT | FAULT    | random engine failure (probabilita' < 1e-4 per tick)          | engine-failure    |
-//   | FAULT       | RETIRED  | timer diagnostico >= 5 s (in F3 ogni fault e' non riparabile) | unrecoverable     |
-//   | RUNNING/PIT | FINISHED | lap >= TOTAL_LAPS && flag CHECKERED ricevuta                  | race-end          |
+//   | RUNNING     | PIT      | tire wear >= pit threshold and pit-entry window               | tire-service      |
+//   | PIT         | RUNNING  | pit timer elapsed (2.0-3.5 s sampled randomly)                | pit-out           |
+//   | RUNNING     | FAULT    | max(tireTemp) > 180 C for 3 consecutive ticks                 | tire-overheat     |
+//   | RUNNING/PIT | FAULT    | random engine failure (probability < 1e-4 per tick)           | engine-failure    |
+//   | FAULT       | RETIRED  | diagnostic timer >= 5 s (every fault is unrecoverable)        | unrecoverable     |
+//   | RUNNING/PIT | FINISHED | lap >= TOTAL_LAPS && CHECKERED flag received                  | race-end          |
 //
-// I trigger generati esternamente alla FSM (`race-start` da flag GREEN,
-// `manual-retire` da Race Control, `internal-error` da exception handler)
-// non sono valutati qui: vivono nell'orchestrator perche' dipendono da
-// sorgenti esterne all'osservazione di stato dell'auto.
+// Externally generated triggers (`race-start` from GREEN flag,
+// `manual-retire` from Race Control, `internal-error` from exception handler)
+// are not evaluated here: they live in the orchestrator because they depend on
+// external sources outside car state observation.
 //
 // API:
 //
 //   initialConditionsTracker()
-//     ritorna il tracker per-auto con i contatori sticky azzerati.
+//     returns the per-car tracker with all sticky counters reset.
 //
 //   evaluate(fsmState, observation, tracker)
-//     ritorna { trigger, reason, tracker }.
-//     - `trigger: null` se nessuna condizione e' soddisfatta.
-//     - `tracker` e' SEMPRE ritornato (anche quando trigger e' null), perche'
-//        il contatore tire-overheat va aggiornato a ogni tick.
-//     - L'input non viene mai mutato.
-//     L'ordine di valutazione (priorita' alta -> bassa) e':
-//       1. race-end       (terminazione regolare, dominante)
-//       2. engine-failure (catastrofico, casuale)
-//       3. tire-overheat  (catastrofico, latched a 3 tick)
-//       4. unrecoverable  (in FAULT, dopo timer diagnose)
-//       5. pit-out        (in PIT, dopo timer durata)
-//       6. low-fuel
+//     returns { trigger, reason, tracker }.
+//     - `trigger: null` if no condition is satisfied.
+//     - `tracker` is ALWAYS returned (even when trigger is null), because
+//        the tire-overheat counter must be updated every tick.
+//     - Input is never mutated.
+//     Evaluation order (highest → lowest priority):
+//       1. race-end       (normal termination, dominant)
+//       2. engine-failure (catastrophic, random)
+//       3. tire-overheat  (catastrophic, latched after 3 ticks)
+//       4. unrecoverable  (in FAULT, after diagnostic timer)
+//       5. pit-out        (in PIT, after stop duration timer)
+//       6. tire-service
 //
 //   onEnterPit(tracker, nowS, durationS)
 //   onEnterFault(tracker, nowS)
-//     da chiamare dall'orchestrator subito dopo la transizione FSM verso
-//     PIT/FAULT, per inizializzare i timer del tracker.
+//     to be called by the orchestrator immediately after the FSM transition to
+//     PIT/FAULT, to initialise the tracker timers.
 //
 //   samplePitDurationS(rng)
-//     ritorna una durata pit in [PIT_DURATION_MIN_S, PIT_DURATION_MAX_S]
-//     usando il PRNG passato (xorshift32 o Math.random).
+//     returns a pit duration in [PIT_DURATION_MIN_S, PIT_DURATION_MAX_S]
+//     using the PRNG passed in (xorshift32 or Math.random).
 //
-// I predicati sono esposti singolarmente (`isLowFuel`, `isTireOverheatLatched`,
-// ...) per consentire test unitari mirati e per documentare in modo
-// dichiarativo le condizioni della tabella sopra.
+// Predicates are exposed individually (`isLowFuel`, `isTireOverheatLatched`,
+// ...) for targeted unit tests and to document the transition table
+// conditions declaratively.
 
 const { STATES, TRIGGERS } = require('./fsm');
 
 const FUEL_PIT_THRESHOLD_KG = 8;
+// Normalised tire wear (0 fresh → 1 fully worn) at which a car pits. Below 1 so
+// cars stop *before* the compound is spent; combined with the per-compound wear
+// rate and per-car variance, softer tires reach it sooner and pits stagger.
+const TIRE_WEAR_PIT_THRESHOLD = 0.6;
 const TIRE_OVERHEAT_THRESHOLD_C = 180;
 const TIRE_OVERHEAT_TICKS_REQUIRED = 3;
 const ENGINE_FAILURE_PROB_PER_TICK = 1e-4;
@@ -139,6 +143,13 @@ function isPitEntryWindow(trackPos, pitEntryPos) {
   return trackPos >= entry;
 }
 
+function isTireServiceDue(tireWear, threshold, completed) {
+  if (completed === true) return false;
+  const wear = isFiniteNumber(tireWear) ? tireWear : 0;
+  const thr = isFiniteNumber(threshold) && threshold > 0 ? threshold : TIRE_WEAR_PIT_THRESHOLD;
+  return wear >= thr;
+}
+
 function onEnterPit(tracker, nowS, durationS) {
   const t = tracker || initialConditionsTracker();
   return {
@@ -180,6 +191,9 @@ function readObservation(obs) {
     pitEntryPos: isFiniteNumber(o.pitEntryPos) ? o.pitEntryPos : 0.95,
     pitExitReached: o.pitExitReached !== false,
     fuelPitThreshold: isFiniteNumber(o.fuelPitThreshold) ? o.fuelPitThreshold : FUEL_PIT_THRESHOLD_KG,
+    tireWear: isFiniteNumber(o.tireWear) ? o.tireWear : 0,
+    tireWearPitThreshold: isFiniteNumber(o.tireWearPitThreshold) ? o.tireWearPitThreshold : TIRE_WEAR_PIT_THRESHOLD,
+    tireServiceCompleted: o.tireServiceCompleted === true,
     tireOverheatThreshold: isFiniteNumber(o.tireOverheatThreshold) ? o.tireOverheatThreshold : TIRE_OVERHEAT_THRESHOLD_C,
     tireOverheatTicksRequired: isFiniteNumber(o.tireOverheatTicksRequired) ? o.tireOverheatTicksRequired : TIRE_OVERHEAT_TICKS_REQUIRED,
     engineFailureProb: isFiniteNumber(o.engineFailureProb) ? o.engineFailureProb : ENGINE_FAILURE_PROB_PER_TICK,
@@ -197,8 +211,8 @@ function evaluate(fsmState, observation, tracker) {
   const safe = readObservation(observation);
   const faultsAllowed = isFaultGraceElapsed(safe.nowS, safe.faultGraceS);
 
-  // Aggiorna il contatore tire-overheat solo quando i fault sono abilitati:
-  // la grace window protegge anche dal latch immediato appena scade.
+  // Update the tire-overheat counter only when faults are enabled:
+  // the grace window also protects against an immediate latch as soon as it expires.
   const nextTireOverheatTicks = faultsAllowed
     ? tireOverheatNextTicks(
       safe.tireTemp,
@@ -224,11 +238,10 @@ function evaluate(fsmState, observation, tracker) {
       };
     }
     const canEnterPit = isPitEntryWindow(safe.trackPos, safe.pitEntryPos);
-    if (canEnterPit && isLowFuel(safe.fuel, safe.fuelPitThreshold)) {
-      const fuelStr = isFiniteNumber(safe.fuel) ? safe.fuel.toFixed(2) : '0.00';
+    if (canEnterPit && isTireServiceDue(safe.tireWear, safe.tireWearPitThreshold, safe.tireServiceCompleted)) {
       return {
-        trigger: TRIGGERS.LOW_FUEL,
-        reason: `low-fuel:${fuelStr}kg`,
+        trigger: TRIGGERS.TIRE_SERVICE,
+        reason: `tire-service:wear-${Math.round(safe.tireWear * 100)}%`,
         tracker: nextTracker,
       };
     }
@@ -263,13 +276,14 @@ function evaluate(fsmState, observation, tracker) {
     return noTrigger(nextTracker);
   }
 
-  // INIT, RETIRED, FINISHED: nessuna condizione di stato-osservato qui
-  // (race-start, manual-retire, internal-error sono trigger esterni).
+  // INIT, RETIRED, FINISHED: no observed-state condition here
+  // (race-start, manual-retire, internal-error are external triggers).
   return noTrigger(nextTracker);
 }
 
 module.exports = {
   FUEL_PIT_THRESHOLD_KG,
+  TIRE_WEAR_PIT_THRESHOLD,
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
@@ -288,6 +302,7 @@ module.exports = {
   isFaultUnrecoverable,
   isRaceEnd,
   isPitEntryWindow,
+  isTireServiceDue,
   onEnterPit,
   onEnterFault,
   samplePitDurationS,

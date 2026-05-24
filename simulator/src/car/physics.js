@@ -2,16 +2,16 @@ const { LENGTH_M } = require('../track/monza');
 
 // Modello base di avanzamento lungo il circuito.
 //
-// `advance` (funzione pura): dato lo stato di posizione corrente
-// (`trackPos`, `lap`), la velocita' in km/h e l'intervallo `dt` in secondi,
+// `advance` (pure function): given the current position state
+// (`trackPos`, `lap`), the speed in km/h and the `dt` interval in seconds,
 // ritorna un nuovo oggetto con la posizione aggiornata. Quando `trackPos`
 // raggiunge o supera 1 viene riavvolto a [0,1) e `lap` viene incrementato
-// di quanti giri sono stati completati nel tick (di norma 0 o 1, ma il
-// codice e' difensivo per `dt` molto grandi o velocita' anomale).
+// how many laps were completed in the tick (normally 0 or 1, but the
+// code is defensive for very large `dt` values or anomalous speeds).
 //
-// `updateSpeed` (funzione pura): integra la velocita' verso una velocita'
+// `updateSpeed` (pure function): integrates speed toward a target speed
 // target (tipicamente quella restituita da `track/monza.targetSpeed`)
-// rispettando i limiti fisici di accelerazione e frenata. La velocita'
+// while respecting physical acceleration and braking limits. Speed
 // reale non puo' saltare al target, segue il profilo. Le costanti sono
 // quelle di §6.1 dell'architettura: +8 m/s^2 in accelerazione e una
 // frenata di picco da F1, sufficiente a superare 4.5 G nelle staccate piu'
@@ -19,12 +19,12 @@ const { LENGTH_M } = require('../track/monza');
 //
 // Convenzioni:
 // - `trackPos` resta sempre in [0,1) — l'estremo 1 e' escluso.
-// - `lap` e' un contatore monotono di giri completati. Il significato
+// - `lap` is a monotonic counter of completed laps. Its meaning
 //   semantico (es. "lap 1 = primo giro in corso") e' a carico della FSM
 //   nelle fasi successive: qui si modella solo la cinematica di base.
-// - Velocita' negative non sono ammesse dal data model (vedi schema
-//   telemetry); se passate per errore vengono clamp-ate a zero per
-//   sicurezza.
+// - Negative speeds are not allowed by the data model (see telemetry
+//   schema); if passed by mistake, they are clamped to zero for
+//   safety.
 
 const MAX_ACCEL_MS2 = 8;
 const MAX_BRAKE_MS2 = 44;
@@ -34,8 +34,8 @@ const MS2_TO_KMH_PER_S = 3.6;
 //   gear = clamp(round(speed/50), 1, 7)
 //   rpm  = 7000 + speed * 22, con jitter opzionale
 // Nota: il modello e' una semplificazione lineare. In F1 reale l'rpm cala
-// ai cambi marcia, qui no — sufficiente per dare alla telemetria un valore
-// coerente con la velocita' senza richiedere uno stato motore separato.
+// to gear shifts, not here - sufficient to give telemetry a value
+// consistent with speed without requiring a separate engine state.
 
 const GEAR_KMH_PER_GEAR = 50;
 const GEAR_MIN = 1;

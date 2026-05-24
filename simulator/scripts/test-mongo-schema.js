@@ -115,6 +115,7 @@ async function main() {
       raceId: RACE_ID,
       teamId: 'ferrari',
       carId: 16,
+      compound: 'medium',
       lap: 1,
       trackPos: 0.25,
       speed: 250,

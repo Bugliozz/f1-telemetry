@@ -1,4 +1,4 @@
-// Test race modes a 5 giri senza MQTT reale.
+// Test 5-lap race modes without a real MQTT broker.
 //
 // Usa Orchestrator/Car/RaceController reali con clock e publisher finti.
 // Eseguire con: node scripts/test-race-modes.js
@@ -143,22 +143,27 @@ function testScenarioTuning() {
   assert.strictEqual(balanced.totalLaps, TOTAL_LAPS);
   assert.strictEqual(balanced.engineFailureProbPerTick, 1e-5);
   assert.strictEqual(balanced.faultGraceS, 60);
-  assert.strictEqual(balanced.wearPerLap, 0.06);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(balanced, 'wearPerLap'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(balanced, 'tireServiceLap'), false);
+  assert.strictEqual(balanced.tireWearPitThreshold, baseConfig.tireWearPitThreshold);
+  assert.strictEqual(balanced.tireWearVariancePct, baseConfig.tireWearVariancePct);
+  assert.deepStrictEqual(Object.keys(balanced.tireCompounds).sort(), ['hard', 'medium', 'soft']);
   assert.strictEqual(balanced.tireOverheatThresholdC, 145);
   assert.strictEqual(balanced.tireOverheatTicksRequired, 8);
-  assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0.08);
-  assert.strictEqual(balanced.raceControlTriggers.multiFaultVscThreshold, 3);
-  assert.strictEqual(balanced.raceControlTriggers.massIncidentThreshold, 3);
+  assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0);
+  assert.strictEqual(balanced.raceControlTriggers.multiFaultVscThreshold, 1);
+  assert.strictEqual(balanced.raceControlTriggers.massIncidentThreshold, 99);
 
   const failureLikely = raceConfig(SCENARIOS.RED_FLAG, 1);
   assert.strictEqual(failureLikely.scenario.label, 'Failure likely');
   assert.strictEqual(failureLikely.engineFailureProbPerTick, 0.0012);
   assert.strictEqual(failureLikely.faultGraceS, 300);
-  assert.strictEqual(failureLikely.wearPerLap, 0.08);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(failureLikely, 'wearPerLap'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(failureLikely, 'tireServiceLap'), false);
   assert.strictEqual(failureLikely.tireOverheatThresholdC, 142);
   assert.strictEqual(failureLikely.tireOverheatTicksRequired, 8);
-  assert.strictEqual(failureLikely.raceControlTriggers.retirementScProbability, 0.35);
-  assert.strictEqual(failureLikely.raceControlTriggers.multiFaultVscThreshold, 2);
+  assert.strictEqual(failureLikely.raceControlTriggers.retirementScProbability, 0);
+  assert.strictEqual(failureLikely.raceControlTriggers.multiFaultVscThreshold, 1);
   assert.strictEqual(failureLikely.raceControlTriggers.massIncidentThreshold, 3);
 
   assert.strictEqual(normalizeScenarioId('checkered'), SCENARIOS.BALANCED);
@@ -174,13 +179,13 @@ function testBalancedSeeds() {
   assert.ok(!hasFlag(nominal, 'RED'), 'balanced nominal must not red flag');
   console.log('  OK nominal seed reaches checkered');
 
-  const eventful = runRace(SCENARIOS.BALANCED, 73);
+  const eventful = runRace(SCENARIOS.BALANCED, 4);
   assert.strictEqual(eventful.activeFlag, 'CHECKERED');
   assert.strictEqual(eventful.leaderLap, TOTAL_LAPS);
   assert.ok(!hasFlag(eventful, 'RED'), 'balanced eventful must not red flag');
   assert.ok(
-    countEvents(eventful, 'fault') > 0 || hasFlag(eventful, 'YELLOW') || hasFlag(eventful, 'SC'),
-    'balanced eventful seed should produce a race-control event',
+    countEvents(eventful, 'fault') > 0 || hasFlag(eventful, 'VSC'),
+    'balanced eventful seed should produce a fault or VSC event',
   );
   console.log('  OK eventful seed stays below red flag');
 }

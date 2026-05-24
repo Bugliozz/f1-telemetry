@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const {
   FUEL_PIT_THRESHOLD_KG,
+  TIRE_WEAR_PIT_THRESHOLD,
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
@@ -18,6 +19,8 @@ const {
   isPitTimeElapsed,
   isFaultUnrecoverable,
   isRaceEnd,
+  isPitEntryWindow,
+  isTireServiceDue,
   onEnterPit,
   onEnterFault,
   samplePitDurationS,
@@ -39,6 +42,7 @@ console.log('conditions.constants');
 
 test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
   assert.equal(FUEL_PIT_THRESHOLD_KG, 8);
+  assert.equal(TIRE_WEAR_PIT_THRESHOLD, 0.6);
   assert.equal(TIRE_OVERHEAT_THRESHOLD_C, 180);
   assert.equal(TIRE_OVERHEAT_TICKS_REQUIRED, 3);
   assert.equal(ENGINE_FAILURE_PROB_PER_TICK, 1e-4);
@@ -52,7 +56,7 @@ test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
 console.log('\nconditions.initialConditionsTracker');
 // ----------------------------------------------------------------------------
 
-test('tracker iniziale: contatori azzerati e timer null', () => {
+test('initial tracker: counters reset and timers null', () => {
   const t = initialConditionsTracker();
   assert.equal(t.tireOverheatTicks, 0);
   assert.equal(t.faultEnteredAtS, null);
@@ -86,18 +90,18 @@ test('input nulli o non numerici ritornano 0', () => {
 console.log('\nconditions.isLowFuel');
 // ----------------------------------------------------------------------------
 
-test('fuel < soglia (default 8 kg) -> true', () => {
+test('fuel < threshold (default 8 kg) -> true', () => {
   assert.equal(isLowFuel(7.99), true);
   assert.equal(isLowFuel(0), true);
 });
 
-test('fuel >= soglia -> false (estremo strettamente <)', () => {
+test('fuel >= threshold -> false (strictly lower edge)', () => {
   assert.equal(isLowFuel(8), false);
   assert.equal(isLowFuel(8.01), false);
   assert.equal(isLowFuel(105), false);
 });
 
-test('soglia custom rispettata', () => {
+test('custom threshold respected', () => {
   assert.equal(isLowFuel(9, 10), true);
   assert.equal(isLowFuel(10, 10), false);
 });
@@ -113,12 +117,12 @@ test('input non numerico -> false', () => {
 console.log('\nconditions.tireOverheatNextTicks / isTireOverheatLatched');
 // ----------------------------------------------------------------------------
 
-test('temperatura > 180 incrementa il contatore', () => {
+test('temperature > 180 increments the counter', () => {
   assert.equal(tireOverheatNextTicks({ fl: 181, fr: 100, rl: 100, rr: 100 }, 0), 1);
   assert.equal(tireOverheatNextTicks({ fl: 181, fr: 100, rl: 100, rr: 100 }, 2), 3);
 });
 
-test('temperatura <= 180 azzera il contatore (no degradazione)', () => {
+test('temperature <= 180 resets the counter (no degradation)', () => {
   assert.equal(tireOverheatNextTicks({ fl: 180, fr: 180, rl: 180, rr: 180 }, 5), 0);
   assert.equal(tireOverheatNextTicks({ fl: 100, fr: 100, rl: 100, rr: 100 }, 5), 0);
 });
@@ -130,7 +134,7 @@ test('isTireOverheatLatched true sse ticks >= 3', () => {
   assert.equal(isTireOverheatLatched(10), true);
 });
 
-test('soglia ticks custom', () => {
+test('custom tick threshold', () => {
   assert.equal(isTireOverheatLatched(2, 5), false);
   assert.equal(isTireOverheatLatched(5, 5), true);
 });
@@ -166,7 +170,7 @@ test('grace assente o zero -> fault abilitati subito', () => {
   assert.equal(isFaultGraceElapsed(10, undefined), true);
 });
 
-test('grace positiva protegge fino alla soglia', () => {
+test('positive grace protects until the threshold', () => {
   assert.equal(isFaultGraceElapsed(44.99, 45), false);
   assert.equal(isFaultGraceElapsed(45, 45), true);
   assert.equal(isFaultGraceElapsed(60, 45), true);
@@ -209,7 +213,7 @@ test('timer non inizializzato (null) -> false', () => {
   assert.equal(isFaultUnrecoverable(10, null), false);
 });
 
-test('soglia diagnose custom', () => {
+test('custom diagnose threshold', () => {
   assert.equal(isFaultUnrecoverable(0, 3, 3), true);
   assert.equal(isFaultUnrecoverable(0, 2.99, 3), false);
 });
@@ -230,6 +234,26 @@ test('lap >= totalLaps senza CHECKERED -> false', () => {
 
 test('lap < totalLaps anche con CHECKERED -> false', () => {
   assert.equal(isRaceEnd(14, 15, true), false);
+});
+
+// ----------------------------------------------------------------------------
+console.log('\nconditions.isPitEntryWindow / isTireServiceDue');
+// ----------------------------------------------------------------------------
+
+test('pit entry window gates tire service by track position', () => {
+  assert.equal(isPitEntryWindow(0.94, 0.95), false);
+  assert.equal(isPitEntryWindow(0.95, 0.95), true);
+  assert.equal(isPitEntryWindow(0.99, 0.95), true);
+});
+
+test('tire service due uses normalized wear threshold', () => {
+  assert.equal(isTireServiceDue(0.59, 0.6, false), false);
+  assert.equal(isTireServiceDue(0.6, 0.6, false), true);
+  assert.equal(isTireServiceDue(0.8, 0.6, false), true);
+});
+
+test('completed tire service blocks a second tire-service trigger', () => {
+  assert.equal(isTireServiceDue(1, 0.6, true), false);
 });
 
 // ----------------------------------------------------------------------------
@@ -279,11 +303,15 @@ console.log('\nconditions.evaluate - RUNNING');
 const baseRunningObs = {
   fuel: 50,
   tireTemp: { fl: 110, fr: 110, rl: 110, rr: 110 },
-  lap: 5,
+  lap: 1,
+  trackPos: 0.50,
+  pitEntryPos: 0.95,
+  tireWear: 0,
+  tireServiceCompleted: false,
   totalLaps: 15,
   checkeredActive: false,
   nowS: 100,
-  rng: () => 0.5, // niente engine-failure
+  rng: () => 0.5, // no engine failure
 };
 
 test('RUNNING senza condizioni: trigger null, contatore tire-overheat aggiornato', () => {
@@ -294,14 +322,50 @@ test('RUNNING senza condizioni: trigger null, contatore tire-overheat aggiornato
   assert.equal(out.tracker.tireOverheatTicks, 0);
 });
 
-test('RUNNING -> low-fuel quando fuel < 8 kg', () => {
+test('RUNNING keeps low fuel as telemetry, not as an operational PIT trigger', () => {
   const obs = { ...baseRunningObs, fuel: 5 };
   const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
-  assert.equal(out.trigger, TRIGGERS.LOW_FUEL);
-  assert.match(out.reason, /^low-fuel:5\.00kg$/);
+  assert.equal(isLowFuel(obs.fuel), true);
+  assert.equal(out.trigger, null);
+  assert.equal(out.reason, null);
 });
 
-test('RUNNING -> tire-overheat solo dopo 3 tick consecutivi sopra soglia', () => {
+test('RUNNING -> tire-service when wear reaches threshold in pit-entry window', () => {
+  const obs = {
+    ...baseRunningObs,
+    fuel: 30,
+    tireWear: 0.7,
+    trackPos: 0.96,
+    tireServiceCompleted: false,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, TRIGGERS.TIRE_SERVICE);
+  assert.match(out.reason, /^tire-service:wear-70%$/);
+});
+
+test('RUNNING waits for pit-entry window when wear reaches threshold', () => {
+  const obs = {
+    ...baseRunningObs,
+    tireWear: 0.9,
+    trackPos: 0.50,
+    tireServiceCompleted: false,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, null);
+});
+
+test('RUNNING does not request tire service twice', () => {
+  const obs = {
+    ...baseRunningObs,
+    tireWear: 0.9,
+    trackPos: 0.96,
+    tireServiceCompleted: true,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, null);
+});
+
+test('RUNNING -> tire-overheat only after 3 consecutive ticks above threshold', () => {
   const hot = { ...baseRunningObs, tireTemp: { fl: 185, fr: 100, rl: 100, rr: 100 } };
   let t = initialConditionsTracker();
 
@@ -322,7 +386,7 @@ test('RUNNING -> tire-overheat solo dopo 3 tick consecutivi sopra soglia', () =>
   assert.equal(out.tracker.tireOverheatTicks, 0);
 });
 
-test('RUNNING -> tire-overheat: contatore decade se la temperatura rientra', () => {
+test('RUNNING -> tire-overheat: counter decays when temperature returns below threshold', () => {
   const hot = { ...baseRunningObs, tireTemp: { fl: 185, fr: 100, rl: 100, rr: 100 } };
   const cool = { ...baseRunningObs, tireTemp: { fl: 100, fr: 100, rl: 100, rr: 100 } };
   let t = initialConditionsTracker();
@@ -383,7 +447,7 @@ console.log('\nconditions.evaluate - priorita RUNNING');
 // ----------------------------------------------------------------------------
 
 test('priorita: race-end batte engine-failure', () => {
-  // rng=0 farebbe engine-failure se valutato; race-end ha priorita'
+  // rng=0 would trigger engine-failure if evaluated; race-end takes priority
   const obs = {
     ...baseRunningObs,
     lap: 15,
@@ -408,7 +472,7 @@ test('priorita: engine-failure batte tire-overheat', () => {
   assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
 });
 
-test('priorita: tire-overheat batte low-fuel', () => {
+test('priority: tire-overheat beats non-critical fuel telemetry', () => {
   const t = { ...initialConditionsTracker(), tireOverheatTicks: 2 };
   const obs = {
     ...baseRunningObs,
@@ -423,7 +487,7 @@ test('priorita: tire-overheat batte low-fuel', () => {
 console.log('\nconditions.evaluate - PIT');
 // ----------------------------------------------------------------------------
 
-test('PIT senza timer pronto: nessun trigger', () => {
+test('PIT without elapsed timer: no trigger', () => {
   let t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = { ...baseRunningObs, nowS: 101 };
   const out = evaluate(STATES.PIT, obs, t);
@@ -453,7 +517,7 @@ test('PIT -> engine-failure precede pit-out', () => {
   assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
 });
 
-test('PIT -> race-end al lap finale (pit nel giro CHECKERED)', () => {
+test('PIT -> race-end on the final lap (pit during CHECKERED lap)', () => {
   const t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = {
     ...baseRunningObs,
@@ -466,7 +530,7 @@ test('PIT -> race-end al lap finale (pit nel giro CHECKERED)', () => {
   assert.equal(out.trigger, TRIGGERS.RACE_END);
 });
 
-test('PIT: low-fuel non si valuta (sei gia in pit)', () => {
+test('PIT: low fuel is not evaluated as a pit trigger (already in pit)', () => {
   const t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = { ...baseRunningObs, nowS: 101, fuel: 1 };
   const out = evaluate(STATES.PIT, obs, t);
@@ -477,7 +541,7 @@ test('PIT: low-fuel non si valuta (sei gia in pit)', () => {
 console.log('\nconditions.evaluate - FAULT');
 // ----------------------------------------------------------------------------
 
-test('FAULT senza timer scaduto: nessun trigger', () => {
+test('FAULT without elapsed timer: no trigger', () => {
   const t = onEnterFault(initialConditionsTracker(), 100);
   const obs = { ...baseRunningObs, nowS: 102 };
   const out = evaluate(STATES.FAULT, obs, t);
@@ -492,7 +556,7 @@ test('FAULT -> unrecoverable quando timer >= 5s', () => {
   assert.equal(out.tracker.faultEnteredAtS, null);
 });
 
-test('FAULT: engine-failure non si valuta (sei gia in fault)', () => {
+test('FAULT: engine-failure is not evaluated (already in fault)', () => {
   const t = onEnterFault(initialConditionsTracker(), 100);
   const obs = {
     ...baseRunningObs,
@@ -508,7 +572,7 @@ test('FAULT: engine-failure non si valuta (sei gia in fault)', () => {
 console.log('\nconditions.evaluate - INIT / RETIRED / FINISHED');
 // ----------------------------------------------------------------------------
 
-test('INIT: nessuna condizione di stato (race-start e esterno)', () => {
+test('INIT: no state condition (race-start is external)', () => {
   const obs = { ...baseRunningObs, fuel: 1, lap: 100, totalLaps: 15, checkeredActive: true };
   const out = evaluate(STATES.INIT, obs, initialConditionsTracker());
   assert.equal(out.trigger, null);
@@ -525,7 +589,7 @@ test('FINISHED: sempre no-op', () => {
 });
 
 // ----------------------------------------------------------------------------
-console.log('\nconditions.evaluate - immutabilita e robustezza');
+console.log('\nconditions.evaluate - immutability and robustness');
 // ----------------------------------------------------------------------------
 
 test('input observation/tracker non mutati', () => {
@@ -538,7 +602,7 @@ test('input observation/tracker non mutati', () => {
   assert.deepEqual(t, tSnap);
 });
 
-test('tracker null/undefined: trattato come iniziale', () => {
+test('null/undefined tracker: treated as initial', () => {
   const out = evaluate(STATES.RUNNING, baseRunningObs, null);
   assert.equal(out.trigger, null);
   assert.equal(out.tracker.tireOverheatTicks, 0);
@@ -555,10 +619,10 @@ test('fsmState sconosciuto: no trigger', () => {
 });
 
 // ----------------------------------------------------------------------------
-console.log('\nconditions.integration - giro completo con FSM reale');
+console.log('\nconditions.integration - full lap with real FSM');
 // ----------------------------------------------------------------------------
 
-test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', () => {
+test('normal race flow: INIT -> RUNNING -> PIT through tire service -> RUNNING -> FINISHED', () => {
   let fsm = initialFsm();
   let t = initialConditionsTracker();
 
@@ -566,9 +630,15 @@ test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', (
   fsm = transition(fsm, TRIGGERS.RACE_START);
   assert.equal(fsm.state, STATES.RUNNING);
 
-  // RUNNING con fuel basso
-  let result = evaluate(fsm.state, { ...baseRunningObs, fuel: 4 }, t);
-  assert.equal(result.trigger, TRIGGERS.LOW_FUEL);
+  // Tire service once wear reaches the threshold at the pit-entry window.
+  let result = evaluate(fsm.state, {
+    ...baseRunningObs,
+    fuel: 30,
+    tireWear: 0.7,
+    trackPos: 0.96,
+    tireServiceCompleted: false,
+  }, t);
+  assert.equal(result.trigger, TRIGGERS.TIRE_SERVICE);
   fsm = transition(fsm, result.trigger, result.reason);
   assert.equal(fsm.state, STATES.PIT);
   t = onEnterPit(result.tracker, 200, 2.5);
@@ -597,7 +667,7 @@ test('giro normale: INIT -> RUNNING -> PIT (low-fuel) -> RUNNING -> FINISHED', (
   assert.equal(fsm.state, STATES.FINISHED);
 });
 
-test('flusso ritiro: INIT -> RUNNING -> FAULT (tire-overheat 3 tick) -> RETIRED', () => {
+test('retirement flow: INIT -> RUNNING -> FAULT (tire-overheat 3 ticks) -> RETIRED', () => {
   let fsm = initialFsm();
   let t = initialConditionsTracker();
 
@@ -615,7 +685,7 @@ test('flusso ritiro: INIT -> RUNNING -> FAULT (tire-overheat 3 tick) -> RETIRED'
   assert.equal(fsm.state, STATES.FAULT);
   t = onEnterFault(r3.tracker, 50);
 
-  // Ancora dentro la finestra diagnose
+  // Still inside the diagnose window
   let r = evaluate(fsm.state, { ...hot, nowS: 53 }, t);
   assert.equal(r.trigger, null);
   t = r.tracker;
@@ -627,4 +697,4 @@ test('flusso ritiro: INIT -> RUNNING -> FAULT (tire-overheat 3 tick) -> RETIRED'
   assert.equal(fsm.state, STATES.RETIRED);
 });
 
-console.log(`\n${passed} test passati`);
+console.log(`\n${passed} tests passed`);

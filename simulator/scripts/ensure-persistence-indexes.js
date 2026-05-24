@@ -15,7 +15,7 @@ async function main() {
     });
     console.log(`[persistence-indexes] OK db=${DB_NAME} telemetryTtlSeconds=${result.telemetryTtlSeconds}`);
   } catch (err) {
-    console.error('[persistence-indexes] errore:', err.message);
+    console.error('[persistence-indexes] error:', err.message);
     process.exitCode = 1;
   } finally {
     await client.close();

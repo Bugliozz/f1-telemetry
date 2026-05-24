@@ -43,7 +43,7 @@ async function main() {
       fuelTireTrend,
     }, null, 2));
   } catch (err) {
-    console.error('[query-history] errore:', err.message);
+    console.error('[query-history] error:', err.message);
     process.exitCode = 1;
   } finally {
     await client.close();

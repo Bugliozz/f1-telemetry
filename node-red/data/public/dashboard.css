@@ -382,6 +382,40 @@ body {
 .telemetry-value--danger { color: #f87171; }
 .telemetry-value--muted { color: #8a90a3; }
 
+.compound-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    min-height: 18px;
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.leaderboard-car .compound-badge {
+    margin-left: 2px;
+}
+
+.compound-badge--soft {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.compound-badge--medium {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+}
+
+.compound-badge--hard {
+    color: #f8fafc;
+    background: rgba(248, 250, 252, 0.08);
+}
+
 .sidebar {
     display: grid;
     grid-template-rows: auto minmax(0, 1.15fr) auto minmax(0, 1.25fr);

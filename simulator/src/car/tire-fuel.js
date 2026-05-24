@@ -1,44 +1,45 @@
-// Modello termico delle gomme e consumo carburante.
+// Tire thermal model and fuel consumption.
 //
-// Funzioni pure, senza I/O e senza mutazione degli input. Coerenti con il
-// resto di `simulator/src/car/` (cfr. physics.js): l'orchestrator passa lo
-// stato corrente piu' gli input del tick e riceve un nuovo stato.
+// Pure functions, without I/O and without input mutations. Consistent with the
+// rest of `simulator/src/car/` (cfr. physics.js): the orchestrator passes the
+// current state plus tick inputs and returns a new state.
 //
-// Modello gomme (`updateTireTemp`):
+// Tire model (`updateTireTemp`):
 //
 //   dT/dt = heating - cooling
 //   heating_axle = K_HEAT_SPEED * (speed/300)^2 * wearFactor
-//                + K_HEAT_BRAKE    * brake     [solo asse anteriore]
-//                + K_HEAT_THROTTLE * throttle  [solo asse posteriore]
+//                + K_HEAT_BRAKE    * brake     [front axle only]
+//                + K_HEAT_THROTTLE * throttle  [rear axle only]
 //   cooling_axle = K_COOL * (T - ambient)
 //
-// Le gomme partono a INITIAL_TIRE_TEMP_C (~95°C, gia' in temperatura dopo
-// il giro di formazione) e tendono asintoticamente a un valore di
-// equilibrio dipendente dalla guida. Convenzione angoli: front = (fl, fr)
-// e rear = (rl, rr); per la Fase 3 left e right sono trattati simmetrici
-// (il modello di carico in curva left/right e' rinviato a Fase 4 con
-// l'arrivo del lateralG da Race Control).
+// Tires start at INITIAL_TIRE_TEMP_C (~95°C, already up to temperature after
+// the formation lap) and tend asymptotically towards an equilibrium value
+// that depends on driving style. Corner convention: front = (fl, fr)
+// and rear = (rl, rr); left and right are treated symmetrically
+// (the left/right cornering load model is deferred to a later phase when
+// lateralG from Race Control becomes available).
 //
-// `wearFactor` (default 1) e' un moltiplicatore del termine di riscaldamento
-// che l'orchestrator alza giro dopo giro per simulare il degrado progressivo
-// (es. wearFactor = 1 + lap * WEAR_PER_LAP). A parita' di input la gomma
-// si scalda di piu' man mano che il giro avanza, ma uno stint normale deve
-// restare nel range operativo: il tire-overheat FSM e' un guasto grave, non
-// un evento inevitabile dopo pochi giri.
+// `wearFactor` (default 1) is a multiplier on the heating term that the
+// orchestrator increases lap by lap to simulate progressive degradation
+// (e.g. wearFactor = 1 + lap * WEAR_PER_LAP). With equal inputs the tire
+// heats up more as the race progresses, but a normal stint must
+// stay within the operating range: the tire-overheat FSM condition is a severe fault, not
+// an inevitable event after a few laps.
 //
-// Modello fuel (`consumeFuel`):
+// Fuel model (`consumeFuel`):
 //
 //   dFuel/dt = -( K_FUEL_BASE + K_FUEL_LOAD * (speed/300)^2 * throttle )
 //
-// Il carburante decresce monotonamente, clampato a 0. Il termine `base`
-// modella consumi accessori (pompa, pre-load), il termine `load` la potenza
-// erogata dal motore in funzione di velocita' e apertura acceleratore.
-// Costanti scelte in modo che a regime medio (200 km/h, throttle 0.7) si
-// consumino ~5 kg/giro a Monza (~110 s/giro). Serbatoio sprint da ~22 kg
-// (±4 kg jitter per-auto) → soglia low-fuel (8 kg) toccata al giro 3.
+// Fuel decreases monotonically, clamped at 0. The `base` term models
+// accessory consumption (pump, pre-load); the `load` term models the power
+// delivered by the engine as a function of speed and throttle opening.
+// Constants are tuned so that at average pace (200 km/h, throttle 0.7)
+// consumption is ~5 kg/lap at Monza (~110 s/lap). With refuelling removed,
+// the sprint tank must cover the full 5-lap race with an operational margin,
+// keeping fuel as a continuously decreasing telemetry signal.
 
 const INITIAL_TIRE_TEMP_C = 95;
-const INITIAL_FUEL_KG = 22;
+const INITIAL_FUEL_KG = 38;
 const AMBIENT_C = 25;
 
 const K_HEAT_SPEED = 6;

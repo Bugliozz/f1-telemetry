@@ -1,20 +1,20 @@
-// Flag State — macchina a stati per le bandiere di gara.
+// Flag State - state machine for race flags.
 //
-// Modulo puro, senza I/O e senza mutazioni. Gestisce le transizioni
-// ammesse tra le flag globali e mantiene lo stato corrente di Race
+// Pure module, without I/O and without mutations. Manages transitions
+// allowed between global flags and maintains the current Race
 // Control (flag attiva, settore interessato, timestamp di attivazione).
 //
 // Flag supportate (da schemas/flag.schema.json):
 //   GREEN, YELLOW, RED, CHECKERED, SC, VSC
 //
-// Regole di transizione (modellano la realta' F1):
+// Transition rules (model F1 reality):
 //
 //   GREEN  → YELLOW, SC, VSC, RED, CHECKERED
 //   YELLOW → GREEN, SC, VSC, RED
 //   SC     → GREEN, RED
 //   VSC    → GREEN, RED
 //   RED    → GREEN  (restart)
-//   CHECKERED → (assorbente, nessuna transizione)
+//   CHECKERED -> (absorbing, no transition)
 //
 // La YELLOW e' l'unica flag che puo' avere un settore specifico (locale).
 // Tutte le altre sono globali (sector = null).
@@ -30,7 +30,7 @@ const FLAGS = Object.freeze({
 
 const FLAG_VALUES = Object.freeze(Object.values(FLAGS));
 
-// Matrice di transizioni ammesse: from → [to, to, ...]
+// Allowed transition matrix: from -> [to, to, ...]
 const ALLOWED_TRANSITIONS = Object.freeze({
   [FLAGS.GREEN]:     [FLAGS.YELLOW, FLAGS.SC, FLAGS.VSC, FLAGS.RED, FLAGS.CHECKERED],
   [FLAGS.YELLOW]:    [FLAGS.GREEN, FLAGS.SC, FLAGS.VSC, FLAGS.RED, FLAGS.CHECKERED],
@@ -56,7 +56,7 @@ function canTransitionFlag(fromFlag, toFlag) {
 }
 
 /**
- * Stato iniziale di Race Control.
+ * Initial Race Control state.
  *
  * @returns {{ flag: string, sector: number|null, reason: string|null,
  *             activatedAtS: number|null, previousFlag: string|null }}
@@ -72,9 +72,9 @@ function initialFlagState() {
 }
 
 /**
- * Tenta una transizione di flag.
+ * Attempts a flag transition.
  *
- * @param {object} current   - stato corrente (da initialFlagState o precedente changeFlag)
+ * @param {object} current   - current state (from initialFlagState or previous changeFlag)
  * @param {string} newFlag   - la nuova flag da attivare
  * @param {object} opts      - { sector, reason, nowS }
  * @returns {{ ...flagState, changed: boolean }}

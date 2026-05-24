@@ -5,13 +5,13 @@
 // dei messaggi race-control/flags.
 //
 // Responsabilita':
-//   - Mantiene lo stato corrente delle flag globali.
+//   - Maintains the current state of global flags.
 //   - A ogni tick, valuta i trigger automatici (evaluateTriggers).
 //   - Consente trigger manuali via API (forceFlag).
 //   - Pubblica il cambio di flag su MQTT (retained, QoS 1).
-//   - Espone lo stato flag attiva per il contesto dell'Orchestrator.
+//   - Exposes the active flag state for the Orchestrator context.
 //
-// Il RaceController e' un modulo con stato ma senza logica di I/O
+// RaceController is a stateful module without I/O logic
 // diretta: delega la pubblicazione MQTT all'Orchestrator che chiama
 // publishFlagChange(). Cosi' i test possono asserire sulle azioni
 // senza mockare il broker.
@@ -40,10 +40,10 @@ class RaceController {
     this._history = []; // log di tutti i cambi flag
     this._lastNowS = 0;
 
-    this.log.debug('[RaceController] Inizializzato, flag iniziale: GREEN');
+    this.log.debug('[RaceController] Initialized, initial flag: GREEN');
   }
 
-  // --- Stato corrente ---
+  // --- Current state ---
 
   /** Restituisce la flag attualmente attiva. */
   get activeFlag() {
@@ -60,7 +60,7 @@ class RaceController {
     return this._flagState.reason;
   }
 
-  /** Restituisce lo snapshot completo dello stato flag. */
+  /** Returns the complete flag-state snapshot. */
   get flagState() {
     return { ...this._flagState };
   }
@@ -169,7 +169,7 @@ class RaceController {
       return { flagChanged: false, flagPayload: null };
     }
 
-    // Aggiorna stato
+    // Update state
     this._flagState = result;
 
     // Costruisci payload MQTT

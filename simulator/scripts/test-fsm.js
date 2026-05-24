@@ -21,7 +21,7 @@ function test(name, fn) {
 
 console.log('fsm.initialFsm');
 
-test('stato iniziale e INIT, previousState null, reason null', () => {
+test('initial state is INIT, previousState null, reason null', () => {
   const f = initialFsm();
   assert.equal(f.state, 'INIT');
   assert.equal(f.previousState, null);
@@ -40,7 +40,7 @@ test('STATE_VALUES contiene tutti i 6 stati', () => {
   assert.deepEqual([...STATE_VALUES].sort(), ['FAULT', 'FINISHED', 'INIT', 'PIT', 'RETIRED', 'RUNNING']);
 });
 
-test('isValidState true per ogni stato dichiarato', () => {
+test('isValidState true for every declared state', () => {
   for (const s of STATE_VALUES) {
     assert.equal(isValidState(s), true, `${s} dovrebbe essere valido`);
   }
@@ -77,16 +77,26 @@ test('INIT -> RUNNING via race-start', () => {
   assert.equal(out.changed, true);
 });
 
-test('RUNNING -> PIT via low-fuel', () => {
-  const out = transition({ state: 'RUNNING', previousState: 'INIT', reason: 'race-start' }, 'low-fuel');
+test('RUNNING -> PIT via tire-service', () => {
+  const out = transition({ state: 'RUNNING', previousState: 'INIT', reason: 'race-start' }, 'tire-service');
   assert.equal(out.state, 'PIT');
   assert.equal(out.previousState, 'RUNNING');
-  assert.equal(out.reason, 'low-fuel');
+  assert.equal(out.reason, 'tire-service');
   assert.equal(out.changed, true);
 });
 
+test('RUNNING -> PIT preserves wear-based tire-service reason', () => {
+  const out = transition(
+    { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' },
+    'tire-service',
+    'tire-service:wear-72%',
+  );
+  assert.equal(out.state, 'PIT');
+  assert.equal(out.reason, 'tire-service:wear-72%');
+});
+
 test('PIT -> RUNNING via pit-out', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'pit-out');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'pit-out');
   assert.equal(out.state, 'RUNNING');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.reason, 'pit-out');
@@ -108,7 +118,7 @@ test('RUNNING -> FAULT via engine-failure', () => {
 });
 
 test('PIT -> FAULT via engine-failure', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'engine-failure');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'engine-failure');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -129,8 +139,8 @@ test('RUNNING -> FINISHED via race-end', () => {
   assert.equal(out.changed, true);
 });
 
-test('PIT -> FINISHED via race-end (pit-stop nel giro finale)', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'race-end');
+test('PIT -> FINISHED via race-end during final-lap pit stop', () => {
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'race-end');
   assert.equal(out.state, 'FINISHED');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -153,7 +163,7 @@ test('manual-retire da RUNNING -> RETIRED', () => {
 });
 
 test('manual-retire da PIT -> RETIRED', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'manual-retire');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'manual-retire');
   assert.equal(out.state, 'RETIRED');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -175,7 +185,7 @@ test('internal-error da RUNNING -> FAULT', () => {
 });
 
 test('internal-error da PIT -> FAULT', () => {
-  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' }, 'internal-error');
+  const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'internal-error');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.previousState, 'PIT');
   assert.equal(out.changed, true);
@@ -222,37 +232,37 @@ test('FINISHED non transita: race-end no-op', () => {
   assert.equal(out.changed, false);
 });
 
-test('FINISHED non transita: nessun trigger lo smuove', () => {
+test('FINISHED does not transition: no trigger moves it', () => {
   const fsm = { state: 'FINISHED', previousState: 'RUNNING', reason: 'race-end' };
   for (const trig of Object.values(TRIGGERS)) {
     const out = transition(fsm, trig);
     assert.equal(out.state, 'FINISHED', `trigger=${trig}`);
-    assert.equal(out.changed, false, `trigger=${trig} non doveva cambiare`);
+    assert.equal(out.changed, false, `trigger=${trig} should not have changed`);
   }
 });
 
-console.log('\nfsm.transition - transizioni non ammesse');
+console.log('\nfsm.transition - disallowed transitions');
 
-test('INIT -> PIT non ammesso (low-fuel)', () => {
+test('INIT -> PIT is not allowed through legacy low-fuel trigger', () => {
   const out = transition(initialFsm(), 'low-fuel');
   assert.equal(out.state, 'INIT');
   assert.equal(out.changed, false);
 });
 
-test('INIT -> FINISHED non ammesso (race-end)', () => {
+test('INIT -> FINISHED is not allowed (race-end)', () => {
   const out = transition(initialFsm(), 'race-end');
   assert.equal(out.state, 'INIT');
   assert.equal(out.changed, false);
 });
 
-test('FAULT -> RUNNING non ammesso (no recupero, solo retirement)', () => {
+test('FAULT -> RUNNING is not allowed (no recovery, only retirement)', () => {
   const fsm = { state: 'FAULT', previousState: 'RUNNING', reason: 'tire-overheat' };
   const out = transition(fsm, 'pit-out');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.changed, false);
 });
 
-test('FAULT -> FINISHED non ammesso (race-end)', () => {
+test('FAULT -> FINISHED is not allowed (race-end)', () => {
   const fsm = { state: 'FAULT', previousState: 'RUNNING', reason: 'engine-failure' };
   const out = transition(fsm, 'race-end');
   assert.equal(out.state, 'FAULT');
@@ -260,7 +270,7 @@ test('FAULT -> FINISHED non ammesso (race-end)', () => {
 });
 
 test('PIT -> FAULT solo via engine-failure, non tire-overheat', () => {
-  const fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' };
+  const fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' };
   const out = transition(fsm, 'tire-overheat');
   assert.equal(out.state, 'PIT');
   assert.equal(out.changed, false);
@@ -279,41 +289,41 @@ test('trigger null/undefined: no-op', () => {
   assert.equal(transition(fsm, '').changed, false);
 });
 
-console.log('\nfsm.transition - reason custom e robustezza');
+console.log('\nfsm.transition - custom reason and robustness');
 
-test('customReason sostituisce il trigger come reason', () => {
+test('customReason replaces the trigger as reason', () => {
   const out = transition({ state: 'RUNNING', previousState: null, reason: null }, 'tire-overheat', 'tire-overheat:fl=185');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.reason, 'tire-overheat:fl=185');
 });
 
-test('customReason vuoto o non-stringa: usa il trigger', () => {
+test('empty or non-string customReason: falls back to trigger', () => {
   const fsm = { state: 'INIT', previousState: null, reason: null };
   assert.equal(transition(fsm, 'race-start', '').reason, 'race-start');
   assert.equal(transition(fsm, 'race-start', null).reason, 'race-start');
   assert.equal(transition(fsm, 'race-start', 42).reason, 'race-start');
 });
 
-test('input null o malformato: trattato come stato iniziale', () => {
+test('null or malformed input: treated as initial state', () => {
   assert.equal(transition(null, 'race-start').state, 'RUNNING');
   assert.equal(transition(undefined, 'race-start').state, 'RUNNING');
   assert.equal(transition({ state: 'NOT_A_STATE' }, 'race-start').state, 'RUNNING');
   assert.equal(transition({}, 'race-start').state, 'RUNNING');
 });
 
-test('immutabilita: input fsm non mutato', () => {
+test('immutability: input fsm is not mutated', () => {
   const fsm = { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' };
   const snapshot = { ...fsm };
   transition(fsm, 'low-fuel');
   assert.deepEqual(fsm, snapshot);
 });
 
-test('immutabilita: TRANSITIONS non mutabile', () => {
+test('immutability: TRANSITIONS is not mutable', () => {
   assert.equal(Object.isFrozen(TRANSITIONS), true);
   assert.throws(() => { TRANSITIONS.push({ from: 'X', to: 'Y', trigger: 'z' }); });
 });
 
-test('immutabilita: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES congelati', () => {
+test('immutability: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES are frozen', () => {
   assert.equal(Object.isFrozen(STATES), true);
   assert.equal(Object.isFrozen(TRIGGERS), true);
   assert.equal(Object.isFrozen(TERMINAL_STATES), true);
@@ -322,11 +332,12 @@ test('immutabilita: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES congelati', 
 
 console.log('\nfsm.canTransition');
 
-test('canTransition coerente con transition().changed', () => {
+test('canTransition consistent with transition().changed', () => {
   const cases = [
     { state: 'INIT',    trigger: 'race-start',     expected: true },
     { state: 'INIT',    trigger: 'low-fuel',       expected: false },
-    { state: 'RUNNING', trigger: 'low-fuel',       expected: true },
+    { state: 'RUNNING', trigger: 'low-fuel',       expected: false },
+    { state: 'RUNNING', trigger: 'tire-service',   expected: true },
     { state: 'RUNNING', trigger: 'tire-overheat',  expected: true },
     { state: 'RUNNING', trigger: 'pit-out',        expected: false },
     { state: 'PIT',     trigger: 'pit-out',        expected: true },
@@ -351,34 +362,34 @@ test('canTransition false per stati non validi', () => {
   assert.equal(canTransition(null, 'race-start'), false);
 });
 
-console.log('\nfsm.transition - scenari di gara end-to-end');
+console.log('\nfsm.transition - end-to-end race scenarios');
 
-test('flusso normale: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
+test('normal flow: INIT -> RUNNING -> PIT -> RUNNING -> FINISHED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
-  f = transition(f, 'low-fuel'); assert.equal(f.state, 'PIT');
+  f = transition(f, 'tire-service'); assert.equal(f.state, 'PIT');
   f = transition(f, 'pit-out'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'race-end'); assert.equal(f.state, 'FINISHED');
 });
 
-test('flusso ritiro: INIT -> RUNNING -> FAULT -> RETIRED', () => {
+test('retirement flow: INIT -> RUNNING -> FAULT -> RETIRED', () => {
   let f = initialFsm();
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'tire-overheat'); assert.equal(f.state, 'FAULT');
   f = transition(f, 'unrecoverable'); assert.equal(f.state, 'RETIRED');
-  // Ulteriori tick sono no-op.
+  // Further ticks are no-ops.
   f = transition(f, 'race-end'); assert.equal(f.state, 'RETIRED');
   assert.equal(f.changed, false);
 });
 
-test('flusso DNS: INIT -> RETIRED via manual-retire', () => {
+test('DNS flow: INIT -> RETIRED via manual-retire', () => {
   let f = initialFsm();
   f = transition(f, 'manual-retire');
   assert.equal(f.state, 'RETIRED');
   assert.equal(f.previousState, 'INIT');
 });
 
-test('flusso eccezione: any -> FAULT via internal-error, poi RETIRED', () => {
+test('exception flow: any -> FAULT via internal-error, then RETIRED', () => {
   let f = { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' };
   f = transition(f, 'internal-error'); assert.equal(f.state, 'FAULT');
   f = transition(f, 'unrecoverable'); assert.equal(f.state, 'RETIRED');
@@ -386,27 +397,27 @@ test('flusso eccezione: any -> FAULT via internal-error, poi RETIRED', () => {
 
 console.log('\nfsm - sanity matrice TRANSITIONS');
 
-test('ogni transizione referenzia stati validi', () => {
+test('each transition references valid states', () => {
   for (const t of TRANSITIONS) {
-    assert.ok(t.from === '*' || isValidState(t.from), `from non valido: ${t.from}`);
-    assert.ok(isValidState(t.to), `to non valido: ${t.to}`);
-    assert.ok(typeof t.trigger === 'string' && t.trigger.length > 0, `trigger vuoto`);
+    assert.ok(t.from === '*' || isValidState(t.from), `invalid from: ${t.from}`);
+    assert.ok(isValidState(t.to), `invalid to: ${t.to}`);
+    assert.ok(typeof t.trigger === 'string' && t.trigger.length > 0, `empty trigger`);
   }
 });
 
-test('ogni trigger dichiarato in TRIGGERS appare nella matrice', () => {
+test('each operational trigger is used by at least one transition', () => {
   const usedTriggers = new Set(TRANSITIONS.map((t) => t.trigger));
-  for (const trig of Object.values(TRIGGERS)) {
-    assert.ok(usedTriggers.has(trig), `trigger ${trig} non usato in TRANSITIONS`);
+  for (const trigger of Object.values(TRIGGERS)) {
+    assert.ok(usedTriggers.has(trigger), `trigger ${trigger} not used in TRANSITIONS`);
   }
 });
 
-test('nessun stato terminale ha transizioni uscenti specifiche', () => {
+test('no terminal state has specific outgoing transitions', () => {
   for (const t of TRANSITIONS) {
     if (t.from !== '*') {
-      assert.ok(!TERMINAL_STATES.includes(t.from), `transizione uscente da stato terminale: ${t.from}`);
+      assert.ok(!TERMINAL_STATES.includes(t.from), `outgoing transition from terminal state: ${t.from}`);
     }
   }
 });
 
-console.log(`\n${passed} test passati`);
+console.log(`\n${passed} tests passed`);

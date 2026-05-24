@@ -41,7 +41,7 @@
     },
     "details": {
       "type": "object",
-      "description": "Payload specifico dell'evento. Esempi: {duration, tyreCompound, fuelAdded} per pit-stop; {lap, lapTime} per lap-completed; {sector, sectorTime} per sector-completed; {from, to, reason} per state-change."
+      "description": "Payload specifico dell'evento. Esempi: {duration, tyreCompound, service, refuelling} per pit-stop; {lap, lapTime} per lap-completed; {sector, sectorTime} per sector-completed; {from, to, reason} per state-change."
     }
   },
   "allOf": [
@@ -53,11 +53,12 @@
           "details": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["duration"],
+            "required": ["duration", "tyreCompound"],
             "properties": {
               "duration": { "type": "number", "minimum": 0, "maximum": 60 },
               "tyreCompound": { "type": "string", "enum": ["soft", "medium", "hard", "intermediate", "wet"] },
-              "fuelAdded": { "type": "number", "minimum": 0, "maximum": 110 }
+              "service": { "type": "string", "enum": ["tire-change"] },
+              "refuelling": { "type": "boolean" }
             }
           }
         }

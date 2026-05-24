@@ -15,7 +15,7 @@ const { createLogger } = require('./src/util/log');
 
 const log = createLogger(config.logLevel);
 
-// --- Avvio ---
+// --- Startup ---
 
 log.info('╔══════════════════════════════════════════════════╗');
 log.info('║         🏎️  F1 Telemetry Simulator  🏎️          ║');
@@ -23,8 +23,8 @@ log.info('╚══════════════════════�
 log.info(`Broker: ${config.mqttBroker}`);
 log.info(`Race ID: ${config.raceId}`);
 log.info(`Tick rate: ${1000 / config.tickMs} Hz (${config.tickMs} ms)`);
-log.info(`Auto: ${roster.length}`);
-log.info(`Giri totali: ${config.totalLaps}`);
+log.info(`Cars: ${roster.length}`);
+log.info(`Total laps: ${config.totalLaps}`);
 log.info(`Seed: ${config.seed != null ? config.seed : 'random'}`);
 
 const client = mqtt.connect(config.mqttBroker, {
@@ -56,11 +56,11 @@ function parseStartCommand(message) {
 
 async function startSimulation(scenarioId, source) {
   if (orchestrator) {
-    log.info(`[main] Comando start ignorato: simulazione gia attiva (${source || 'unknown'})`);
+    log.info(`[main] Start command ignored: simulation already active (${source || 'unknown'})`);
     return;
   }
   if (startInProgress) {
-    log.info(`[main] Comando start ignorato: avvio gia in corso (${source || 'unknown'})`);
+    log.info(`[main] Start command ignored: startup already in progress (${source || 'unknown'})`);
     return;
   }
 
@@ -87,7 +87,7 @@ async function startSimulation(scenarioId, source) {
 
     orchestrator.start();
 
-    // Avvia il subscriber per flag esterne dopo il GREEN iniziale.
+    // Start the external flag subscriber after the initial GREEN flag.
     rcSubscriber = new RaceControlSubscriber({
       mqttClient: client,
       raceId: scenarioConfig.raceId,
@@ -99,7 +99,7 @@ async function startSimulation(scenarioId, source) {
     client.unsubscribe(startTopic);
     startSubscribed = false;
   } catch (err) {
-    log.error('[main] Avvio simulazione fallito:', err.message);
+    log.error('[main] Simulation startup failed:', err.message);
   } finally {
     startInProgress = false;
   }
@@ -109,12 +109,12 @@ function subscribeStartTopic() {
   if (startSubscribed) return;
   client.subscribe(startTopic, { qos: 1 }, (err) => {
     if (err) {
-      log.error('[main] Errore subscribe start scenario:', err.message);
+      log.error('[main] Start scenario subscription error:', err.message);
       startSubscribed = false;
       return;
     }
     startSubscribed = true;
-    log.info(`[main] In attesa scelta scenario su ${startTopic}`);
+    log.info(`[main] Waiting for scenario selection on ${startTopic}`);
   });
 }
 
@@ -123,7 +123,7 @@ client.on('message', (topic, message) => {
   try {
     const scenarioId = parseStartCommand(message);
     startSimulation(scenarioId, 'dashboard').catch((err) => {
-      log.error('[main] Avvio simulazione fallito:', err.message);
+      log.error('[main] Simulation startup failed:', err.message);
     });
   } catch (err) {
     log.warn('[main] Comando start scenario non valido:', err.message);
@@ -134,7 +134,7 @@ async function shutdown(signal) {
   log.info(`[main] Ricevuto ${signal}, shutdown in corso...`);
   if (orchestrator) orchestrator.stop();
   await publisher.end();
-  log.info('[main] Disconnesso. Bye!');
+  log.info('[main] Disconnected. Bye!');
   process.exit(0);
 }
 
@@ -144,15 +144,15 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 // Aspetta la connessione prima di avviare
 client.on('connect', () => {
   if (orchestrator) {
-    log.info('[main] Broker MQTT riconnesso, simulazione gia attiva');
+    log.info('[main] MQTT broker reconnected, simulation already active');
     return;
   }
 
-  log.info('[main] Connesso al broker MQTT');
+  log.info('[main] Connected to MQTT broker');
 
   if (config.autoStart) {
     startSimulation(process.env.RACE_SCENARIO || SCENARIOS.BALANCED, 'auto-start').catch((err) => {
-      log.error('[main] Avvio simulazione fallito:', err.message);
+      log.error('[main] Simulation startup failed:', err.message);
     });
   } else {
     subscribeStartTopic();
@@ -160,7 +160,7 @@ client.on('connect', () => {
 });
 
 client.on('error', (err) => {
-  log.error('[main] Errore connessione MQTT:', err.message);
+  log.error('[main] MQTT connection error:', err.message);
 });
 
 // Timeout connessione

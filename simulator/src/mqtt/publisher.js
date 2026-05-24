@@ -19,13 +19,13 @@ class MqttPublisher {
     if (this.client) {
       this.client.on('connect', () => {
         this._connected = true;
-        this.log.info('[MqttPublisher] Connesso al broker');
+        this.log.info('[MqttPublisher] Connected to broker');
       });
       this.client.on('close', () => {
         this._connected = false;
       });
       this.client.on('error', (err) => {
-        this.log.error('[MqttPublisher] Errore MQTT:', err.message);
+        this.log.error('[MqttPublisher] MQTT error:', err.message);
       });
     }
   }
@@ -43,25 +43,25 @@ class MqttPublisher {
     return `f1/simulation/${this.raceId}/teams/${teamId}/cars/${carId}/${suffix}`;
   }
 
-  // Pubblica telemetria (QoS 0, no retain)
+  // Publish telemetry (QoS 0, no retain)
   publishTelemetry(teamId, carId, payload) {
     const topic = this._carTopic(teamId, carId, 'telemetry');
     this._publish(topic, payload, { qos: 0, retain: false }, 'telemetry');
   }
 
-  // Pubblica stato FSM (QoS 1, retained)
+  // Publish FSM state (QoS 1, retained)
   publishState(teamId, carId, payload) {
     const topic = this._carTopic(teamId, carId, 'state');
     this._publish(topic, payload, { qos: 1, retain: true }, 'state');
   }
 
-  // Pubblica evento (QoS 1, no retain)
+  // Publish event (QoS 1, no retain)
   publishEvent(teamId, carId, payload) {
     const topic = this._carTopic(teamId, carId, 'events');
     this._publish(topic, payload, { qos: 1, retain: false }, 'event');
   }
 
-  // Pubblica flag di gara (QoS 1, retained) — Race Control
+  // Publish race flag (QoS 1, retained) - Race Control
   publishFlag(payload) {
     const topic = `f1/simulation/${this.raceId}/race-control/flags`;
     this._publish(topic, payload, { qos: 1, retain: true }, 'flag');
@@ -75,10 +75,10 @@ class MqttPublisher {
 
     if (!this._connected) {
       if (options.qos === 0) {
-        this.log.debug('[MqttPublisher] Non connesso, telemetria QoS0 scartata:', topic);
+        this.log.debug('[MqttPublisher] Not connected, QoS0 telemetry discarded:', topic);
         return;
       }
-      this.log.warn('[MqttPublisher] Non connesso, messaggio QoS1 in buffer:', topic);
+      this.log.warn('[MqttPublisher] Not connected, QoS1 message buffered:', topic);
     }
 
     this._validatePayload(schemaKey, payload, topic);
@@ -86,7 +86,7 @@ class MqttPublisher {
     const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
     this.client.publish(topic, data, options, (err) => {
       if (err) {
-        this.log.error('[MqttPublisher] Errore publish:', topic, err.message);
+        this.log.error('[MqttPublisher] Publish error:', topic, err.message);
       }
     });
     this._publishCount++;
@@ -117,7 +117,7 @@ class MqttPublisher {
 
     const firstError = validate.errors && validate.errors[0]
       ? `${validate.errors[0].instancePath || '/'} ${validate.errors[0].message}`
-      : 'errore sconosciuto';
+      : 'unknown error';
     this.log.warn(`[MqttPublisher] Payload ${schemaKey} non conforme su ${topic}: ${firstError}`);
   }
 

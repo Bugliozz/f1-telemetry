@@ -43,7 +43,7 @@ test('valore custom applicato a tutte e 4 le ruote', () => {
 
 console.log('\ntire-fuel.updateTireTemp');
 
-test('dt zero: nessun cambio', () => {
+test('dt zero: no change', () => {
   const prev = initialTireTemp(110);
   const out = updateTireTemp(prev, { speedKmh: 250, throttle: 1 }, 0);
   assert.equal(out.fl, 110);
@@ -52,7 +52,7 @@ test('dt zero: nessun cambio', () => {
   assert.equal(out.rr, 110);
 });
 
-test('immutabilita: input non modificato', () => {
+test('immutability: input not modified', () => {
   const prev = { fl: 100, fr: 100, rl: 100, rr: 100 };
   updateTireTemp(prev, { speedKmh: 250, throttle: 0.7, brake: 0 }, 1);
   assert.equal(prev.fl, 100);
@@ -61,7 +61,7 @@ test('immutabilita: input non modificato', () => {
   assert.equal(prev.rr, 100);
 });
 
-test('a velocita zero senza pedali: raffreddamento verso ambient', () => {
+test('zero speed without pedals: cooling toward ambient', () => {
   const prev = initialTireTemp(150);
   const out = updateTireTemp(prev, { speedKmh: 0, throttle: 0, brake: 0 }, 1);
   // dT = -K_COOL * (T - ambient) * dt = -0.1 * 125 * 1 = -12.5
@@ -70,31 +70,31 @@ test('a velocita zero senza pedali: raffreddamento verso ambient', () => {
   assert.ok(Math.abs(out.rr - expected) < 1e-9, `rr=${out.rr} expected=${expected}`);
 });
 
-test('alta velocita scalda: T cresce vs. tick precedente', () => {
+test('high speed heats tires: T increases vs. previous tick', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 300, throttle: 0.8, brake: 0 }, 0.25);
   // Heat rear = K_HEAT_SPEED + K_HEAT_THROTTLE * 0.8 = 12 + 2 = 14
   // Cool = K_COOL * (95 - 25) = 7
   // dT_rear/dt = 9.8; dt=0.25 -> +2.45
-  assert.ok(out.rl > prev.rl, `rl=${out.rl} non aumenta`);
-  assert.ok(out.rr > prev.rr, `rr=${out.rr} non aumenta`);
+  assert.ok(out.rl > prev.rl, `rl=${out.rl} did not increase`);
+  assert.ok(out.rr > prev.rr, `rr=${out.rr} did not increase`);
 });
 
-test('asse posteriore si scalda piu del front a parita di throttle, brake=0', () => {
+test('rear axle heats more than front at equal throttle, brake=0', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 280, throttle: 1, brake: 0 }, 1);
   assert.ok(out.rl > out.fl, `rl=${out.rl} fl=${out.fl}`);
   assert.ok(out.rr > out.fr, `rr=${out.rr} fr=${out.fr}`);
 });
 
-test('asse anteriore si scalda piu del rear a parita di brake, throttle=0', () => {
+test('front axle heats more than rear at equal brake, throttle=0', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 100, throttle: 0, brake: 1 }, 1);
   assert.ok(out.fl > out.rl, `fl=${out.fl} rl=${out.rl}`);
   assert.ok(out.fr > out.rr, `fr=${out.fr} rr=${out.rr}`);
 });
 
-test('left/right simmetrici per asse (no curva direction in fase 3)', () => {
+test('left/right symmetric per axle (no cornering direction modelled)', () => {
   const prev = initialTireTemp(95);
   const out = updateTireTemp(prev, { speedKmh: 200, throttle: 0.5, brake: 0.2 }, 1);
   assert.equal(out.fl, out.fr);
@@ -128,7 +128,27 @@ test('wearFactor amplifica il riscaldamento', () => {
   assert.ok(worn.fl > baseline.fl, `worn.fl=${worn.fl} baseline.fl=${baseline.fl}`);
 });
 
-test('wearFactor=0 disattiva il termine di velocita (solo pedali e raffreddamento)', () => {
+test('wearFactor supports normalized tire-wear coupling used by car.js', () => {
+  const prev = initialTireTemp(95);
+  const fresh = updateTireTemp(prev, { speedKmh: 250, throttle: 0.5, brake: 0 }, 1);
+  const stintWear = updateTireTemp(prev, {
+    speedKmh: 250,
+    throttle: 0.5,
+    brake: 0,
+    wearFactor: 1 + 0.6 * 0.15,
+  }, 1);
+  const extreme = updateTireTemp(prev, {
+    speedKmh: 250,
+    throttle: 0.5,
+    brake: 0,
+    wearFactor: 2,
+  }, 1);
+
+  assert.ok(stintWear.rl > fresh.rl, `stintWear.rl=${stintWear.rl} fresh.rl=${fresh.rl}`);
+  assert.ok(stintWear.rl < extreme.rl, `stintWear.rl=${stintWear.rl} extreme.rl=${extreme.rl}`);
+});
+
+test('wearFactor=0 disables the speed term (pedals and cooling only)', () => {
   const prev = initialTireTemp(120);
   const out = updateTireTemp(prev, {
     speedKmh: 300,
@@ -166,16 +186,16 @@ test('idle: speed 0 throttle 0 -> rate base', () => {
   assert.ok(Math.abs(fuelRateKgPerS(0, 0) - K_FUEL_BASE) < 1e-12);
 });
 
-test('throttle 0 a qualsiasi velocita: solo base', () => {
+test('throttle 0 at any speed: base consumption only', () => {
   assert.ok(Math.abs(fuelRateKgPerS(300, 0) - K_FUEL_BASE) < 1e-12);
 });
 
-test('rate massimo a velocita di riferimento e throttle pieno', () => {
+test('maximum rate at reference speed and full throttle', () => {
   const r = fuelRateKgPerS(SPEED_REF_KMH, 1);
   assert.ok(Math.abs(r - (K_FUEL_BASE + K_FUEL_LOAD)) < 1e-12);
 });
 
-test('monotonia: rate cresce con la velocita a throttle pieno', () => {
+test('monotonicity: rate increases with speed at full throttle', () => {
   const speeds = [50, 100, 150, 200, 250, 300];
   for (let i = 1; i < speeds.length; i += 1) {
     assert.ok(fuelRateKgPerS(speeds[i], 1) > fuelRateKgPerS(speeds[i - 1], 1));
@@ -184,11 +204,11 @@ test('monotonia: rate cresce con la velocita a throttle pieno', () => {
 
 console.log('\ntire-fuel.consumeFuel');
 
-test('dt zero: nessun consumo', () => {
+test('dt zero: no consumption', () => {
   assert.equal(consumeFuel(105, { speedKmh: 300, throttle: 1 }, 0), 105);
 });
 
-test('consumo monotono', () => {
+test('monotone consumption', () => {
   let fuel = INITIAL_FUEL_KG;
   for (let i = 0; i < 100; i += 1) {
     const next = consumeFuel(fuel, { speedKmh: 250, throttle: 0.7 }, 1);
@@ -204,22 +224,22 @@ test('mai sotto zero (clamp)', () => {
   assert.equal(out, 0);
 });
 
-test('input negativo o non finito trattato come 0', () => {
+test('negative or non-finite input treated as 0', () => {
   assert.equal(consumeFuel(-5, { speedKmh: 100, throttle: 0.5 }, 1), 0);
   assert.equal(consumeFuel(NaN, { speedKmh: 100, throttle: 0.5 }, 0), INITIAL_FUEL_KG);
 });
 
-test('immutabilita: nessun side effect su prevFuel', () => {
-  // prevFuel e' un primitive (number) — il test reale e' che inputs non vengano mutati.
+test('immutability: no side effect on prevFuel', () => {
+  // prevFuel is a primitive (number) — the real test is that inputs are not mutated.
   const inputs = { speedKmh: 250, throttle: 0.7 };
   consumeFuel(105, inputs, 1);
   assert.equal(inputs.speedKmh, 250);
   assert.equal(inputs.throttle, 0.7);
 });
 
-test('giro a Monza ~110 s a regime medio: ~5 kg/giro', () => {
-  // Profilo grossolano: alterna rettilineo e curva per imitare un giro.
-  // Speed media ~220, throttle medio ~0.6.
+test('Monza lap ~110 s at average pace: ~5 kg/lap', () => {
+  // Coarse profile: alternates straight and corner to approximate a lap.
+  // Average speed ~220, average throttle ~0.6.
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   const lapTimeS = 110;
@@ -228,11 +248,11 @@ test('giro a Monza ~110 s a regime medio: ~5 kg/giro', () => {
     fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
   }
   const consumed = INITIAL_FUEL_KG - fuel;
-  // Range generoso: 3-7 kg/giro, target ~5.
-  assert.ok(consumed > 3 && consumed < 7, `consumo per giro: ${consumed}`);
+  // Generous range: 3-7 kg/lap, target ~5.
+  assert.ok(consumed > 3 && consumed < 7, `consumption per lap: ${consumed}`);
 });
 
-test('3 giri sprint: fuel scende sotto soglia low-fuel (8 kg) senza azzerarsi', () => {
+test('3-lap sprint: fuel remains positive with the no-refuelling race load', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   const lapTimeS = 110;
@@ -240,58 +260,46 @@ test('3 giri sprint: fuel scende sotto soglia low-fuel (8 kg) senza azzerarsi', 
   for (let i = 0; i < ticks; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
   }
-  // Con ~22 kg e ~5 kg/giro, dopo 3 giri restano ~6-7 kg: vivo ma sotto soglia pit
-  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel dopo 3 giri: ${fuel}`);
-  assert.ok(fuel < 8, `atteso fuel < 8 kg (soglia low-fuel) dopo 3 giri: ${fuel}`);
+  assert.ok(fuel > 0 && fuel < INITIAL_FUEL_KG, `fuel after 3 laps: ${fuel}`);
+  assert.ok(fuel > 8, `expected fuel to stay above 8 kg after 3 laps (race load check): ${fuel}`);
 });
 
-test('rispetta i limiti dello schema telemetry [0, 110]', () => {
+test('stays within telemetry schema limits [0, 40]', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   for (let i = 0; i < 10000; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 300, throttle: 1 }, dt);
-    assert.ok(fuel >= 0 && fuel <= 110, `fuel fuori range: ${fuel}`);
+    assert.ok(fuel >= 0 && fuel <= 40, `fuel out of range: ${fuel}`);
   }
 });
 
 console.log('\ntire-fuel.consumeFuel — modello sprint');
 
-test('carburante ridotto + jitter: low-fuel raggiungibile entro 5 giri, pit scaglionati', () => {
-  const pitThreshold = 8;   // kg, coerente con config.fuelPitThresholdKg
-  const jitterKg = 4;       // ±4 kg, coerente con config.initialFuelJitterKg
-  const pitLaps = [];
+test('initial fuel jitter still covers a 5-lap no-refuelling sprint', () => {
+  const jitterKg = 2; // current delivery calibration: 36-40 kg range
+  const finalFuels = [];
 
   for (let carIdx = 0; carIdx < 10; carIdx += 1) {
-    // Jitter deterministico linearmente distribuito tra -1 e +1 (18–26 kg)
     const jitterFraction = (carIdx / 9) * 2 - 1;
-    let fuel = INITIAL_FUEL_KG + jitterFraction * jitterKg;
+    const initialFuel = INITIAL_FUEL_KG + jitterFraction * jitterKg;
+    let fuel = initialFuel;
     const dt = 0.25;
     const lapTimeS = 110;
-    let pitLap = null;
 
     for (let lap = 1; lap <= 5; lap += 1) {
       const ticks = lapTimeS / dt;
       for (let i = 0; i < ticks; i += 1) {
         fuel = consumeFuel(fuel, { speedKmh: 220, throttle: 0.6 }, dt);
-        if (pitLap === null && fuel < pitThreshold) {
-          pitLap = lap;
-        }
       }
     }
-    pitLaps.push(pitLap);
+
+    assert.ok(fuel > 0, `car ${carIdx} depleted fuel: ${fuel}`);
+    assert.ok(fuel < initialFuel, `car ${carIdx} did not consume fuel: ${fuel}`);
+    finalFuels.push(fuel);
   }
 
-  // Tutte le auto raggiungono la soglia entro 5 giri
-  assert.ok(
-    pitLaps.every((l) => l !== null),
-    `alcune auto non raggiungono la soglia entro 5 giri: ${pitLaps}`,
-  );
-  // Effetto jitter: i pit si scaglionano su almeno 2 giri diversi
-  const uniqueLaps = new Set(pitLaps);
-  assert.ok(
-    uniqueLaps.size >= 2,
-    `tutte le auto convergono allo stesso giro: giro ${[...uniqueLaps][0]}`,
-  );
+  const spread = Math.max(...finalFuels) - Math.min(...finalFuels);
+  assert.ok(spread > 3.5 && spread < 4.5, `unexpected final fuel spread: ${spread}`);
 });
 
-console.log(`\n${passed} test passati`);
+console.log(`\n${passed} tests passed`);

@@ -26,6 +26,11 @@
         alpine:   '#0090ff'
     });
     const FALLBACK_COLOR = '#9ca3af';
+    const COMPOUND_LABELS = Object.freeze({
+        soft: 'Soft',
+        medium: 'Medium',
+        hard: 'Hard'
+    });
 
     const STATE_CLASS = Object.freeze({
         PIT:      'car-marker--pit',
@@ -98,6 +103,7 @@
         'raceId',
         'teamId',
         'carId',
+        'compound',
         'lap',
         'trackPos',
         'speed',
@@ -377,6 +383,27 @@
         return 'ok';
     }
 
+    function normalizeCompound(value) {
+        const id = String(value || '').toLowerCase();
+        return COMPOUND_LABELS[id] ? id : null;
+    }
+
+    function createCompoundBadge(value, compact) {
+        const compound = normalizeCompound(value);
+        if (!compound) return null;
+
+        const badge = document.createElement('span');
+        badge.className = 'compound-badge compound-badge--' + compound;
+        badge.textContent = compact ? compound.charAt(0).toUpperCase() : COMPOUND_LABELS[compound];
+        badge.title = COMPOUND_LABELS[compound] + ' compound';
+        return badge;
+    }
+
+    function addCompoundBadge(container, value, compact) {
+        const badge = createCompoundBadge(value, compact);
+        if (badge) container.appendChild(badge);
+    }
+
     function raceKeyFromId(raceId) {
         return raceId == null ? null : String(raceId);
     }
@@ -602,6 +629,7 @@
         const meta = document.createElement('div');
         meta.className = 'telemetry-popup__meta';
         if (standing.position != null) addTelemetryChip(meta, 'P' + standing.position, 'ok');
+        addCompoundBadge(meta, car.compound || standing.compound, false);
         if (standing.gap != null) addTelemetryChip(meta, formatGap(Number(standing.gap), Number(standing.position)), standing.position === 1 ? 'ok' : 'warn');
         if (car.lap != null || standing.lap != null) addTelemetryChip(meta, 'Lap ' + (car.lap != null ? car.lap : standing.lap), 'muted');
         if (car.timestamp || standing.timestamp) addTelemetryChip(meta, formatClock(car.timestamp || standing.timestamp), 'muted');
@@ -1181,12 +1209,18 @@
         renderRaceControlFromSnapshot(snapshot);
 
         for (const race of snapshot.races || []) {
+            const cars = race.cars || [];
+            for (const car of cars) {
+                if (car.carId == null) continue;
+                mergeLatestCar(car);
+            }
+
             if (race.classification) {
                 renderClassification(race.classification);
             }
-            for (const car of race.cars || []) {
+
+            for (const car of cars) {
                 if (car.carId == null) continue;
-                mergeLatestCar(car);
                 carsForStatePanel.push(car);
                 if (car.trackPos == null) continue;
                 // Use the car's actual telemetry timestamp, not the snapshot's bundling timestamp
@@ -1294,8 +1328,10 @@
             swatch.style.background = teamColor(row.teamId);
             const name = document.createElement('span');
             name.textContent = '#' + row.carId;
+            const latestCar = key ? state.latestCars.get(key) : null;
             tdCar.appendChild(swatch);
             tdCar.appendChild(name);
+            addCompoundBadge(tdCar, row.compound || (latestCar && latestCar.compound), true);
             tr.appendChild(tdCar);
 
             const tdGap = document.createElement('td');
