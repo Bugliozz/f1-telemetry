@@ -1,11 +1,11 @@
 // Car class - orchestrates the internal state of a single car.
 //
-// Integra physics.js, tire-fuel.js, fsm.js e conditions.js in un unico
-// `tick(dt, ctx)` method that updates state and produces messages
-// pendenti (telemetry, state, events). Nessun I/O diretto: i messaggi
-// vengono ritornati all'Orchestrator che li passa al MqttPublisher.
+// Integrates physics.js, tire-fuel.js, fsm.js and conditions.js into a single
+// `tick(dt, ctx)` method that updates state and produces pending messages
+// (telemetry, state, events). No direct I/O: messages are returned to the
+// Orchestrator, which passes them to the MqttPublisher.
 //
-// Cfr. docs/simulator-architecture.md §5 (Modello dell'auto).
+// See docs/simulator-architecture.md §5 (Car model).
 
 const {
   advance,
@@ -63,7 +63,7 @@ class Car {
     this._pitEntryLap = null;
   }
 
-  // --- Tick principale ---
+  // --- Main tick ---
 
   tick(dt, ctx) {
     const messages = { telemetry: null, state: null, events: [] };
@@ -77,7 +77,7 @@ class Car {
       return messages;
     }
 
-    // --- INIT: auto ferma in griglia ---
+    // --- INIT: car stationary on the grid ---
     if (this.fsm.state === STATES.INIT) {
       messages.telemetry = this._buildTelemetry(raceId, timestamp);
       return messages;
@@ -94,7 +94,7 @@ class Car {
         this.lap = posResult.lap;
       }
 
-      // Valuta condizione → RETIRED
+      // Evaluate condition → RETIRED
       const evalResult = evaluate(this.fsm.state, this._buildObservation(ctx), this.condTracker);
       this.condTracker = evalResult.tracker;
       if (evalResult.trigger) {
@@ -147,7 +147,7 @@ class Car {
         });
       }
 
-      // Valuta condizione → pit-out / race-end / engine-failure
+      // Evaluate condition → pit-out / race-end / engine-failure
       const evalResult = evaluate(this.fsm.state, this._buildObservation(ctx), this.condTracker);
       this.condTracker = evalResult.tracker;
       if (evalResult.trigger) {
@@ -166,11 +166,11 @@ class Car {
   // --- RUNNING tick ---
 
   _tickRunning(dt, ctx, raceId, timestamp, messages) {
-    // Target speed dal profilo Monza con variabilita'
+    // Target speed from the Monza profile with per-car variability
     const rawTarget = targetSpeed(this.trackPos);
     const adjustedTarget = rawTarget * this._teamFactor + this._speedOffset;
 
-    // Jitter istantaneo (micro-variazioni per tick)
+    // Instantaneous jitter (micro-variations per tick)
     const instantJitter = (this.rng() - 0.5) * 1.5;
     const nominalTarget = Math.max(0, adjustedTarget + instantJitter);
     const maxRaceSpeed = this._numberConfig('maxRaceSpeedKmh', 350);
@@ -185,12 +185,12 @@ class Car {
       this.speed = Math.min(this.speed, this._virtualSafetyCarSpeedLimit());
     }
 
-    // Throttle e brake derivati dalla fisica, poi rifiniti con il profilo
+    // Throttle and brake derived from physics, then refined with the
     // Monza pedal profile under green-flag race conditions.
     let { throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt);
     ({ throttle, brake } = this._applyRacingControls({ throttle, brake }, ctx, yellowLimited));
 
-    // Avanzamento posizione
+    // Position advance
     const prevPos = { trackPos: this.trackPos, lap: this.lap };
     let posResult = advance(prevPos, this.speed, dt);
     const vscClamp = this._clampVirtualSafetyCarOvertake(prevPos, posResult, ctx, dt);
@@ -200,7 +200,7 @@ class Car {
       ({ throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt));
     }
 
-    // Controllo settori
+    // Sector crossing check
     this._checkSectorCrossing(posResult, raceId, timestamp, messages);
 
     // Lap completed
@@ -223,7 +223,7 @@ class Car {
       wearFactor,
     }, dt);
 
-    // Asimmetria left/right (realistica: curva a destra carica piu' il lato sinistro)
+    // Left/right asymmetry (realistic: right-hand corners load the left side more)
     const lrBias = (this.rng() - 0.5) * tireTempJitter;
     this.tireTemp = {
       fl: this.tireTemp.fl + lrBias * 0.3,
@@ -388,8 +388,8 @@ class Car {
       };
     }
 
-    // Fuori dalle braking zone evitiamo piccole correzioni di freno prodotte
-    // from target jitter: in a real race the driver stays on throttle.
+    // Outside braking zones, avoid small brake corrections produced by
+    // target jitter: in a real race the driver stays on throttle.
     if (baseBrake > 0.25) {
       return { throttle: 0, brake: baseBrake };
     }
@@ -463,7 +463,7 @@ class Car {
     const gear = this.fsm.state === STATES.INIT ? 0 : gearForSpeed(this.speed);
     const rpm = this.fsm.state === STATES.INIT ? 0 : rpmForSpeed(this.speed, rpmJitter);
 
-    // DRS attivo solo in RUNNING sui rettilinei lunghi
+    // DRS active only in RUNNING state on long straights
     let drs = false;
     if (this.fsm.state === STATES.RUNNING && controls.drsAllowed !== false && Array.isArray(this.config.drsZones)) {
       for (const zone of this.config.drsZones) {
@@ -675,7 +675,7 @@ class Car {
     this.currentSector = 1;
   }
 
-  // Race start trigger (chiamato dall'Orchestrator)
+  // Race start trigger (called by the Orchestrator)
   startRace(raceId, timestamp) {
     const messages = { telemetry: null, state: null, events: [] };
     this._applyTransition(TRIGGERS.RACE_START, 'race-start', raceId, timestamp, messages);

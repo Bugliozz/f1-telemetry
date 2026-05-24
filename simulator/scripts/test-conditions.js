@@ -401,7 +401,7 @@ console.log('\nconditions.evaluate - priorita RUNNING');
 // ----------------------------------------------------------------------------
 
 test('priorita: race-end batte engine-failure', () => {
-  // rng=0 farebbe engine-failure se valutato; race-end ha priorita'
+  // rng=0 would trigger engine-failure if evaluated; race-end takes priority
   const obs = {
     ...baseRunningObs,
     lap: 15,
@@ -441,7 +441,7 @@ test('priority: tire-overheat beats non-critical fuel telemetry', () => {
 console.log('\nconditions.evaluate - PIT');
 // ----------------------------------------------------------------------------
 
-test('PIT senza timer pronto: nessun trigger', () => {
+test('PIT without elapsed timer: no trigger', () => {
   let t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = { ...baseRunningObs, nowS: 101 };
   const out = evaluate(STATES.PIT, obs, t);
@@ -471,7 +471,7 @@ test('PIT -> engine-failure precede pit-out', () => {
   assert.equal(out.trigger, TRIGGERS.ENGINE_FAILURE);
 });
 
-test('PIT -> race-end al lap finale (pit nel giro CHECKERED)', () => {
+test('PIT -> race-end on the final lap (pit during CHECKERED lap)', () => {
   const t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = {
     ...baseRunningObs,
@@ -484,7 +484,7 @@ test('PIT -> race-end al lap finale (pit nel giro CHECKERED)', () => {
   assert.equal(out.trigger, TRIGGERS.RACE_END);
 });
 
-test('PIT: low-fuel non si valuta (sei gia in pit)', () => {
+test('PIT: low fuel is not evaluated as a pit trigger (already in pit)', () => {
   const t = onEnterPit(initialConditionsTracker(), 100, 2.5);
   const obs = { ...baseRunningObs, nowS: 101, fuel: 1 };
   const out = evaluate(STATES.PIT, obs, t);
@@ -495,7 +495,7 @@ test('PIT: low-fuel non si valuta (sei gia in pit)', () => {
 console.log('\nconditions.evaluate - FAULT');
 // ----------------------------------------------------------------------------
 
-test('FAULT senza timer scaduto: nessun trigger', () => {
+test('FAULT without elapsed timer: no trigger', () => {
   const t = onEnterFault(initialConditionsTracker(), 100);
   const obs = { ...baseRunningObs, nowS: 102 };
   const out = evaluate(STATES.FAULT, obs, t);
@@ -510,7 +510,7 @@ test('FAULT -> unrecoverable quando timer >= 5s', () => {
   assert.equal(out.tracker.faultEnteredAtS, null);
 });
 
-test('FAULT: engine-failure non si valuta (sei gia in fault)', () => {
+test('FAULT: engine-failure is not evaluated (already in fault)', () => {
   const t = onEnterFault(initialConditionsTracker(), 100);
   const obs = {
     ...baseRunningObs,
@@ -543,7 +543,7 @@ test('FINISHED: sempre no-op', () => {
 });
 
 // ----------------------------------------------------------------------------
-console.log('\nconditions.evaluate - immutabilita e robustezza');
+console.log('\nconditions.evaluate - immutability and robustness');
 // ----------------------------------------------------------------------------
 
 test('input observation/tracker non mutati', () => {
@@ -573,7 +573,7 @@ test('fsmState sconosciuto: no trigger', () => {
 });
 
 // ----------------------------------------------------------------------------
-console.log('\nconditions.integration - giro completo con FSM reale');
+console.log('\nconditions.integration - full lap with real FSM');
 // ----------------------------------------------------------------------------
 
 test('normal race flow: INIT -> RUNNING -> PIT through tire service -> RUNNING -> FINISHED', () => {
@@ -651,4 +651,4 @@ test('retirement flow: INIT -> RUNNING -> FAULT (tire-overheat 3 ticks) -> RETIR
   assert.equal(fsm.state, STATES.RETIRED);
 });
 
-console.log(`\n${passed} test passati`);
+console.log(`\n${passed} tests passed`);

@@ -1,13 +1,13 @@
 // Simulator test: first with 1 car, then with 10 cars.
 //
-// Questo script NON richiede un broker MQTT reale: usa un mock publisher
-// che conta i messaggi. Verifica che:
+// This script does NOT require a real MQTT broker: it uses a mock publisher
+// that collects messages. Verifies that:
 //
 // 1. With 1 car, the tick loop produces telemetry at ~4 Hz
-// 2. La variabilita' dei dati e' realistica (speed, rpm, tireTemp, fuel)
-// 3. Con 10 auto tutto funziona e i messaggi sono proporzionali
-// 4. La FSM transita correttamente (INIT → RUNNING → eventuali PIT/FAULT)
-// 5. I payload sono conformi allo schema JSON (campi obbligatori presenti)
+// 2. Data variability is realistic (speed, rpm, tireTemp, fuel)
+// 3. With 10 cars everything works and messages scale proportionally
+// 4. The FSM transitions correctly (INIT → RUNNING → possible PIT/FAULT)
+// 5. Payloads conform to the JSON schema (required fields present)
 
 const Car = require('../src/car/car');
 const Orchestrator = require('../src/orchestrator');
@@ -45,7 +45,7 @@ function section(title) {
   console.log('═'.repeat(60));
 }
 
-// Mock MQTT Publisher che raccoglie i messaggi
+// Mock MQTT Publisher that collects messages
 class MockPublisher {
   constructor() {
     this.telemetry = [];
@@ -429,7 +429,7 @@ assert(pitEntryTelemetry && pitEntryTelemetry.trackPos >= pitConfig.pitEntryPos,
   `PIT scatta alla pit entry (trackPos=${pitEntryTelemetry && pitEntryTelemetry.trackPos})`);
 assert(pitStopEvent != null, 'pit-stop emesso dopo ingresso pit');
 assert(pitExitTelemetry && pitExitTelemetry.lap > pitEntryLap && pitExitTelemetry.trackPos >= pitConfig.pitExitPos,
-  `pit-exit dopo giro wrap e pitExitPos (lap=${pitExitTelemetry && pitExitTelemetry.lap}, trackPos=${pitExitTelemetry && pitExitTelemetry.trackPos})`);
+  `pit-exit after lap wrap and pitExitPos (lap=${pitExitTelemetry && pitExitTelemetry.lap}, trackPos=${pitExitTelemetry && pitExitTelemetry.trackPos})`);
 
 // ============================================================
 // TEST 1C: Safety Car
@@ -786,10 +786,10 @@ const pitUnderScCar = new Car({
   config: combinedConfig,
 });
 pitUnderScCar.startRace(1, ctx.timestamp);
-pitUnderScCar.lap = 1;
+pitUnderScCar.lap = 2; // >= tireServiceLap to trigger pit entry
 pitUnderScCar.trackPos = combinedConfig.pitEntryPos;
 pitUnderScCar.speed = 60;
-pitUnderScCar.fuel = 4; // below low-fuel threshold to trigger pit entry
+pitUnderScCar.fuel = 4;
 const scPitEntryMsgs = pitUnderScCar.tick(0.25, {
   raceId: 1,
   timestamp: new Date().toISOString(),
@@ -798,7 +798,7 @@ const scPitEntryMsgs = pitUnderScCar.tick(0.25, {
   activeFlag: 'GREEN',
 });
 assert(scPitEntryMsgs.state && scPitEntryMsgs.state.state === 'PIT',
-  'low-fuel pit enters PIT before Safety Car phase');
+  'tire-service pit enters PIT before Safety Car phase');
 const scPitMsgs = pitUnderScCar.tick(0.25, {
   raceId: 1,
   timestamp: new Date().toISOString(),
@@ -822,7 +822,7 @@ const redPitCar = new Car({
   config: combinedConfig,
 });
 redPitCar.startRace(1, ctx.timestamp);
-redPitCar.fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'low-fuel' };
+redPitCar.fsm = { state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' };
 redPitCar._pitServiced = true;
 redPitCar._pitEntryLap = 1;
 redPitCar.lap = 2;
@@ -961,7 +961,7 @@ const multiTelemetryCount = mockPub.telemetry.length - startTelemetryCount;
 console.log(`  Telemetry 10 cars × 80 ticks: ${multiTelemetryCount} samples`);
 
 // Each non-terminal car produces 1 telemetry sample per tick
-// Consideriamo che tutte sono RUNNING (nessuna RETIRED in 80 tick)
+// Assuming all cars are RUNNING (no RETIRED within 80 ticks)
 assert(multiTelemetryCount >= 750, `At least 750 samples (10×80 - FAULT margin): got ${multiTelemetryCount}`);
 assert(multiTelemetryCount <= 800, `Max 800 samples: got ${multiTelemetryCount}`);
 

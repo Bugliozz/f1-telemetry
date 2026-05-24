@@ -1,57 +1,57 @@
 // Car FSM state transition conditions.
 //
-// Modulo puro, senza I/O e senza mutazione degli input. Coerente con
-// `fsm.js`, `physics.js`, `tire-fuel.js`: the orchestrator passes the state
-// corrente piu' un'osservazione del tick e riceve un eventuale trigger da
-// applicare alla FSM.
+// Pure module, without I/O and without input mutations. Consistent with
+// `fsm.js`, `physics.js`, `tire-fuel.js`: the orchestrator passes the current
+// state plus a tick observation and receives an optional trigger to apply
+// to the FSM.
 //
 // Source: docs/simulator-architecture.md §7.1 (transition table).
 //
-//   | Da          | A        | Condizione                                                    | reason            |
+//   | From        | To       | Condition                                                     | reason            |
 //   |-------------|----------|---------------------------------------------------------------|-------------------|
 //   | RUNNING     | PIT      | tire-service lap reached and pit-entry window                 | tire-service      |
-//   | PIT         | RUNNING  | timer pit elapsed (2.0-3.5 s sorteggiati)                     | pit-out           |
-//   | RUNNING     | FAULT    | max(tireTemp) > 180 C per 3 tick consecutivi                  | tire-overheat     |
-//   | RUNNING/PIT | FAULT    | random engine failure (probability < 1e-4 per tick)          | engine-failure    |
-//   | FAULT       | RETIRED  | timer diagnostico >= 5 s (in F3 ogni fault e' non riparabile) | unrecoverable     |
-//   | RUNNING/PIT | FINISHED | lap >= TOTAL_LAPS && flag CHECKERED ricevuta                  | race-end          |
+//   | PIT         | RUNNING  | pit timer elapsed (2.0-3.5 s sampled randomly)                | pit-out           |
+//   | RUNNING     | FAULT    | max(tireTemp) > 180 C for 3 consecutive ticks                 | tire-overheat     |
+//   | RUNNING/PIT | FAULT    | random engine failure (probability < 1e-4 per tick)           | engine-failure    |
+//   | FAULT       | RETIRED  | diagnostic timer >= 5 s (every fault is unrecoverable)        | unrecoverable     |
+//   | RUNNING/PIT | FINISHED | lap >= TOTAL_LAPS && CHECKERED flag received                  | race-end          |
 //
-// I trigger generati esternamente alla FSM (`race-start` da flag GREEN,
-// `manual-retire` da Race Control, `internal-error` da exception handler)
-// non sono valutati qui: vivono nell'orchestrator perche' dipendono da
+// Externally generated triggers (`race-start` from GREEN flag,
+// `manual-retire` from Race Control, `internal-error` from exception handler)
+// are not evaluated here: they live in the orchestrator because they depend on
 // external sources outside car state observation.
 //
 // API:
 //
 //   initialConditionsTracker()
-//     ritorna il tracker per-auto con i contatori sticky azzerati.
+//     returns the per-car tracker with all sticky counters reset.
 //
 //   evaluate(fsmState, observation, tracker)
-//     ritorna { trigger, reason, tracker }.
-//     - `trigger: null` se nessuna condizione e' soddisfatta.
-//     - `tracker` e' SEMPRE ritornato (anche quando trigger e' null), perche'
-//        il contatore tire-overheat va aggiornato a ogni tick.
-//     - L'input non viene mai mutato.
-//     L'ordine di valutazione (priorita' alta -> bassa) e':
-//       1. race-end       (terminazione regolare, dominante)
-//       2. engine-failure (catastrofico, casuale)
-//       3. tire-overheat  (catastrofico, latched a 3 tick)
-//       4. unrecoverable  (in FAULT, dopo timer diagnose)
-//       5. pit-out        (in PIT, dopo timer durata)
+//     returns { trigger, reason, tracker }.
+//     - `trigger: null` if no condition is satisfied.
+//     - `tracker` is ALWAYS returned (even when trigger is null), because
+//        the tire-overheat counter must be updated every tick.
+//     - Input is never mutated.
+//     Evaluation order (highest → lowest priority):
+//       1. race-end       (normal termination, dominant)
+//       2. engine-failure (catastrophic, random)
+//       3. tire-overheat  (catastrophic, latched after 3 ticks)
+//       4. unrecoverable  (in FAULT, after diagnostic timer)
+//       5. pit-out        (in PIT, after stop duration timer)
 //       6. tire-service
 //
 //   onEnterPit(tracker, nowS, durationS)
 //   onEnterFault(tracker, nowS)
 //     to be called by the orchestrator immediately after the FSM transition to
-//     PIT/FAULT, per inizializzare i timer del tracker.
+//     PIT/FAULT, to initialise the tracker timers.
 //
 //   samplePitDurationS(rng)
-//     ritorna una durata pit in [PIT_DURATION_MIN_S, PIT_DURATION_MAX_S]
-//     usando il PRNG passato (xorshift32 o Math.random).
+//     returns a pit duration in [PIT_DURATION_MIN_S, PIT_DURATION_MAX_S]
+//     using the PRNG passed in (xorshift32 or Math.random).
 //
 // Predicates are exposed individually (`isLowFuel`, `isTireOverheatLatched`,
-// ...) per consentire test unitari mirati e per documentare in modo
-// dichiarativo le condizioni della tabella sopra.
+// ...) for targeted unit tests and to document the transition table
+// conditions declaratively.
 
 const { STATES, TRIGGERS } = require('./fsm');
 
@@ -207,8 +207,8 @@ function evaluate(fsmState, observation, tracker) {
   const safe = readObservation(observation);
   const faultsAllowed = isFaultGraceElapsed(safe.nowS, safe.faultGraceS);
 
-  // Aggiorna il contatore tire-overheat solo quando i fault sono abilitati:
-  // la grace window protegge anche dal latch immediato appena scade.
+  // Update the tire-overheat counter only when faults are enabled:
+  // the grace window also protects against an immediate latch as soon as it expires.
   const nextTireOverheatTicks = faultsAllowed
     ? tireOverheatNextTicks(
       safe.tireTemp,
@@ -273,7 +273,7 @@ function evaluate(fsmState, observation, tracker) {
   }
 
   // INIT, RETIRED, FINISHED: no observed-state condition here
-  // (race-start, manual-retire, internal-error sono trigger esterni).
+  // (race-start, manual-retire, internal-error are external triggers).
   return noTrigger(nextTracker);
 }
 

@@ -222,12 +222,12 @@ test('FINISHED non transita: race-end no-op', () => {
   assert.equal(out.changed, false);
 });
 
-test('FINISHED non transita: nessun trigger lo smuove', () => {
+test('FINISHED does not transition: no trigger moves it', () => {
   const fsm = { state: 'FINISHED', previousState: 'RUNNING', reason: 'race-end' };
   for (const trig of Object.values(TRIGGERS)) {
     const out = transition(fsm, trig);
     assert.equal(out.state, 'FINISHED', `trigger=${trig}`);
-    assert.equal(out.changed, false, `trigger=${trig} non doveva cambiare`);
+    assert.equal(out.changed, false, `trigger=${trig} should not have changed`);
   }
 });
 
@@ -239,20 +239,20 @@ test('INIT -> PIT is not allowed through legacy low-fuel trigger', () => {
   assert.equal(out.changed, false);
 });
 
-test('INIT -> FINISHED non ammesso (race-end)', () => {
+test('INIT -> FINISHED is not allowed (race-end)', () => {
   const out = transition(initialFsm(), 'race-end');
   assert.equal(out.state, 'INIT');
   assert.equal(out.changed, false);
 });
 
-test('FAULT -> RUNNING non ammesso (no recupero, solo retirement)', () => {
+test('FAULT -> RUNNING is not allowed (no recovery, only retirement)', () => {
   const fsm = { state: 'FAULT', previousState: 'RUNNING', reason: 'tire-overheat' };
   const out = transition(fsm, 'pit-out');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.changed, false);
 });
 
-test('FAULT -> FINISHED non ammesso (race-end)', () => {
+test('FAULT -> FINISHED is not allowed (race-end)', () => {
   const fsm = { state: 'FAULT', previousState: 'RUNNING', reason: 'engine-failure' };
   const out = transition(fsm, 'race-end');
   assert.equal(out.state, 'FAULT');
@@ -279,15 +279,15 @@ test('trigger null/undefined: no-op', () => {
   assert.equal(transition(fsm, '').changed, false);
 });
 
-console.log('\nfsm.transition - reason custom e robustezza');
+console.log('\nfsm.transition - custom reason and robustness');
 
-test('customReason sostituisce il trigger come reason', () => {
+test('customReason replaces the trigger as reason', () => {
   const out = transition({ state: 'RUNNING', previousState: null, reason: null }, 'tire-overheat', 'tire-overheat:fl=185');
   assert.equal(out.state, 'FAULT');
   assert.equal(out.reason, 'tire-overheat:fl=185');
 });
 
-test('customReason vuoto o non-stringa: usa il trigger', () => {
+test('empty or non-string customReason: falls back to trigger', () => {
   const fsm = { state: 'INIT', previousState: null, reason: null };
   assert.equal(transition(fsm, 'race-start', '').reason, 'race-start');
   assert.equal(transition(fsm, 'race-start', null).reason, 'race-start');
@@ -301,19 +301,19 @@ test('null or malformed input: treated as initial state', () => {
   assert.equal(transition({}, 'race-start').state, 'RUNNING');
 });
 
-test('immutabilita: input fsm non mutato', () => {
+test('immutability: input fsm is not mutated', () => {
   const fsm = { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' };
   const snapshot = { ...fsm };
   transition(fsm, 'low-fuel');
   assert.deepEqual(fsm, snapshot);
 });
 
-test('immutabilita: TRANSITIONS non mutabile', () => {
+test('immutability: TRANSITIONS is not mutable', () => {
   assert.equal(Object.isFrozen(TRANSITIONS), true);
   assert.throws(() => { TRANSITIONS.push({ from: 'X', to: 'Y', trigger: 'z' }); });
 });
 
-test('immutabilita: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES congelati', () => {
+test('immutability: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES are frozen', () => {
   assert.equal(Object.isFrozen(STATES), true);
   assert.equal(Object.isFrozen(TRIGGERS), true);
   assert.equal(Object.isFrozen(TERMINAL_STATES), true);
@@ -322,7 +322,7 @@ test('immutabilita: STATES, TRIGGERS, TERMINAL_STATES, STATE_VALUES congelati', 
 
 console.log('\nfsm.canTransition');
 
-test('canTransition coerente con transition().changed', () => {
+test('canTransition consistent with transition().changed', () => {
   const cases = [
     { state: 'INIT',    trigger: 'race-start',     expected: true },
     { state: 'INIT',    trigger: 'low-fuel',       expected: false },
@@ -367,7 +367,7 @@ test('retirement flow: INIT -> RUNNING -> FAULT -> RETIRED', () => {
   f = transition(f, 'race-start'); assert.equal(f.state, 'RUNNING');
   f = transition(f, 'tire-overheat'); assert.equal(f.state, 'FAULT');
   f = transition(f, 'unrecoverable'); assert.equal(f.state, 'RETIRED');
-  // Ulteriori tick sono no-op.
+  // Further ticks are no-ops.
   f = transition(f, 'race-end'); assert.equal(f.state, 'RETIRED');
   assert.equal(f.changed, false);
 });
@@ -389,20 +389,15 @@ console.log('\nfsm - sanity matrice TRANSITIONS');
 
 test('each transition references valid states', () => {
   for (const t of TRANSITIONS) {
-    assert.ok(t.from === '*' || isValidState(t.from), `from non valido: ${t.from}`);
-    assert.ok(isValidState(t.to), `to non valido: ${t.to}`);
-    assert.ok(typeof t.trigger === 'string' && t.trigger.length > 0, `trigger vuoto`);
+    assert.ok(t.from === '*' || isValidState(t.from), `invalid from: ${t.from}`);
+    assert.ok(isValidState(t.to), `invalid to: ${t.to}`);
+    assert.ok(typeof t.trigger === 'string' && t.trigger.length > 0, `empty trigger`);
   }
 });
 
 test('each operational trigger is used by at least one transition', () => {
   const usedTriggers = new Set(TRANSITIONS.map((t) => t.trigger));
-  const legacyNonOperationalTriggers = new Set([
-    TRIGGERS.LOW_FUEL,
-  ]);
-
   for (const trigger of Object.values(TRIGGERS)) {
-    if (legacyNonOperationalTriggers.has(trigger)) continue;
     assert.ok(usedTriggers.has(trigger), `trigger ${trigger} not used in TRANSITIONS`);
   }
 });
@@ -415,4 +410,4 @@ test('no terminal state has specific outgoing transitions', () => {
   }
 });
 
-console.log(`\n${passed} test passati`);
+console.log(`\n${passed} tests passed`);
