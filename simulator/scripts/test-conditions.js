@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const {
   FUEL_PIT_THRESHOLD_KG,
+  TIRE_WEAR_PIT_THRESHOLD,
   TIRE_OVERHEAT_THRESHOLD_C,
   TIRE_OVERHEAT_TICKS_REQUIRED,
   ENGINE_FAILURE_PROB_PER_TICK,
@@ -18,6 +19,8 @@ const {
   isPitTimeElapsed,
   isFaultUnrecoverable,
   isRaceEnd,
+  isPitEntryWindow,
+  isTireServiceDue,
   onEnterPit,
   onEnterFault,
   samplePitDurationS,
@@ -39,6 +42,7 @@ console.log('conditions.constants');
 
 test('costanti coerenti con docs/simulator-architecture.md §7.1', () => {
   assert.equal(FUEL_PIT_THRESHOLD_KG, 8);
+  assert.equal(TIRE_WEAR_PIT_THRESHOLD, 0.6);
   assert.equal(TIRE_OVERHEAT_THRESHOLD_C, 180);
   assert.equal(TIRE_OVERHEAT_TICKS_REQUIRED, 3);
   assert.equal(ENGINE_FAILURE_PROB_PER_TICK, 1e-4);
@@ -233,6 +237,26 @@ test('lap < totalLaps anche con CHECKERED -> false', () => {
 });
 
 // ----------------------------------------------------------------------------
+console.log('\nconditions.isPitEntryWindow / isTireServiceDue');
+// ----------------------------------------------------------------------------
+
+test('pit entry window gates tire service by track position', () => {
+  assert.equal(isPitEntryWindow(0.94, 0.95), false);
+  assert.equal(isPitEntryWindow(0.95, 0.95), true);
+  assert.equal(isPitEntryWindow(0.99, 0.95), true);
+});
+
+test('tire service due uses normalized wear threshold', () => {
+  assert.equal(isTireServiceDue(0.59, 0.6, false), false);
+  assert.equal(isTireServiceDue(0.6, 0.6, false), true);
+  assert.equal(isTireServiceDue(0.8, 0.6, false), true);
+});
+
+test('completed tire service blocks a second tire-service trigger', () => {
+  assert.equal(isTireServiceDue(1, 0.6, true), false);
+});
+
+// ----------------------------------------------------------------------------
 console.log('\nconditions.onEnterPit / onEnterFault / samplePitDurationS');
 // ----------------------------------------------------------------------------
 
@@ -282,7 +306,7 @@ const baseRunningObs = {
   lap: 1,
   trackPos: 0.50,
   pitEntryPos: 0.95,
-  tireServiceLap: 2,
+  tireWear: 0,
   tireServiceCompleted: false,
   totalLaps: 15,
   checkeredActive: false,
@@ -306,17 +330,39 @@ test('RUNNING keeps low fuel as telemetry, not as an operational PIT trigger', (
   assert.equal(out.reason, null);
 });
 
-test('RUNNING -> tire-service when service lap reaches pit-entry window', () => {
+test('RUNNING -> tire-service when wear reaches threshold in pit-entry window', () => {
   const obs = {
     ...baseRunningObs,
     fuel: 30,
-    lap: 2,
+    tireWear: 0.7,
     trackPos: 0.96,
     tireServiceCompleted: false,
   };
   const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
   assert.equal(out.trigger, TRIGGERS.TIRE_SERVICE);
-  assert.match(out.reason, /^tire-service:lap-2$/);
+  assert.match(out.reason, /^tire-service:wear-70%$/);
+});
+
+test('RUNNING waits for pit-entry window when wear reaches threshold', () => {
+  const obs = {
+    ...baseRunningObs,
+    tireWear: 0.9,
+    trackPos: 0.50,
+    tireServiceCompleted: false,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, null);
+});
+
+test('RUNNING does not request tire service twice', () => {
+  const obs = {
+    ...baseRunningObs,
+    tireWear: 0.9,
+    trackPos: 0.96,
+    tireServiceCompleted: true,
+  };
+  const out = evaluate(STATES.RUNNING, obs, initialConditionsTracker());
+  assert.equal(out.trigger, null);
 });
 
 test('RUNNING -> tire-overheat only after 3 consecutive ticks above threshold', () => {
@@ -584,11 +630,11 @@ test('normal race flow: INIT -> RUNNING -> PIT through tire service -> RUNNING -
   fsm = transition(fsm, TRIGGERS.RACE_START);
   assert.equal(fsm.state, STATES.RUNNING);
 
-  // Scheduled tire service at the pit-entry window.
+  // Tire service once wear reaches the threshold at the pit-entry window.
   let result = evaluate(fsm.state, {
     ...baseRunningObs,
     fuel: 30,
-    lap: 2,
+    tireWear: 0.7,
     trackPos: 0.96,
     tireServiceCompleted: false,
   }, t);

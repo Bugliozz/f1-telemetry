@@ -13,7 +13,6 @@ const PROFILES = Object.freeze({
       tireOverheatTicksRequired: 8,
       faultGraceS: 300,
       faultDiagnoseS: 5,
-      wearPerLap: 0.08,
       raceControlTriggers: Object.freeze({
         retirementScProbability: 0,
         multiFaultVscThreshold: 1,
@@ -28,7 +27,6 @@ const PROFILES = Object.freeze({
     overrides: Object.freeze({
       engineFailureProbPerTick: 1e-5,
       faultGraceS: 60,
-      wearPerLap: 0.06,
       tireOverheatThresholdC: 145,
       tireOverheatTicksRequired: 8,
       raceControlTriggers: Object.freeze({

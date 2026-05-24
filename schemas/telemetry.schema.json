@@ -10,6 +10,7 @@
     "raceId",
     "teamId",
     "carId",
+    "compound",
     "lap",
     "trackPos",
     "speed",
@@ -43,6 +44,11 @@
       "minimum": 1,
       "maximum": 99,
       "description": "Numero macchina."
+    },
+    "compound": {
+      "type": "string",
+      "enum": ["soft", "medium", "hard"],
+      "description": "Mescola dry corrente."
     },
     "lap": {
       "type": "integer",

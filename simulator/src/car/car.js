@@ -15,6 +15,41 @@ const {
   MAX_BRAKE_MS2,
 } = require('./physics');
 const { initialTireTemp, updateTireTemp, consumeFuel, INITIAL_FUEL_KG } = require('./tire-fuel');
+const { COMPOUNDS, buildCompounds, randomCompound, pickDifferentCompound } = require('./compounds');
+const { createCarPrng } = require('../util/prng');
+
+// Salt that derives the per-car tire PRNG from the global seed, so compound
+// and wear-variance draws stay reproducible without disturbing the main
+// per-car stream that drives physics/fault determinism.
+const TIRE_RNG_SALT = 0x7152e;
+const TIRE_RNG_CAR_MULTIPLIER = 0x9e3779b1;
+
+function tirePrngCarKey(carId) {
+  // xorshift32 first draws are correlated for nearby seeds. Mix the car id
+  // before applying the salt so starting compounds vary across the grid.
+  return Math.imul(carId | 0, TIRE_RNG_CAR_MULTIPLIER) ^ TIRE_RNG_SALT;
+}
+
+function stableUnitForCarId(carId) {
+  const text = String(carId == null ? '' : carId);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+  return (hash >>> 0) / 4294967296;
+}
+
+function driverPerformanceFactor(carId, variancePct) {
+  const variance = Number.isFinite(variancePct) && variancePct > 0 ? variancePct : 0;
+  if (variance === 0) return 1;
+  return 1 + (stableUnitForCarId(carId) * 2 - 1) * variance;
+}
 const { initialFsm, transition, STATES, TRIGGERS, isTerminal } = require('./fsm');
 const {
   initialConditionsTracker,
@@ -56,6 +91,22 @@ class Car {
     const fuelJitterKg = this.config.initialFuelJitterKg || 2;
     this.fuel = Math.max(0, INITIAL_FUEL_KG + (this.rng() - 0.5) * 2 * fuelJitterKg);
     this._teamFactor = (this.config.teamPerformanceFactor && this.config.teamPerformanceFactor[teamId]) || 1.0;
+    this._driverFactor = driverPerformanceFactor(
+      carId,
+      this._numberConfig('driverPerformanceVariancePct', 0.006),
+    );
+
+    // Tire compound state: random starting compound, wear accumulator in [0, 1]
+    // and a per-car wear multiplier that staggers pit stops between cars on the
+    // same compound (see compounds.js and PIANO_MODIFICHE_GOMME.md §2.2). Drawn
+    // from a dedicated stream so it stays reproducible from the global seed
+    // without shifting the main per-car stream used for physics/faults.
+    this._tireRng = createCarPrng(this.config.seed, tirePrngCarKey(carId));
+    this._compounds = buildCompounds(this.config.tireCompounds);
+    this.compound = randomCompound(this._tireRng);
+    this._tireWear = 0;
+    const wearVariancePct = this._numberConfig('tireWearVariancePct', 0.15);
+    this._wearVariance = 1 + (this._tireRng() - 0.5) * 2 * wearVariancePct;
 
     // Pit tire-service tracking
     this._pitServiced = false;
@@ -126,9 +177,14 @@ class Car {
       this.trackPos = posResult.trackPos;
       this.lap = posResult.lap;
 
-      // Tire service only: modern F1 pit stops do not refuel the car.
+      // Tire service only: modern F1 pit stops do not refuel the car. The car
+      // leaves on a *different* compound (F1 rule) with a fresh wear accumulator.
+      // The compound is drawn from the dedicated tire stream so the swap stays
+      // reproducible without shifting the main physics/fault stream (see §2.2).
       if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
         this.tireTemp = initialTireTemp(this.config.tireResetTempC || 90);
+        this.compound = pickDifferentCompound(this.compound, this._tireRng);
+        this._tireWear = 0;
         this._pitServiced = true;
         this._tireServiceCompleted = true;
         this.speed = 0;
@@ -140,9 +196,8 @@ class Car {
           details: {
             duration: this.condTracker.pitDurationS || 2.4,
             service: 'tire-change',
-            tyreCompound: 'medium',
+            tyreCompound: this.compound,
             refuelling: false,
-            fuelAddedKg: 0,
           },
         });
       }
@@ -168,7 +223,7 @@ class Car {
   _tickRunning(dt, ctx, raceId, timestamp, messages) {
     // Target speed from the Monza profile with per-car variability
     const rawTarget = targetSpeed(this.trackPos);
-    const adjustedTarget = rawTarget * this._teamFactor + this._speedOffset;
+    const adjustedTarget = rawTarget * this._teamFactor * this._driverFactor + this._speedOffset;
 
     // Instantaneous jitter (micro-variations per tick)
     const instantJitter = (this.rng() - 0.5) * 1.5;
@@ -211,9 +266,26 @@ class Car {
     this.trackPos = posResult.trackPos;
     this.lap = posResult.lap;
 
-    // Tire degradation with variability
-    const wearPerLap = this.config.wearPerLap || 0.03;
-    const wearFactor = 1 + this.lap * wearPerLap;
+    // Tire wear: accumulate normalised wear in [0, 1] from the compound's
+    // per-lap degradation index, scaled by the per-car variance and the
+    // fraction of a lap covered this tick. Softer compounds wear faster, so
+    // they reach the pit threshold sooner (see compounds.js, PIANO §2.3).
+    const compound = this._compounds[this.compound] || this._compounds.medium || COMPOUNDS.medium;
+    const lapFraction = Math.max(
+      0,
+      (this.lap + this.trackPos) - (prevPos.lap + prevPos.trackPos),
+    );
+    this._tireWear = Math.min(
+      1,
+      this._tireWear + compound.wearPerLap * this._wearVariance * lapFraction,
+    );
+
+    // Thermal coupling: a worn tire heats up more. wearFactor grows from 1
+    // (fresh) towards 1 + thermalGain (fully worn); the gain is small so a
+    // normal stint stays inside the operating range and never trips the
+    // tire-overheat FAULT (see tire-fuel.js wearFactor note).
+    const thermalGain = this._numberConfig('tireWearThermalGain', 0.15);
+    const wearFactor = 1 + this._tireWear * thermalGain;
     const tireTempJitter = this.config.tireTempJitterC || 1.5;
 
     this.tireTemp = updateTireTemp(this.tireTemp, {
@@ -448,7 +520,8 @@ class Car {
       rng: this.rng,
       pitEntryPos: this.config.pitEntryPos,
       pitExitReached: ctx && ctx.activeFlag === 'RED' ? false : this._pitExitReached(),
-      tireServiceLap: this.config.tireServiceLap,
+      tireWear: this._tireWear,
+      tireWearPitThreshold: this.config.tireWearPitThreshold,
       tireServiceCompleted: this._tireServiceCompleted === true,
       tireOverheatThreshold: this.config.tireOverheatThresholdC,
       tireOverheatTicksRequired: this.config.tireOverheatTicksRequired,
@@ -476,7 +549,7 @@ class Car {
 
     // Throttle/brake for telemetry
     const rawTarget = targetSpeed(this.trackPos);
-    const diff = rawTarget * this._teamFactor - this.speed;
+    const diff = rawTarget * this._teamFactor * this._driverFactor - this.speed;
     let throttle, brake;
     if (Number.isFinite(controls.throttle) && Number.isFinite(controls.brake)) {
       throttle = Math.max(0, Math.min(1, controls.throttle));
@@ -501,6 +574,7 @@ class Car {
       raceId,
       teamId: this.teamId,
       carId: this.carId,
+      compound: this.compound,
       lap: this.lap,
       trackPos: Math.round(this.trackPos * 10000) / 10000,
       speed: Math.round(this.speed * 10) / 10,

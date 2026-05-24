@@ -15,6 +15,7 @@ const TELEMETRY_REQUIRED_FIELDS = [
   'drs',
   'tireTemp',
   'fuel',
+  'compound',
   'state',
 ];
 

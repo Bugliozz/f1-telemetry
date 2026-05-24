@@ -40,7 +40,6 @@ const config = Object.freeze({
   outOfFuelThresholdKg: 0.1,
   lowFuelSpeedMultiplier: 0.97,
   criticalFuelSpeedMultiplier: 0.85,
-  tireServiceLap: 2,
   tireOverheatThresholdC: 180,
   tireOverheatTicksRequired: 3,
   engineFailureProbPerTick: 2e-6,
@@ -49,9 +48,17 @@ const config = Object.freeze({
   pitDurationMinS: 2.0,
   pitDurationMaxS: 3.5,
 
-  // --- Tire degradation ---
-  // wearFactor = 1 + lap * wearPerLap  →  a lap 15: 1.45
-  wearPerLap: 0.03,
+  // --- Tire compounds and degradation ---
+  // lifeLaps is nominal tire life; car.js derives wearPerLap = 1 / lifeLaps
+  // and applies per-car variance so pit stops are naturally staggered.
+  tireCompounds: {
+    soft: { color: 'red', lifeLaps: 2 },
+    medium: { color: 'yellow', lifeLaps: 3 },
+    hard: { color: 'white', lifeLaps: 4 },
+  },
+  tireWearPitThreshold: 0.6,
+  tireWearVariancePct: 0.15,
+  tireWearThermalGain: 0.15,
 
   // --- Pit lane ---
   pitEntryPos: 0.95,      // trackPos di ingresso pit-lane
@@ -79,6 +86,8 @@ const config = Object.freeze({
   rpmJitterRange: 200,
   // Target speed jitter (±3 km/h per car, fixed per session)
   speedJitterKmh: 3,
+  // Driver performance variance by carId (small fixed multiplier per car)
+  driverPerformanceVariancePct: 0.006,
   // Initial fuel jitter per car (±2 kg) -> effective range 36-40 kg
   initialFuelJitterKg: 2,
   // Tire temperature jitter (left/right asymmetry, ±1.5 C)
@@ -88,11 +97,11 @@ const config = Object.freeze({
   // Differenziale di prestazione per team (fattore moltiplicativo su target speed)
   // Simulates that some cars are intrinsically faster
   teamPerformanceFactor: {
-    redbull: 1.012,
-    ferrari: 1.008,
-    mclaren: 1.004,
-    mercedes: 1.00,
-    alpine: 0.995,
+    redbull: 1.030,
+    ferrari: 1.018,
+    mclaren: 1.008,
+    mercedes: 0.995,
+    alpine: 0.970,
   },
   maxRaceSpeedKmh: 350,
 

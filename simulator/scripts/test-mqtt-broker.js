@@ -192,6 +192,7 @@ async function main() {
       raceId: RACE_ID,
       teamId: TEAM_ID,
       carId: CAR_ID,
+      compound: 'medium',
       lap: 1,
       trackPos: 0.123,
       speed: 250,

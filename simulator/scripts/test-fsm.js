@@ -85,6 +85,16 @@ test('RUNNING -> PIT via tire-service', () => {
   assert.equal(out.changed, true);
 });
 
+test('RUNNING -> PIT preserves wear-based tire-service reason', () => {
+  const out = transition(
+    { state: 'RUNNING', previousState: 'INIT', reason: 'race-start' },
+    'tire-service',
+    'tire-service:wear-72%',
+  );
+  assert.equal(out.state, 'PIT');
+  assert.equal(out.reason, 'tire-service:wear-72%');
+});
+
 test('PIT -> RUNNING via pit-out', () => {
   const out = transition({ state: 'PIT', previousState: 'RUNNING', reason: 'tire-service' }, 'pit-out');
   assert.equal(out.state, 'RUNNING');

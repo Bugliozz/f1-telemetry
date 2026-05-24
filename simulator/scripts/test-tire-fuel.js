@@ -128,6 +128,26 @@ test('wearFactor amplifica il riscaldamento', () => {
   assert.ok(worn.fl > baseline.fl, `worn.fl=${worn.fl} baseline.fl=${baseline.fl}`);
 });
 
+test('wearFactor supports normalized tire-wear coupling used by car.js', () => {
+  const prev = initialTireTemp(95);
+  const fresh = updateTireTemp(prev, { speedKmh: 250, throttle: 0.5, brake: 0 }, 1);
+  const stintWear = updateTireTemp(prev, {
+    speedKmh: 250,
+    throttle: 0.5,
+    brake: 0,
+    wearFactor: 1 + 0.6 * 0.15,
+  }, 1);
+  const extreme = updateTireTemp(prev, {
+    speedKmh: 250,
+    throttle: 0.5,
+    brake: 0,
+    wearFactor: 2,
+  }, 1);
+
+  assert.ok(stintWear.rl > fresh.rl, `stintWear.rl=${stintWear.rl} fresh.rl=${fresh.rl}`);
+  assert.ok(stintWear.rl < extreme.rl, `stintWear.rl=${stintWear.rl} extreme.rl=${extreme.rl}`);
+});
+
 test('wearFactor=0 disables the speed term (pedals and cooling only)', () => {
   const prev = initialTireTemp(120);
   const out = updateTireTemp(prev, {

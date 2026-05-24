@@ -32,6 +32,7 @@ function sampleTelemetry(overrides = {}) {
     drs: true,
     tireTemp: { fl: 102.1, fr: 99.8, rl: 105.3, rr: 104.7 },
     fuel: 38.2,
+    compound: 'medium',
     state: 'RUNNING',
     ...overrides,
   };

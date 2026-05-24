@@ -158,7 +158,7 @@ assert(brakeActive.length > 0, `Brake attivato in almeno 1 campione (got ${brake
 
 // Payload schema compliance (campi obbligatori)
 const REQUIRED_FIELDS = ['timestamp', 'raceId', 'teamId', 'carId', 'lap', 'trackPos',
-  'speed', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'tireTemp', 'fuel', 'state'];
+  'speed', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'tireTemp', 'fuel', 'compound', 'state'];
 const sample = telemetryHistory[50];
 for (const field of REQUIRED_FIELDS) {
   assert(sample[field] !== undefined, `Required field '${field}' is present in telemetry`);
@@ -188,6 +188,34 @@ const minimalCar = new Car({ teamId: 'test', carId: 99 });
 const minimalMsgs = minimalCar.tick(dt, ctx);
 assert(minimalMsgs.telemetry && minimalMsgs.telemetry.state === 'INIT',
   'Car without config produces INIT telemetry without exceptions');
+
+const driverFactorA = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  rng: () => 0.5,
+  config: { ...config, teamPerformanceFactor: { ferrari: 1 }, driverPerformanceVariancePct: 0.01 },
+});
+const driverFactorB = new Car({
+  teamId: 'ferrari',
+  carId: 55,
+  driver: 'C. Sainz',
+  rng: () => 0.5,
+  config: { ...config, teamPerformanceFactor: { ferrari: 1 }, driverPerformanceVariancePct: 0.01 },
+});
+const driverFactorARepeat = new Car({
+  teamId: 'ferrari',
+  carId: 16,
+  driver: 'C. Leclerc',
+  rng: () => 0.5,
+  config: { ...config, teamPerformanceFactor: { ferrari: 1 }, driverPerformanceVariancePct: 0.01 },
+});
+assert(driverFactorA._driverFactor !== driverFactorB._driverFactor,
+  'Driver performance factor differs between team-mates by carId');
+assert(driverFactorA._driverFactor === driverFactorARepeat._driverFactor,
+  'Driver performance factor is deterministic for the same carId');
+assert(driverFactorA._driverFactor >= 0.99 && driverFactorA._driverFactor <= 1.01,
+  `Driver performance factor stays within configured variance (got ${driverFactorA._driverFactor})`);
 
 const serraglioCar = new Car({
   teamId: 'alpine',
@@ -786,7 +814,8 @@ const pitUnderScCar = new Car({
   config: combinedConfig,
 });
 pitUnderScCar.startRace(1, ctx.timestamp);
-pitUnderScCar.lap = 2; // >= tireServiceLap to trigger pit entry
+pitUnderScCar.lap = 2;
+pitUnderScCar._tireWear = 0.9; // >= pit threshold to trigger tire-service entry
 pitUnderScCar.trackPos = combinedConfig.pitEntryPos;
 pitUnderScCar.speed = 60;
 pitUnderScCar.fuel = 4;
@@ -933,6 +962,9 @@ for (const c of orchestrator.cars) {
 
 console.log(`  Auto nel roster: ${orchestrator.cars.length}`);
 assert(orchestrator.cars.length === 10, `10 auto create (got ${orchestrator.cars.length})`);
+const startingCompounds = new Set(orchestrator.cars.map((c) => c.compound));
+console.log(`  Starting compounds: ${Array.from(startingCompounds).sort().join(', ')}`);
+assert(startingCompounds.size > 1, `Starting compounds staggered across grid (got ${startingCompounds.size})`);
 
 // Simula 80 tick manuali: dopo la staccata Rettifilo emergono le differenze
 // tra auto, mentre nei primi secondi dal via sono tutte limitate da MAX_ACCEL.

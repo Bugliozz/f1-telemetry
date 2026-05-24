@@ -143,7 +143,11 @@ function testScenarioTuning() {
   assert.strictEqual(balanced.totalLaps, TOTAL_LAPS);
   assert.strictEqual(balanced.engineFailureProbPerTick, 1e-5);
   assert.strictEqual(balanced.faultGraceS, 60);
-  assert.strictEqual(balanced.wearPerLap, 0.06);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(balanced, 'wearPerLap'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(balanced, 'tireServiceLap'), false);
+  assert.strictEqual(balanced.tireWearPitThreshold, baseConfig.tireWearPitThreshold);
+  assert.strictEqual(balanced.tireWearVariancePct, baseConfig.tireWearVariancePct);
+  assert.deepStrictEqual(Object.keys(balanced.tireCompounds).sort(), ['hard', 'medium', 'soft']);
   assert.strictEqual(balanced.tireOverheatThresholdC, 145);
   assert.strictEqual(balanced.tireOverheatTicksRequired, 8);
   assert.strictEqual(balanced.raceControlTriggers.retirementScProbability, 0);
@@ -154,7 +158,8 @@ function testScenarioTuning() {
   assert.strictEqual(failureLikely.scenario.label, 'Failure likely');
   assert.strictEqual(failureLikely.engineFailureProbPerTick, 0.0012);
   assert.strictEqual(failureLikely.faultGraceS, 300);
-  assert.strictEqual(failureLikely.wearPerLap, 0.08);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(failureLikely, 'wearPerLap'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(failureLikely, 'tireServiceLap'), false);
   assert.strictEqual(failureLikely.tireOverheatThresholdC, 142);
   assert.strictEqual(failureLikely.tireOverheatTicksRequired, 8);
   assert.strictEqual(failureLikely.raceControlTriggers.retirementScProbability, 0);
@@ -174,7 +179,7 @@ function testBalancedSeeds() {
   assert.ok(!hasFlag(nominal, 'RED'), 'balanced nominal must not red flag');
   console.log('  OK nominal seed reaches checkered');
 
-  const eventful = runRace(SCENARIOS.BALANCED, 73);
+  const eventful = runRace(SCENARIOS.BALANCED, 4);
   assert.strictEqual(eventful.activeFlag, 'CHECKERED');
   assert.strictEqual(eventful.leaderLap, TOTAL_LAPS);
   assert.ok(!hasFlag(eventful, 'RED'), 'balanced eventful must not red flag');
