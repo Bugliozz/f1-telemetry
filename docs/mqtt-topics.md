@@ -84,6 +84,7 @@ f1/
   "raceId": 1,
   "teamId": "ferrari",
   "carId": 16,
+  "compound": "medium",
   "lap": 12,
   "trackPos": 0.4731,
   "speed": 287.4,
@@ -96,12 +97,14 @@ f1/
     "fl": 102.1, "fr": 99.8,
     "rl": 105.3, "rr": 104.7
   },
-  "fuel": 38.2
+  "fuel": 38.2,
+  "state": "RUNNING"
 }
 ```
 
 | Campo | Tipo | Note |
 |---|---|---|
+| `compound` | `string` | mescola corrente: `soft`, `medium`, `hard` |
 | `trackPos` | `float [0,1]` | posizione normalizzata sul giro corrente |
 | `speed` | `float` | km/h |
 | `rpm` | `int` | giri motore |
@@ -109,7 +112,8 @@ f1/
 | `throttle`, `brake` | `float [0,1]` | input pedali |
 | `drs` | `bool` | DRS attivo (sensore digitale) |
 | `tireTemp.{fl,fr,rl,rr}` | `float` | °C per ogni gomma |
-| `fuel` | `float` | kg residui |
+| `fuel` | `float` | kg residui (tank sprint 38 kg, no-refuelling) |
+| `state` | `string` | stato FSM denormalizzato |
 
 ### 4.2 Stato auto — `…/cars/{carId}/state`
 
@@ -121,7 +125,7 @@ f1/
   "carId": 16,
   "state": "PIT",
   "previousState": "RUNNING",
-  "reason": "low-fuel"
+  "reason": "tire-service:wear-62%"
 }
 ```
 
@@ -139,8 +143,7 @@ Valori di `state` (FSM definita in Fase 3):
   "type": "pit-stop",
   "details": {
     "duration": 2.4,
-    "tyreCompound": "soft",
-    "fuelAdded": 25.0
+    "tyreCompound": "soft"
   }
 }
 ```

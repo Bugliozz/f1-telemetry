@@ -51,12 +51,14 @@ ha bisogno solo dell'ultima versione, gia' garantita dalla `retain` MQTT.
 Stream continuo a 2-5 Hz per auto. Campi obbligatori:
 
 ```
-timestamp, raceId, teamId, carId, lap, trackPos,
+timestamp, raceId, teamId, carId, compound, lap, trackPos,
 speed, rpm, gear, throttle, brake, drs, tireTemp, fuel, state
 ```
 
 Note di design:
 
+- `compound` (enum `soft|medium|hard`) indica la mescola montata live,
+  utile per mostrare il badge gomme in dashboard senza attendere un evento.
 - `state` e' **denormalizzato** dentro la telemetria per semplificare le
   query analitiche (es. "tutti i campioni in stato PIT") senza un join
   con la collection `states`.
@@ -65,7 +67,7 @@ Note di design:
   consegna ("eterogeneita' analogico/digitale").
 
 Range numerici applicati come bound nel validator:
-`speed in [0,400]`, `rpm in [0,16000]`, `fuel in [0,30]`,
+`speed in [0,400]`, `rpm in [0,16000]`, `fuel in [0,40]`,
 `gear in [0,8]`, `throttle/brake/trackPos in [0,1]`.
 
 ### 3.2 Stato FSM (`state.schema.json`)
@@ -86,7 +88,7 @@ nello schema JSON):
 
 | `type` | Forma di `details` |
 |---|---|
-| `pit-stop` | `{ duration, tyreCompound?, fuelAdded? }` |
+| `pit-stop` | `{ duration, tyreCompound }` — niente `fuelAdded` (no-refuelling sprint) |
 | `lap-completed` | `{ lap, lapTime }` |
 | `sector-completed` | `{ sector, sectorTime }` |
 | `state-change` | `{ from, to, reason? }` |
@@ -177,6 +179,7 @@ Esempio documento `telemetry`:
   "raceId": 1,
   "teamId": "ferrari",
   "carId": 16,
+  "compound": "medium",
   "lap": 12,
   "trackPos": 0.4731,
   "speed": 287.4,

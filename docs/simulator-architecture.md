@@ -290,8 +290,9 @@ successivo. Mentre `state == PIT`:
 - Velocita' clampata a 80 km/h fino al box.
 - All'arrivo al box (`trackPos == pitBox`), `speed = 0` per
   `pitDuration` secondi (default 2.4 s); evento `pit-stop` con
-  `{duration, tyreCompound, fuelAdded}`.
-- Reset di `tireTemp` (90°C) e ricarica `fuel += fuelAdded`.
+  `{duration, tyreCompound}`.
+- Reset `tireTemp` (90°C), azzeramento `_tireWear`, montaggio mescola
+  diversa (`pickDifferentCompound`) — niente rifornimento (regola sprint).
 - All'uscita pit, FSM torna a `RUNNING`.
 
 ---
@@ -334,7 +335,7 @@ successivo. Mentre `state == PIT`:
 | Da | A | Condizione | `reason` |
 |---|---|---|---|
 | INIT | RUNNING | flag GREEN attiva (race-start) | `race-start` |
-| RUNNING | PIT | `fuel < FUEL_PIT_THRESHOLD` (default 8 kg) | `low-fuel` |
+| RUNNING | PIT | `tireWear >= tireWearPitThreshold` (default 0.6) nella pit-entry window | `tire-service:wear-NN%` |
 | PIT | RUNNING | timer pit elapsed (durata sorteggiata 2.0-3.5 s) | `pit-out` |
 | RUNNING | FAULT | `max(tireTemp) > 180°C` per 3 tick consecutivi | `tire-overheat` |
 | RUNNING | FAULT | random engine failure (probabilita' < 1e-4 per tick) | `engine-failure` |
@@ -529,14 +530,16 @@ in JavaScript "vanilla" coerentemente con la scala del progetto.
 
 ## 14. Open points (da chiudere nelle sotto-task della Fase 3)
 
-- [x] **Pit strategy**: sensor-based (low-fuel) — la sosta emerge unicamente dal
-  livello carburante (`fuel < fuelPitThresholdKg`, default 8 kg). Il carburante
-  iniziale e' 22 kg (±4 kg jitter per-auto); i pit cadono al giro 3-4 a seconda
-  del consumo. `config/roster.json` non contiene piu' il campo `pitStrategy`.
-- [x] **Coefficiente degrado gomme**: `wearPerLap = 0.03` in
-  `config/default.js`. `wearFactor = 1 + lap * 0.03` → a lap 15 vale
-  1.45 (+45% riscaldamento). Percepibile: la temperatura sale sensibilmente
-  nella seconda meta' di gara.
+- [x] **Pit strategy**: wear-based — la sosta scatta quando `tireWear >= tireWearPitThreshold`
+  (default 0.6) all'interno della pit-entry window. Il threshold, la durata per-mescola
+  e la varianza per-auto (default ±15%) sono in `config/default.js`.
+  Al pit si monta sempre una mescola **diversa** da quella corrente (regola F1);
+  niente rifornimento (gara sprint, no-refuelling).
+- [x] **Modello degrado gomme**: compound-based. `compounds.js` definisce
+  `lifeLaps` per Soft/Medium/Hard; `wearPerLap = 1 / lifeLaps`. L'accumulatore
+  `_tireWear` (0→1) guida sia il trigger pit sia il `wearFactor` termico.
+  Un moltiplicatore `_wearVariance` per-auto (da `tireWearVariancePct`) scagliona
+  i pit tra auto con la stessa mescola di partenza.
 - [x] **Probabilita' guasto**: `engineFailureProbPerTick = 1e-4` in
   `config/default.js`. Con 10 auto × ~2400 tick (15 giri a 4 Hz) →
   E[ritiri] ≈ 2.4, mediana ~1-2 per gara. Bilanciato.
