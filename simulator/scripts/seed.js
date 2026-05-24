@@ -37,6 +37,11 @@ const ROSTER = [
 ];
 
 const FSM_STATES = ['INIT', 'RUNNING', 'PIT', 'FAULT', 'RETIRED', 'FINISHED'];
+const COMPOUNDS = ['soft', 'medium', 'hard'];
+
+function compoundForCar(car) {
+  return COMPOUNDS[Math.abs(car.carId) % COMPOUNDS.length];
+}
 
 // Avanzamento di un campione lungo il giro: usa parametri stabili per
 // rendere il dataset deterministico ma realistico.
@@ -44,6 +49,8 @@ function buildTelemetrySamples(car, baseTime) {
   const samples = [];
   // Slightly different average speed per car -> non-trivial classification.
   const speedBias = ((car.carId * 7) % 13) - 6; // -6..+6
+  const startingCompound = compoundForCar(car);
+  const pitStopSample = car.carId === 16 ? 30 : null;
   let lap = 1;
   let trackPos = 0;
   for (let i = 0; i < SAMPLES_PER_CAR; i++) {
@@ -61,6 +68,7 @@ function buildTelemetrySamples(car, baseTime) {
       raceId: RACE_ID,
       teamId: car.teamId,
       carId: car.carId,
+      compound: pitStopSample != null && i >= pitStopSample ? 'soft' : startingCompound,
       lap,
       trackPos: Number(trackPos.toFixed(4)),
       speed: Number(speed.toFixed(2)),
@@ -116,7 +124,7 @@ function buildEvents(car, baseTime) {
       teamId: car.teamId,
       carId: car.carId,
       type: 'pit-stop',
-      details: { duration: 2.4, tyreCompound: 'soft', fuelAdded: 25 },
+      details: { duration: 2.4, tyreCompound: 'soft', service: 'tire-change', refuelling: false },
     });
   }
   return events;
