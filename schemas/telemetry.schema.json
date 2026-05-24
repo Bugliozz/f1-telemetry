@@ -104,8 +104,8 @@
     "fuel": {
       "type": "number",
       "minimum": 0,
-      "maximum": 30,
-      "description": "Carburante residuo in kg. Serbatoio sprint 22 kg (±4 kg jitter), max 30 kg dopo pit."
+      "maximum": 40,
+      "description": "Remaining fuel in kg. Sprint tank 38 kg (±2 kg delivery jitter), monotonically decreasing, no refuelling."
     },
     "state": {
       "type": "string",

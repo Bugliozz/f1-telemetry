@@ -244,12 +244,12 @@ test('3-lap sprint: fuel remains positive with the no-refuelling race load', () 
   assert.ok(fuel > 8, `expected fuel to stay above 8 kg after 3 laps (race load check): ${fuel}`);
 });
 
-test('stays within telemetry schema limits [0, 110]', () => {
+test('stays within telemetry schema limits [0, 40]', () => {
   let fuel = INITIAL_FUEL_KG;
   const dt = 0.25;
   for (let i = 0; i < 10000; i += 1) {
     fuel = consumeFuel(fuel, { speedKmh: 300, throttle: 1 }, dt);
-    assert.ok(fuel >= 0 && fuel <= 110, `fuel out of range: ${fuel}`);
+    assert.ok(fuel >= 0 && fuel <= 40, `fuel out of range: ${fuel}`);
   }
 });
 
