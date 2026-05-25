@@ -6,6 +6,7 @@
 //
 // Cfr. docs/simulator-architecture.md §4.
 
+const EventEmitter = require('events');
 const Car = require('./car/car');
 const { createCarPrng } = require('./util/prng');
 const { createClock } = require('./util/clock');
@@ -14,8 +15,9 @@ const RaceController = require('./race-control/race-controller');
 const { FLAGS } = require('./race-control/flag-state');
 const { LENGTH_M } = require('./track/monza');
 
-class Orchestrator {
+class Orchestrator extends EventEmitter {
   constructor({ roster, config, publisher, logger }) {
+    super();
     this.config = config;
     this.publisher = publisher;
     this.log = logger || { debug() {}, info() {}, warn() {}, error() {} };
@@ -208,6 +210,7 @@ class Orchestrator {
       this._raceFinished = true;
       this.log.info('[Orchestrator] 🏆 All cars have finished the race!');
       this.stop();
+      this.emit('finish');
     }
   }
 

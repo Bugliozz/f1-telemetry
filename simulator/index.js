@@ -41,6 +41,7 @@ let rcSubscriber = null;
 let startSubscribed = false;
 let startInProgress = false;
 const startTopic = `f1/simulation/${config.raceId}/control/start`;
+const stopTopic  = `f1/simulation/${config.raceId}/control/stop`;
 
 function parseStartCommand(message) {
   const payload = JSON.parse(message.toString());
@@ -86,6 +87,7 @@ async function startSimulation(scenarioId, source) {
     });
 
     orchestrator.start();
+    orchestrator.once('finish', handleRaceFinished);
 
     // Start the external flag subscriber after the initial GREEN flag.
     rcSubscriber = new RaceControlSubscriber({
@@ -118,7 +120,37 @@ function subscribeStartTopic() {
   });
 }
 
+function subscribeStopTopic() {
+  client.subscribe(stopTopic, { qos: 1 }, (err) => {
+    if (err) log.error('[main] Stop subscription error:', err.message);
+  });
+}
+
+function handleRaceFinished() {
+  log.info('[main] Race finished — ready for next race.');
+  orchestrator = null;
+  rcSubscriber = null;
+  subscribeStartTopic();
+}
+
+function handleStopCommand() {
+  if (!orchestrator) {
+    log.info('[main] Stop command: no simulation running');
+    return;
+  }
+  log.info('[main] Stop command received — stopping simulation.');
+  orchestrator.removeAllListeners('finish');
+  orchestrator.stop();
+  orchestrator = null;
+  rcSubscriber = null;
+  subscribeStartTopic();
+}
+
 client.on('message', (topic, message) => {
+  if (topic === stopTopic) {
+    handleStopCommand();
+    return;
+  }
   if (topic !== startTopic) return;
   try {
     const scenarioId = parseStartCommand(message);
@@ -143,6 +175,8 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 
 // Aspetta la connessione prima di avviare
 client.on('connect', () => {
+  subscribeStopTopic();
+
   if (orchestrator) {
     log.info('[main] MQTT broker reconnected, simulation already active');
     return;

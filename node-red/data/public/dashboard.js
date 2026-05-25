@@ -139,7 +139,8 @@
         eventLog: document.getElementById('race-event-log'),
         scenarioModal: document.getElementById('scenario-modal'),
         scenarioStatus: document.getElementById('scenario-status'),
-        scenarioButtons: Array.from(document.querySelectorAll('[data-scenario]'))
+        scenarioButtons: Array.from(document.querySelectorAll('[data-scenario]')),
+        restartBtn: document.getElementById('restart-race-btn')
     };
 
     const state = {
@@ -196,6 +197,30 @@
         elements.scenarioModal.classList.add('scenario-modal--hidden');
     }
 
+    function showScenarioModal() {
+        if (!elements.scenarioModal) return;
+        elements.scenarioModal.classList.remove('scenario-modal--hidden');
+    }
+
+    function showRestartButton() {
+        if (!elements.restartBtn) return;
+        elements.restartBtn.classList.remove('restart-race-btn--hidden');
+    }
+
+    function hideRestartButton() {
+        if (!elements.restartBtn) return;
+        elements.restartBtn.classList.add('restart-race-btn--hidden');
+    }
+
+    function stopRace() {
+        sendDashboardCommand({ type: 'stop-race', raceId: DEFAULT_RACE_ID, timestamp: new Date().toISOString() });
+        state.scenarioStarted = false;
+        hideRestartButton();
+        setScenarioControlsEnabled(true);
+        setScenarioStatus('ready');
+        showScenarioModal();
+    }
+
     function sendDashboardCommand(command) {
         if (!state.socket || state.socket.readyState !== WebSocket.OPEN) return false;
         state.socket.send(JSON.stringify(command));
@@ -224,6 +249,9 @@
     function bindScenarioButtons() {
         for (const button of elements.scenarioButtons) {
             button.addEventListener('click', () => startScenario(button.dataset.scenario));
+        }
+        if (elements.restartBtn) {
+            elements.restartBtn.addEventListener('click', stopRace);
         }
     }
 
@@ -904,6 +932,17 @@
 
         // Ensure the SVG scales responsively while keeping its aspect ratio.
         svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+        // Expand the viewBox by MARKER_PAD on every side so car-marker circles
+        // (r=7) near the track edges are not clipped by the SVG viewport.
+        const MARKER_PAD = 12;
+        const vb = svg.viewBox.baseVal;
+        svg.setAttribute('viewBox', [
+            vb.x - MARKER_PAD,
+            vb.y - MARKER_PAD,
+            vb.width  + MARKER_PAD * 2,
+            vb.height + MARKER_PAD * 2
+        ].join(' '));
 
         state.svg = svg;
         state.path = path;
@@ -1659,6 +1698,9 @@
             renderFlagIndicator(frame.data, frame.effects);
             appendRaceEvent(frame);
             refreshTelemetryPopup();
+            if (frame.data && String(frame.data.flag || '').toUpperCase() === 'CHECKERED') {
+                showRestartButton();
+            }
         }
     }
 
