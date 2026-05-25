@@ -75,10 +75,13 @@ const config = Object.freeze({
     { id: 3, start: 0.660, end: 1.000, label: 'Ascari / Parabolica' },
   ],
 
-  // --- DRS zones (rettilinei lunghi settore 1 e 3, §5.1) ---
+  // --- DRS zones (Monza: due zone, attivazione dopo detection point) ---
+  // Zone 1: rettifilo principale, dal rilascio Parabolica alla staccata Prima Variante
+  // Zone 2: rettilineo Roggia–Lesmo, dal rilascio Roggia alla staccata Lesmo 1
   drsZones: [
-    { start: 0.000, end: 0.089 },   // rettilineo start/finish fino alla staccata Rettifilo
-    { start: 0.910, end: 1.000 },   // start/finish straight
+    { start: 0.000, end: 0.089 },   // main straight — prima metà (dopo start/finish)
+    { start: 0.885, end: 1.000 },   // main straight — dal rilascio Parabolica alla linea
+    { start: 0.340, end: 0.415 },   // rettilineo Roggia → Lesmo 1
   ],
 
   // --- Variabilita' e randomness ---

@@ -589,6 +589,13 @@ class Car {
         rl: Math.round(this.tireTemp.rl * 10) / 10,
         rr: Math.round(this.tireTemp.rr * 10) / 10,
       },
+      // Per-corner wear: FL/RL loaded more at Monza (right-hand chicanes + braking).
+      tireWear: {
+        fl: Math.round(Math.min(1, this._tireWear * 1.04) * 1000) / 1000,
+        fr: Math.round(Math.min(1, this._tireWear * 0.97) * 1000) / 1000,
+        rl: Math.round(Math.min(1, this._tireWear * 1.00) * 1000) / 1000,
+        rr: Math.round(Math.min(1, this._tireWear * 0.99) * 1000) / 1000,
+      },
       fuel: Math.round(this.fuel * 10) / 10,
       state: this.fsm.state,
     };

@@ -107,6 +107,18 @@
       },
       "description": "Temperatura gomme in C per ciascun angolo (front/rear left/right)."
     },
+    "tireWear": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fl", "fr", "rl", "rr"],
+      "properties": {
+        "fl": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fr": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rl": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rr": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "description": "Degrado gomme normalizzato [0,1] per ciascun angolo. 1.0 = completamente consumata."
+    },
     "fuel": {
       "type": "number",
       "minimum": 0,

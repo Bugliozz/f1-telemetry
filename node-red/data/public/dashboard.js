@@ -497,6 +497,14 @@
         return 'muted';
     }
 
+    function toneForTireWear(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 'muted';
+        if (n >= 0.75) return 'danger';
+        if (n >= 0.50) return 'warn';
+        return 'ok';
+    }
+
     function mergeLatestCar(car) {
         if (!car || car.raceId == null || car.carId == null) return null;
 
@@ -511,6 +519,12 @@
             merged.tireTemp = {
                 ...(previous.tireTemp || {}),
                 ...car.tireTemp
+            };
+        }
+        if (car.tireWear && typeof car.tireWear === 'object') {
+            merged.tireWear = {
+                ...(previous.tireWear || {}),
+                ...car.tireWear
             };
         }
         state.latestCars.set(key, merged);
@@ -569,13 +583,20 @@
         container.appendChild(item);
     }
 
+    function formatWearPercent(value) {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return '--';
+        return Math.round(n * 100) + '%';
+    }
+
     function telemetryMetricRows(car, sensorsOff) {
-        const labels = ['Speed', 'RPM', 'Gear', 'Throttle', 'Brake', 'DRS', 'Fuel', 'Track', 'Tyre FL', 'Tyre FR', 'Tyre RL', 'Tyre RR'];
+        const labels = ['Speed', 'RPM', 'Gear', 'Throttle', 'Brake', 'DRS', 'Fuel', 'Track', 'Tyre FL', 'Tyre FR', 'Tyre RL', 'Tyre RR', 'Wear FL', 'Wear FR', 'Wear RL', 'Wear RR'];
         if (sensorsOff) {
             return labels.map((label) => ({ label, value: 'OFF', tone: 'muted' }));
         }
 
         const tireTemp = car && car.tireTemp && typeof car.tireTemp === 'object' ? car.tireTemp : {};
+        const tireWear = car && car.tireWear && typeof car.tireWear === 'object' ? car.tireWear : {};
         return [
             { label: 'Speed', value: formatTelemetryNumber(car && car.speed, 1, 'km/h'), tone: toneForSpeed(car && car.speed) },
             { label: 'RPM', value: formatInteger(car && car.rpm), tone: toneForRpm(car && car.rpm) },
@@ -588,7 +609,11 @@
             { label: 'Tyre FL', value: formatTelemetryNumber(tireTemp.fl, 1, 'C'), tone: toneForTireTemp(tireTemp.fl) },
             { label: 'Tyre FR', value: formatTelemetryNumber(tireTemp.fr, 1, 'C'), tone: toneForTireTemp(tireTemp.fr) },
             { label: 'Tyre RL', value: formatTelemetryNumber(tireTemp.rl, 1, 'C'), tone: toneForTireTemp(tireTemp.rl) },
-            { label: 'Tyre RR', value: formatTelemetryNumber(tireTemp.rr, 1, 'C'), tone: toneForTireTemp(tireTemp.rr) }
+            { label: 'Tyre RR', value: formatTelemetryNumber(tireTemp.rr, 1, 'C'), tone: toneForTireTemp(tireTemp.rr) },
+            { label: 'Wear FL', value: formatWearPercent(tireWear.fl), tone: toneForTireWear(tireWear.fl) },
+            { label: 'Wear FR', value: formatWearPercent(tireWear.fr), tone: toneForTireWear(tireWear.fr) },
+            { label: 'Wear RL', value: formatWearPercent(tireWear.rl), tone: toneForTireWear(tireWear.rl) },
+            { label: 'Wear RR', value: formatWearPercent(tireWear.rr), tone: toneForTireWear(tireWear.rr) }
         ];
     }
 
