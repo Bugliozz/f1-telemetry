@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>F1 Telemetry — Teams</title>
+    <link rel="stylesheet" href="/dashboard.css?v=20260526k" />
+</head>
+<body>
+    <header class="dashboard-header">
+        <h1>F1 Telemetry — Teams</h1>
+        <div class="status-bar">
+            <span id="connection-status" class="status-pill status-pill--idle">disconnected</span>
+            <a href="/" class="dashboard-nav__link">← Overview</a>
+        </div>
+    </header>
+
+    <div class="team-selector-bar">
+        <div id="team-selector" class="team-selector" role="toolbar" aria-label="Select team"></div>
+    </div>
+
+    <main class="team-view-main">
+        <div id="team-prompt" class="team-prompt" aria-live="polite">
+            <p>Select a team above to view telemetry</p>
+        </div>
+
+        <div id="team-content" class="team-content team-content--hidden">
+            <div class="team-view-grid">
+                <div class="team-view-left">
+                    <div id="car-cards" class="car-cards-grid" aria-label="Car telemetry cards"></div>
+                </div>
+                <aside class="race-events-panel panel" aria-label="Race Events">
+                    <div class="race-events-header">
+                        <h2>Race Events</h2>
+                        <span id="race-clock" class="race-clock">--:--:--</span>
+                    </div>
+                    <ul id="race-event-log" class="race-event-log"></ul>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="/js/team-view.js?v=20260526h"></script>
+</body>
+</html>

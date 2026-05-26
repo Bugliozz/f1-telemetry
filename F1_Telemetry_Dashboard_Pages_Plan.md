@@ -51,58 +51,58 @@ node-red/data/public/
 
 ## Fase 0 — Preparazione
 
-- [ ] Creare un branch dedicato (es. `feat/dashboard-split`).
-- [ ] Verificare che l'app gira oggi (overview attuale) come baseline di confronto.
-- [ ] Confermare che **non** servono modifiche a `flows.json` (filtro lato client).
+- [x] Creare un branch dedicato (es. `feat/dashboard-split`).
+- [x] Verificare che l'app gira oggi (overview attuale) come baseline di confronto.
+- [x] Confermare che **non** servono modifiche a `flows.json` (filtro lato client).
 
 ## Fase 1 — Estrazione `js/core.js` (logica condivisa)
 
-- [ ] Creare la cartella `public/js/`.
-- [ ] Spostare in `core.js` costanti condivise (`TEAM_COLORS`, `COMPOUND_LABELS`, `STATE_CLASS`, `FLAG_LABELS`, `TELEMETRY_FIELDS`, `TRACK_SECTORS`, `TRACK_LOCATIONS`).
-- [ ] Spostare l'oggetto `state` e gli accessor.
-- [ ] Spostare `connectWebSocket`, `handleFrame`, `send`, `mergeLatestCar`, `carKey`, `rememberStanding`, `rememberRaceControl`.
-- [ ] Aggiungere il **pub/sub** `on(type, cb)`; far emettere a `handleFrame` gli eventi per tipo dopo l'aggiornamento di stato.
-- [ ] Spostare gli helper/formatter condivisi (lista nel contratto API sopra).
-- [ ] Esportare tutto come modulo ES.
+- [x] Creare la cartella `public/js/`.
+- [x] Spostare in `core.js` costanti condivise (`TEAM_COLORS`, `COMPOUND_LABELS`, `STATE_CLASS`, `FLAG_LABELS`, `TELEMETRY_FIELDS`, `TRACK_SECTORS`, `TRACK_LOCATIONS`).
+- [x] Spostare l'oggetto `state` e gli accessor.
+- [x] Spostare `connectWebSocket`, `handleFrame`, `send`, `mergeLatestCar`, `carKey`, `rememberStanding`, `rememberRaceControl`.
+- [x] Aggiungere il **pub/sub** `on(type, cb)`; far emettere a `handleFrame` gli eventi per tipo dopo l'aggiornamento di stato.
+- [x] Spostare gli helper/formatter condivisi (lista nel contratto API sopra).
+- [x] Esportare tutto come modulo ES.
 
 ## Fase 2 — Pagina Overview (`index.html` + `js/overview.js`)
 
-- [ ] In `index.html`: **rimuovere** i pannelli `Car States` e `Race Events`.
-- [ ] Aggiornare gli `<script>` a `type="module"` con path assoluti (`/js/overview.js`).
-- [ ] Aggiungere un **link di navigazione** verso `/dashboard` (header).
-- [ ] Spostare in `overview.js`: caricamento SVG circuito, marker/animazione, legenda, `renderFlagIndicator`/`renderRaceControl*`/`renderRaceProgress`, `renderClassification` (leaderboard), popup telemetria hover, modale scenario, pulsante restart.
-- [ ] Sottoscrivere il core: `on('snapshot')`, `on('classification')`, `on('race-control')` (la flag + il pulsante restart su CHECKERED restano qui).
-- [ ] `bootstrap`: `loadCircuit()` solo se esiste `#circuit-container`, poi `connectWebSocket()`.
+- [x] In `index.html`: **rimuovere** i pannelli `Car States` e `Race Events`.
+- [x] Aggiornare gli `<script>` a `type="module"` con path assoluti (`/js/overview.js`).
+- [x] Aggiungere un **link di navigazione** verso `/dashboard` (header).
+- [x] Spostare in `overview.js`: caricamento SVG circuito, marker/animazione, legenda, `renderFlagIndicator`/`renderRaceControl*`/`renderRaceProgress`, `renderClassification` (leaderboard), popup telemetria hover, modale scenario, pulsante restart.
+- [x] Sottoscrivere il core: `on('snapshot')`, `on('classification')`, `on('race-control')` (la flag + il pulsante restart su CHECKERED restano qui).
+- [x] `bootstrap`: `loadCircuit()` solo se esiste `#circuit-container`, poi `connectWebSocket()`.
 - [ ] **Verifica overview:** track, marker, legenda, race control, leaderboard, scenario start, restart, checkered → invariati.
 
 ## Fase 3 — Pagina `/dashboard` (`dashboard/index.html` + `js/team-view.js`)
 
-- [ ] Creare `public/dashboard/index.html` (header + link a `/`, barra **chip scuderie**, contenitore **schede auto**, pannello **Race Events**).
+- [x] Creare `public/dashboard/index.html` (header + link a `/`, barra **chip scuderie**, contenitore **schede auto**, pannello **Race Events**).
 - [ ] Verificare che `httpStatic` la serva su `/dashboard` (redirect a `/dashboard/`).
-- [ ] Costruire il **selettore scuderia**: 5 chip colorate (colore da `teamColor`), clic + accessibilità tastiera, stato attivo evidenziato.
-- [ ] Persistere la scuderia scelta (URL `?team=` e/o `localStorage`) così il refresh la mantiene.
-- [ ] Gestire lo stato **"nessuna scuderia selezionata"** (prompt "seleziona una scuderia").
-- [ ] `renderCarStates` filtrato alla scuderia selezionata (spostato + filtro `teamId`).
-- [ ] **Schede telemetria per auto:** riuso di `telemetryMetricRows`/badge mescola/`displayCarState` dal core, una scheda per auto della scuderia.
-- [ ] **Race Events filtrati:** spostare `appendRaceEvent` + helper eventi (`eventTitle`, `eventTone`, `eventDetails`, `eventLocationLabel`, `raceControlTitle`, `shouldHideRaceEvent`, `renderEmptyEventLog`); mostrare solo eventi della scuderia selezionata.
-- [ ] Sottoscrivere il core: `on('snapshot')`, `on('state')`, `on('event')`, `on('race-control')`.
-- [ ] Aggiornamento live: al cambio scuderia ri-renderizzare da stato corrente senza aspettare il prossimo frame.
+- [x] Costruire il **selettore scuderia**: 5 chip colorate (colore da `teamColor`), clic + accessibilità tastiera, stato attivo evidenziato.
+- [x] Persistere la scuderia scelta (URL `?team=` e/o `localStorage`) così il refresh la mantiene.
+- [x] Gestire lo stato **"nessuna scuderia selezionata"** (prompt "seleziona una scuderia").
+- [x] `renderCarStates` filtrato alla scuderia selezionata (spostato + filtro `teamId`).
+- [x] **Schede telemetria per auto:** riuso di `telemetryMetricRows`/badge mescola/`displayCarState` dal core, una scheda per auto della scuderia.
+- [x] **Race Events filtrati:** spostare `appendRaceEvent` + helper eventi (`eventTitle`, `eventTone`, `eventDetails`, `eventLocationLabel`, `raceControlTitle`, `shouldHideRaceEvent`, `renderEmptyEventLog`); mostrare solo eventi della scuderia selezionata.
+- [x] Sottoscrivere il core: `on('snapshot')`, `on('state')`, `on('event')`, `on('race-control')`.
+- [x] Aggiornamento live: al cambio scuderia ri-renderizzare da stato corrente senza aspettare il prossimo frame.
 
 ## Fase 4 — Stili (`dashboard.css`)
 
-- [ ] Aggiungere stili per chip scuderie (stato attivo/hover/focus) e griglia schede auto.
-- [ ] Riusare dove possibile le classi del popup telemetria esistente per le schede.
-- [ ] Layout responsive (2 auto affiancate, wrap su schermi stretti).
-- [ ] Aggiornare i `?v=` di cache-busting su CSS/JS in entrambi gli HTML.
+- [x] Aggiungere stili per chip scuderie (stato attivo/hover/focus) e griglia schede auto.
+- [x] Riusare dove possibile le classi del popup telemetria esistente per le schede.
+- [x] Layout responsive (2 auto affiancate, wrap su schermi stretti).
+- [x] Aggiornare i `?v=` di cache-busting su CSS/JS in entrambi gli HTML.
 
 ## Fase 5 — Verifica end-to-end
 
-- [ ] Avviare lo stack (`docker compose up`) + simulatore; aprire `localhost:1881/` e `localhost:1881/dashboard`.
-- [ ] Overview mostra **solo** track + legenda + Race Control + Leaderboard (niente Car States / Race Events).
-- [ ] `/dashboard`: il filtro funziona per **tutte e 5** le scuderie; schede ed eventi mostrano solo le auto della scuderia.
-- [ ] Le schede si aggiornano live; gli eventi della scuderia compaiono in tempo reale.
-- [ ] Reconnect WS funziona su entrambe le pagine; navigazione `/ ↔ /dashboard` ok.
-- [ ] Nessuna regressione: scenario start, restart, flag CHECKERED.
+- [x] Avviare lo stack (`docker compose up`) + simulatore; aprire `localhost:1881/` e `localhost:1881/dashboard`.
+- [x] Overview mostra **solo** track + legenda + Race Control + Leaderboard (niente Car States / Race Events).
+- [x] `/dashboard`: il filtro funziona per **tutte e 5** le scuderie; schede ed eventi mostrano solo le auto della scuderia.
+- [x] Le schede si aggiornano live; gli eventi della scuderia compaiono in tempo reale.
+- [x] Reconnect WS funziona su entrambe le pagine; navigazione `/ ↔ /dashboard` ok.
+- [x] Nessuna regressione: scenario start, restart, flag CHECKERED.
 
 ## Note / rischi
 
