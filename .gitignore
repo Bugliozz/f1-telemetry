@@ -38,6 +38,12 @@ desktop.ini
 .env
 .env.local
 .env.*.local
+.env.delivery
+
+# ─── Planning / internal docs ────────────────────────────────
+F1_Telemetry_Implementation_Plan.md
+F1_Telemetry_Dashboard_Pages_Plan.md
+F1_Telemetry_Project.md
 
 # ─── Local assistant settings ───────────────────────────────
 .claude/
