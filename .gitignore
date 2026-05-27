@@ -44,8 +44,11 @@ desktop.ini
 F1_Telemetry_Implementation_Plan.md
 F1_Telemetry_Dashboard_Pages_Plan.md
 F1_Telemetry_Project.md
-docs/uml/diagrams.md
 mongo/dump/tmp/
+
+# ─── Docs in refactor (temporaneamente esclusi) ──────────────
+docs/*.md
+docs/uml/diagrams.md
 
 # ─── Local assistant settings ───────────────────────────────
 .claude/
