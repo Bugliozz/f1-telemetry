@@ -56,8 +56,8 @@ Generate the crypto key with one of these commands depending on your OS:
 | OS | Command |
 |----|---------|
 | **macOS / Linux** | `openssl rand -base64 32` |
-| **Windows (PowerShell)** | `[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))` |
-| **Windows (Git Bash / WSL)** | `openssl rand -base64 32` |
+| **Windows — Git Bash / WSL** | `openssl rand -base64 32` |
+| **Windows — PowerShell only** | `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))` |
 
 Copy the output and paste it as the value of `F1_TELEMETRY_CRYPTO_KEY_B64` in `.env.delivery`.
 
