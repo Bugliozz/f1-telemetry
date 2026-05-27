@@ -45,13 +45,21 @@ Then edit `.env.delivery` and fill in the two variables:
 
 ```env
 # 32 random bytes encoded in base64 (used for AES-256-GCM flag encryption)
-F1_TELEMETRY_CRYPTO_KEY_B64=$(openssl rand -base64 32)
+F1_TELEMETRY_CRYPTO_KEY_B64=<see commands below>
 
 # Secret used by Node-RED to encrypt its credentials file
 NODE_RED_CREDENTIAL_SECRET=choose-any-long-random-string
 ```
 
-> **Windows (PowerShell):** run `openssl rand -base64 32` in Git Bash or WSL to get the key.
+Generate the crypto key with one of these commands depending on your OS:
+
+| OS | Command |
+|----|---------|
+| **macOS / Linux** | `openssl rand -base64 32` |
+| **Windows (PowerShell)** | `[Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))` |
+| **Windows (Git Bash / WSL)** | `openssl rand -base64 32` |
+
+Copy the output and paste it as the value of `F1_TELEMETRY_CRYPTO_KEY_B64` in `.env.delivery`.
 
 ### 3. Start everything
 
