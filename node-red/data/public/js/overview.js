@@ -402,14 +402,17 @@ function renderFlagEffects(effects) {
     elements.flagEffects.innerHTML = '';
     if (!effects) return;
 
-    const speed = Number.isFinite(Number(effects.speedMultiplier))
-        ? Math.round(Number(effects.speedMultiplier) * 100) + '%'
-        : 'n/a';
+    const isFinished = effects.finish === true;
+    const speed = isFinished
+        ? '-'
+        : (Number.isFinite(Number(effects.speedMultiplier))
+            ? Math.round(Number(effects.speedMultiplier) * 100) + '%'
+            : 'n/a');
     const rows = [
         { label: 'Mode',     value: humanizeToken(effects.mode || 'nominal') },
         { label: 'Speed',    value: speed },
-        { label: 'Overtake', value: effects.overtakingAllowed === false ? 'Blocked' : 'Allowed' },
-        { label: 'Race',     value: effects.raceSuspended ? 'Suspended' : 'Live' },
+        { label: 'Overtake', value: isFinished ? '-' : (effects.overtakingAllowed === false ? 'Blocked' : 'Allowed') },
+        { label: 'Race',     value: isFinished ? 'Finished' : (effects.raceSuspended ? 'Suspended' : 'Live') },
     ];
     if (effects.localSector != null) rows.push({ label: 'Sector', value: sectorLabel(effects.localSector) });
 

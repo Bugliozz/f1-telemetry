@@ -44,6 +44,8 @@ desktop.ini
 F1_Telemetry_Implementation_Plan.md
 F1_Telemetry_Dashboard_Pages_Plan.md
 F1_Telemetry_Project.md
+docs/uml/diagrams.md
+mongo/dump/tmp/
 
 # ─── Local assistant settings ───────────────────────────────
 .claude/
