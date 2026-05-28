@@ -1,12 +1,12 @@
 [
   { "teamId": "ferrari",  "carId": 16, "driver": "C. Leclerc"    },
-  { "teamId": "ferrari",  "carId": 55, "driver": "C. Sainz"      },
-  { "teamId": "mercedes", "carId": 44, "driver": "L. Hamilton"   },
+  { "teamId": "ferrari",  "carId": 44, "driver": "L. Hamilton"   },
   { "teamId": "mercedes", "carId": 63, "driver": "G. Russell"    },
-  { "teamId": "redbull",  "carId": 1,  "driver": "M. Verstappen" },
-  { "teamId": "redbull",  "carId": 11, "driver": "S. Perez"      },
-  { "teamId": "mclaren",  "carId": 4,  "driver": "L. Norris"     },
+  { "teamId": "mercedes", "carId": 12, "driver": "K. Antonelli"  },
+  { "teamId": "redbull",  "carId": 3,  "driver": "M. Verstappen" },
+  { "teamId": "redbull",  "carId": 6,  "driver": "I. Hadjar"     },
+  { "teamId": "mclaren",  "carId": 1,  "driver": "L. Norris"     },
   { "teamId": "mclaren",  "carId": 81, "driver": "O. Piastri"    },
   { "teamId": "alpine",   "carId": 10, "driver": "P. Gasly"      },
-  { "teamId": "alpine",   "carId": 31, "driver": "E. Ocon"       }
+  { "teamId": "alpine",   "carId": 43, "driver": "F. Colapinto"  }
 ]
