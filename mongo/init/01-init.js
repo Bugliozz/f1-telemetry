@@ -1,17 +1,17 @@
-// Script di inizializzazione MongoDB - F1 Telemetry
-// Eseguito automaticamente alla prima creazione del container.
+// MongoDB initialization script - F1 Telemetry
+// Executed automatically on first container creation.
 //
-// Crea le collection con $jsonSchema validator (dialetto MongoDB, basato su
-// Draft-04 con estensioni bsonType) coerenti con i documenti in /schemas.
-// Gli indici sono pensati per i pattern di lettura piu' frequenti:
-//   - serie temporali per (raceId, carId)
-//   - lookup per giro
-//   - retain "ultimo valore" per states e classifications.
+// Creates collections with $jsonSchema validators (MongoDB dialect, based on
+// Draft-04 with bsonType extensions) consistent with the documents in /schemas.
+// Indexes are designed for the most frequent read patterns:
+//   - time series by (raceId, carId)
+//   - lookup by lap
+//   - retain "last value" for states and classifications.
 
 db = db.getSiblingDB('f1_telemetry');
 
 // ---------------------------------------------------------------------------
-// Costanti riusabili nei validator
+// Reusable constants for validators
 // ---------------------------------------------------------------------------
 
 const TEAM_ID_PATTERN = '^[a-z][a-z0-9-]{1,31}$';
@@ -34,12 +34,12 @@ function envNumber(name, fallback) {
 const TELEMETRY_TTL_SECONDS = envNumber('TELEMETRY_TTL_SECONDS', DEFAULT_TELEMETRY_TTL_SECONDS);
 
 // ---------------------------------------------------------------------------
-// telemetry - serie temporale ad alta frequenza (2-5 Hz per auto)
+// telemetry - high-frequency time series (2-5 Hz per car)
 // ---------------------------------------------------------------------------
 
-// Nota sui bsonType: il driver Node.js di MongoDB serializza i Number JS come
-// BSON double; usiamo l'alias 'number' (matcha int/long/double/decimal) per
-// non rifiutare scritture legittime dal simulator.
+// Note on bsonType: the MongoDB Node.js driver serializes JS Numbers as
+// BSON double; we use the 'number' alias (matches int/long/double/decimal) to
+// avoid rejecting legitimate writes from the simulator.
 
 db.createCollection('telemetry', {
   validator: {
@@ -88,7 +88,7 @@ db.telemetry.createIndex({ raceId: 1, carId: 1, lap: 1, timestamp: 1 });
 db.telemetry.createIndex({ timestamp: 1 }, { expireAfterSeconds: TELEMETRY_TTL_SECONDS });
 
 // ---------------------------------------------------------------------------
-// events - eventi discreti per singola auto (pit stop, fault, retirement...)
+// events - discrete events per car (pit stop, fault, retirement...)
 // ---------------------------------------------------------------------------
 
 db.createCollection('events', {
@@ -114,7 +114,7 @@ db.events.createIndex({ raceId: 1, type: 1, timestamp: -1 });
 db.events.createIndex({ raceId: 1, type: 1, carId: 1, 'details.lap': 1 });
 
 // ---------------------------------------------------------------------------
-// states - ultimo stato FSM per auto (un solo doc per (raceId, carId))
+// states - latest FSM state per car (one document per (raceId, carId))
 // ---------------------------------------------------------------------------
 
 db.createCollection('states', {
@@ -149,7 +149,7 @@ db.createCollection('states', {
 db.states.createIndex({ raceId: 1, carId: 1 }, { unique: true });
 
 // ---------------------------------------------------------------------------
-// classifications - snapshot corrente della classifica per gara
+// classifications - current race standings snapshot
 // ---------------------------------------------------------------------------
 
 db.createCollection('classifications', {
@@ -187,7 +187,7 @@ db.createCollection('classifications', {
 db.classifications.createIndex({ raceId: 1 }, { unique: true });
 
 // ---------------------------------------------------------------------------
-// race_control - storico dei flag e degli eventi globali di gara
+// race_control - history of flags and global race events
 // ---------------------------------------------------------------------------
 
 db.createCollection('race_control', {
@@ -221,4 +221,4 @@ db.createCollection('race_control', {
 db.race_control.createIndex({ raceId: 1, timestamp: -1 });
 db.race_control.createIndex({ raceId: 1, flag: 1, timestamp: -1 });
 
-print('MongoDB F1 Telemetry inizializzato: 5 collection con validator e indici.');
+print('MongoDB F1 Telemetry initialized: 5 collections with validators and indexes.');

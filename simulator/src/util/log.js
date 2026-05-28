@@ -1,7 +1,7 @@
-// Logger leggero con livelli configurabili — §3 dell'architettura.
+// Lightweight logger with configurable levels — §3 of the architecture.
 //
-// Livelli: debug < info < warn < error
-// Set by LOG_LEVEL env var (default: info).
+// Levels: debug < info < warn < error
+// Set by the LOG_LEVEL environment variable (default: info).
 
 const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 

@@ -101,16 +101,34 @@ function saveBufferToSession(buf) {
     } catch (_) { /* quota exceeded — silently ignore */ }
 }
 
+function eventBufferKey(frame) {
+    if (!frame) return '';
+    const d = frame.data || {};
+    return [
+        frame.type    || '',
+        frame.timestamp || '',
+        d.timestamp   || '',
+        d.raceId      || '',
+        d.teamId      || '',
+        d.carId       || '',
+        d.type        || '',
+        d.flag        || ''
+    ].join('|');
+}
+
+const _sessionBuffer = loadBufferFromSession();
+
 export const state = {
-    socket:           null,
-    knownTeams:       new Set(),
-    latestCars:       new Map(),
-    latestStandings:  new Map(),
-    raceFlags:        new Map(),
-    raceEffects:      new Map(),
-    eventIds:         new Set(),
-    eventIdOrder:     [],
-    raceEventBuffer:  loadBufferFromSession(),
+    socket:             null,
+    knownTeams:         new Set(),
+    latestCars:         new Map(),
+    latestStandings:    new Map(),
+    raceFlags:          new Map(),
+    raceEffects:        new Map(),
+    eventIds:           new Set(),
+    eventIdOrder:       [],
+    raceEventBuffer:    _sessionBuffer,
+    bufferedEventIds:   new Set(_sessionBuffer.map(eventBufferKey)),
 };
 
 // ─── Pub/sub ──────────────────────────────────────────────────────────────────
@@ -500,6 +518,7 @@ export function clearEventDedup() {
 
 export function clearRaceEventBuffer() {
     state.raceEventBuffer.length = 0;
+    state.bufferedEventIds.clear();
     clearEventDedup();
     try { sessionStorage.removeItem(SESSION_BUFFER_KEY); } catch (_) {}
 }
@@ -533,7 +552,21 @@ function handleFrame(raw) {
                 }
             }
             if (race.flag) rememberRaceControl(race.flag, race.effects);
+            for (const ef of race.eventLog || []) {
+                const key = eventBufferKey(ef);
+                if (state.bufferedEventIds.has(key)) continue;
+                state.bufferedEventIds.add(key);
+                if (ef.type === 'event') {
+                    state.raceEventBuffer.push(ef);
+                    emit('event', ef);
+                } else if (ef.type === 'race-control') {
+                    state.raceEventBuffer.push({ type: 'race-control', timestamp: ef.data && ef.data.timestamp, data: ef.data });
+                    emit('race-control', ef.data, ef.effects);
+                }
+                if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            }
         }
+        saveBufferToSession(state.raceEventBuffer);
         emit('snapshot', frame);
     } else if (frame.type === 'classification') {
         if (frame.data && Array.isArray(frame.data.standings)) {
@@ -546,15 +579,24 @@ function handleFrame(raw) {
         mergeLatestCar(frame.data);
         emit('state', frame.data);
     } else if (frame.type === 'event') {
-        state.raceEventBuffer.push(frame);
-        if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
-        saveBufferToSession(state.raceEventBuffer);
-        emit('event', frame);
+        const key = eventBufferKey(frame);
+        if (!state.bufferedEventIds.has(key)) {
+            state.bufferedEventIds.add(key);
+            state.raceEventBuffer.push(frame);
+            if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            saveBufferToSession(state.raceEventBuffer);
+            emit('event', frame);
+        }
     } else if (frame.type === 'race-control') {
         rememberRaceControl(frame.data, frame.effects);
-        state.raceEventBuffer.push({ type: 'race-control', timestamp: frame.data && frame.data.timestamp, data: frame.data });
-        if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
-        saveBufferToSession(state.raceEventBuffer);
+        const rcFrame = { type: 'race-control', timestamp: frame.data && frame.data.timestamp, data: frame.data };
+        const key = eventBufferKey(frame);
+        if (!state.bufferedEventIds.has(key)) {
+            state.bufferedEventIds.add(key);
+            state.raceEventBuffer.push(rcFrame);
+            if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            saveBufferToSession(state.raceEventBuffer);
+        }
         emit('race-control', frame.data, frame.effects);
     }
 }

@@ -1,22 +1,21 @@
-// Race Controller — motore centrale di Race Control.
+// Race Controller — central Race Control engine.
 //
-// Integra flag-state.js (macchina a stati delle flag), triggers.js
-// (valutazione automatica delle condizioni) e la pubblicazione MQTT
-// dei messaggi race-control/flags.
+// Integrates flag-state.js (flag state machine), triggers.js
+// (automatic condition evaluation) and MQTT publishing of
+// race-control/flags messages.
 //
-// Responsabilita':
-//   - Maintains the current state of global flags.
-//   - A ogni tick, valuta i trigger automatici (evaluateTriggers).
-//   - Consente trigger manuali via API (forceFlag).
-//   - Pubblica il cambio di flag su MQTT (retained, QoS 1).
+// Responsibilities:
+//   - Maintains the current global flag state.
+//   - Each tick, evaluates automatic triggers (evaluateTriggers).
+//   - Allows manual triggers via API (forceFlag).
+//   - Publishes flag changes to MQTT (retained, QoS 1).
 //   - Exposes the active flag state for the Orchestrator context.
 //
-// RaceController is a stateful module without I/O logic
-// diretta: delega la pubblicazione MQTT all'Orchestrator che chiama
-// publishFlagChange(). Cosi' i test possono asserire sulle azioni
-// senza mockare il broker.
+// RaceController is a stateful module with no direct I/O logic:
+// it delegates MQTT publishing to the Orchestrator via publishFlagChange().
+// This way tests can assert on actions without mocking the broker.
 //
-// Cfr. docs/simulator-architecture.md §8, docs/race-control-design.md
+// See docs/simulator-architecture.md §8, docs/race-control-design.md
 
 const { FLAGS, initialFlagState, changeFlag, isTerminalFlag, isValidFlag } = require('./flag-state');
 const { initialTriggerTracker, evaluateTriggers, DEFAULT_TRIGGER_CONFIG } = require('./triggers');
@@ -37,7 +36,7 @@ class RaceController {
 
     this._flagState = initialFlagState();
     this._triggerTracker = initialTriggerTracker();
-    this._history = []; // log di tutti i cambi flag
+    this._history = []; // log of all flag changes
     this._lastNowS = 0;
 
     this.log.debug('[RaceController] Initialized, initial flag: GREEN');
@@ -45,36 +44,36 @@ class RaceController {
 
   // --- Current state ---
 
-  /** Restituisce la flag attualmente attiva. */
+  /** Returns the currently active flag. */
   get activeFlag() {
     return this._flagState.flag;
   }
 
-  /** Restituisce il settore interessato (null = globale). */
+  /** Returns the affected sector (null = global). */
   get activeSector() {
     return this._flagState.sector;
   }
 
-  /** Restituisce la reason dell'ultima attivazione. */
+  /** Returns the reason for the last activation. */
   get activeReason() {
     return this._flagState.reason;
   }
 
-  /** Returns the complete flag-state snapshot. */
+  /** Returns the full flag state snapshot. */
   get flagState() {
     return { ...this._flagState };
   }
 
-  /** Restituisce la cronologia dei cambi flag. */
+  /** Returns the flag change history. */
   get history() {
     return [...this._history];
   }
 
-  // --- Contesto per l'Orchestrator ---
+  // --- Orchestrator context ---
 
   /**
-   * Costruisce l'oggetto di contesto flag da passare alle Car.tick().
-   * Fornisce le informazioni necessarie per modulare il comportamento.
+   * Builds the flag context object to pass to Car.tick().
+   * Provides the information needed to modulate behaviour.
    *
    * @returns {{ flag: string, sector: number|null, reason: string|null }}
    */
@@ -86,13 +85,13 @@ class RaceController {
     };
   }
 
-  // --- Tick automatico ---
+  // --- Automatic tick ---
 
   /**
-   * Valuta i trigger automatici per il tick corrente.
-   * Da chiamare a ogni tick dall'Orchestrator, PRIMA di aggiornare le auto.
+   * Evaluates automatic triggers for the current tick.
+   * To be called every tick by the Orchestrator, BEFORE updating cars.
    *
-   * @param {Car[]} cars        - tutte le auto
+   * @param {Car[]} cars        - all cars
    * @param {object} raceState  - { leaderLap, totalLaps, nowS }
    * @returns {{ flagChanged: boolean, flagPayload: object|null }}
    */
@@ -128,10 +127,10 @@ class RaceController {
     return { flagChanged: false, flagPayload: null };
   }
 
-  // --- Trigger manuale ---
+  // --- Manual trigger ---
 
   /**
-   * Forza un cambio di flag manuale (da comando esterno, Node-RED, ecc.).
+   * Forces a manual flag change (from an external command, Node-RED, etc.).
    *
    * @param {string} newFlag
    * @param {object} opts - { sector, reason, nowS, timestamp }
@@ -139,7 +138,7 @@ class RaceController {
    */
   forceFlag(newFlag, opts = {}) {
     if (!isValidFlag(newFlag)) {
-      this.log.warn(`[RaceController] Flag non valida: ${newFlag}`);
+      this.log.warn(`[RaceController] Invalid flag: ${newFlag}`);
       return { flagChanged: false, flagPayload: null };
     }
 
@@ -156,7 +155,7 @@ class RaceController {
     });
   }
 
-  // --- Interno ---
+  // --- Internal ---
 
   _applyFlagChange(newFlag, opts) {
     const result = changeFlag(this._flagState, newFlag, {
@@ -172,7 +171,7 @@ class RaceController {
     // Update state
     this._flagState = result;
 
-    // Costruisci payload MQTT
+    // Build MQTT payload
     const payload = {
       timestamp: opts.timestamp || new Date().toISOString(),
       raceId: this.raceId,
@@ -182,7 +181,7 @@ class RaceController {
       reason: result.reason,
     };
 
-    // Log
+    // Log flag change
     const sectorStr = result.sector != null ? ` (S${result.sector})` : '';
     const icon = this._flagIcon(result.flag);
     this.log.info(
@@ -190,7 +189,7 @@ class RaceController {
       `[${opts.source}] ${result.reason || ''}`
     );
 
-    // Cronologia
+    // History
     this._history.push({
       from: result.previousFlag,
       to: result.flag,

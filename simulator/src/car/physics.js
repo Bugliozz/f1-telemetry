@@ -1,40 +1,39 @@
 const { LENGTH_M } = require('../track/monza');
 
-// Modello base di avanzamento lungo il circuito.
+// Base circuit advancement model.
 //
 // `advance` (pure function): given the current position state
-// (`trackPos`, `lap`), the speed in km/h and the `dt` interval in seconds,
-// ritorna un nuovo oggetto con la posizione aggiornata. Quando `trackPos`
-// raggiunge o supera 1 viene riavvolto a [0,1) e `lap` viene incrementato
-// how many laps were completed in the tick (normally 0 or 1, but the
+// (`trackPos`, `lap`), speed in km/h and interval `dt` in seconds,
+// returns a new object with the updated position. When `trackPos`
+// reaches or exceeds 1 it is wrapped back to [0,1) and `lap` is incremented
+// by the number of laps completed in the tick (normally 0 or 1, but the
 // code is defensive for very large `dt` values or anomalous speeds).
 //
 // `updateSpeed` (pure function): integrates speed toward a target speed
-// target (tipicamente quella restituita da `track/monza.targetSpeed`)
-// while respecting physical acceleration and braking limits. Speed
-// reale non puo' saltare al target, segue il profilo. Le costanti sono
-// quelle di §6.1 dell'architettura: +8 m/s^2 in accelerazione e una
-// frenata di picco da F1, sufficiente a superare 4.5 G nelle staccate piu'
-// violente. Tutti i valori in km/h, `dt` in secondi.
+// (typically returned by `track/monza.targetSpeed`) respecting the
+// physical limits of acceleration and braking. The actual speed cannot
+// jump to the target; it follows the profile. Constants are those of §6.1
+// of the architecture: +8 m/s^2 acceleration and a peak F1 braking force
+// sufficient to exceed 4.5 G at the hardest braking points.
+// All values in km/h, `dt` in seconds.
 //
-// Convenzioni:
-// - `trackPos` resta sempre in [0,1) — l'estremo 1 e' escluso.
-// - `lap` is a monotonic counter of completed laps. Its meaning
-//   semantico (es. "lap 1 = primo giro in corso") e' a carico della FSM
-//   nelle fasi successive: qui si modella solo la cinematica di base.
+// Conventions:
+// - `trackPos` always stays in [0,1) — the upper bound 1 is excluded.
+// - `lap` is a monotonic counter of completed laps. Its semantic meaning
+//   (e.g. "lap 1 = first lap in progress") is the responsibility of the FSM
+//   in later stages: only basic kinematics are modelled here.
 // - Negative speeds are not allowed by the data model (see telemetry
-//   schema); if passed by mistake, they are clamped to zero for
-//   safety.
+//   schema); if passed by mistake, they are clamped to zero for safety.
 
 const MAX_ACCEL_MS2 = 8;
 const MAX_BRAKE_MS2 = 44;
 const MS2_TO_KMH_PER_S = 3.6;
 
-// Powertrain (cfr. docs/simulator-architecture.md §5.1):
+// Powertrain (see docs/simulator-architecture.md §5.1):
 //   gear = clamp(round(speed/50), 1, 7)
-//   rpm  = 7000 + speed * 22, con jitter opzionale
-// Nota: il modello e' una semplificazione lineare. In F1 reale l'rpm cala
-// to gear shifts, not here - sufficient to give telemetry a value
+//   rpm  = 7000 + speed * 22, with optional jitter
+// Note: the model is a linear simplification. In real F1 rpm drops during
+// gear changes, not here — sufficient to give telemetry a value
 // consistent with speed without requiring a separate engine state.
 
 const GEAR_KMH_PER_GEAR = 50;

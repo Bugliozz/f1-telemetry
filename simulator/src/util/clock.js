@@ -1,7 +1,7 @@
-// Clock incapsulato (per test) — cfr. docs/simulator-architecture.md §3.
+// Encapsulated clock (for testing) — see docs/simulator-architecture.md §3.
 //
-// In produzione usa Date.now() e process.hrtime.bigint() per high-resolution.
-// Nei test si puo' iniettare un clock fittizio.
+// In production uses Date.now() for the current time.
+// In tests a fake clock can be injected.
 
 function createClock() {
   return {

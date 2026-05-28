@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://f1-telemetry.local/schemas/event.schema.json",
   "title": "CarEvent",
-  "description": "Evento discreto a livello auto pubblicato sul topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/events.",
+  "description": "Discrete car-level event published on topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/events.",
   "type": "object",
   "additionalProperties": false,
   "required": ["timestamp", "raceId", "teamId", "carId", "type"],
@@ -37,11 +37,11 @@
         "overtake",
         "state-change"
       ],
-      "description": "Categoria dell'evento. La forma di details dipende dal tipo."
+      "description": "Event category. The shape of details depends on the type."
     },
     "details": {
       "type": "object",
-      "description": "Payload specifico dell'evento. Esempi: {duration, tyreCompound, service, refuelling} per pit-stop; {lap, lapTime} per lap-completed; {sector, sectorTime} per sector-completed; {from, to, reason} per state-change."
+      "description": "Event-specific payload. Examples: {duration, tyreCompound, service, refuelling} for pit-stop; {lap, lapTime} for lap-completed; {sector, sectorTime} for sector-completed; {from, to, reason} for state-change."
     }
   },
   "allOf": [
@@ -75,7 +75,7 @@
             "required": ["lap", "lapTime"],
             "properties": {
               "lap": { "type": "integer", "minimum": 1 },
-              "lapTime": { "type": "number", "minimum": 0, "description": "Tempo sul giro in secondi." }
+              "lapTime": { "type": "number", "minimum": 0, "description": "Lap time in seconds." }
             }
           }
         }

@@ -31,8 +31,13 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const TEAM_IDS = Object.keys(TEAM_COLORS);
-const LS_KEY   = 'f1-team-view-selected-team';
+const LS_KEY = 'f1-team-view-selected-team';
+
+function knownTeamIds() {
+    const teams = new Set(Object.keys(TEAM_COLORS));
+    for (const t of state.knownTeams) teams.add(t);
+    return Array.from(teams).sort();
+}
 
 // ─── Local state ──────────────────────────────────────────────────────────────
 
@@ -79,12 +84,13 @@ if (elements.raceClock) {
 // ─── Team selection & persistence ────────────────────────────────────────────
 
 function readInitialTeam() {
+    const teams = new Set(knownTeamIds());
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('team');
-    if (fromUrl && TEAM_IDS.includes(fromUrl)) return fromUrl;
+    if (fromUrl && teams.has(fromUrl)) return fromUrl;
 
     const fromStorage = localStorage.getItem(LS_KEY);
-    if (fromStorage && TEAM_IDS.includes(fromStorage)) return fromStorage;
+    if (fromStorage && teams.has(fromStorage)) return fromStorage;
 
     return null;
 }
@@ -124,9 +130,14 @@ function selectTeam(teamId) {
 
 function buildTeamSelector() {
     if (!elements.selector) return;
+    const teamIds = knownTeamIds();
+
+    const existing = Array.from(elements.selector.querySelectorAll('.team-chip')).map((c) => c.dataset.team);
+    if (existing.length === teamIds.length && existing.every((t, i) => t === teamIds[i])) return;
+
     elements.selector.innerHTML = '';
 
-    for (const teamId of TEAM_IDS) {
+    for (const teamId of teamIds) {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'team-chip';
@@ -576,7 +587,11 @@ on('snapshot', (frame) => {
     let   cars = 0;
     for (const race of frame.races || []) cars += (race.cars || []).length;
     setSnapshotInfo(cars + ' car(s) — ' + new Date(t).toLocaleTimeString());
-    if (local.selectedTeam) {
+    buildTeamSelector();
+    if (!local.selectedTeam) {
+        const restored = readInitialTeam();
+        if (restored) selectTeam(restored);
+    } else {
         renderCarCards(local.selectedTeam);
         renderCarStates(local.selectedTeam);
     }

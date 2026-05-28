@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://f1-telemetry.local/schemas/classification.schema.json",
   "title": "Classification",
-  "description": "Snapshot della classifica di gara, calcolata da Node-RED a 1 Hz e pubblicata con retain su f1/simulation/{raceId}/race-control/classification.",
+  "description": "Race classification snapshot, computed by Node-RED at 1 Hz and published with retain on f1/simulation/{raceId}/race-control/classification.",
   "type": "object",
   "additionalProperties": false,
   "required": ["timestamp", "raceId", "lap", "leaderLap", "standings"],
@@ -18,12 +18,12 @@
     "lap": {
       "type": "integer",
       "minimum": 0,
-      "description": "Giro di riferimento dello snapshot (in genere = leaderLap)."
+      "description": "Reference lap for the snapshot (usually = leaderLap)."
     },
     "leaderLap": {
       "type": "integer",
       "minimum": 0,
-      "description": "Numero di giro completato dal leader."
+      "description": "Lap number completed by the race leader."
     },
     "standings": {
       "type": "array",
@@ -53,7 +53,7 @@
           "gap": {
             "type": "number",
             "minimum": 0,
-            "description": "Distacco dal leader in secondi."
+            "description": "Gap to the leader in seconds."
           },
           "state": {
             "type": "string",

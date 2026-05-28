@@ -1,11 +1,11 @@
 /**
- * Seed - Fase 2
- * Popola MongoDB con dati di esempio coerenti con i $jsonSchema validator.
+ * Seed - Phase 2
+ * Populates MongoDB with sample data consistent with the $jsonSchema validators.
  *
  *   - 5 teams x 2 cars = 10 entries (Monza, race 1)
  *   - ~50 telemetry samples per car, over ~2 laps
  *   - 1 FSM state per car
- *   - alcuni eventi tipici (lap-completed, pit-stop, state-change)
+ *   - a few typical events (lap-completed, pit-stop, state-change)
  *   - 1 current classification
  *   - 1 race-control event (initial green flag)
  *
@@ -43,8 +43,8 @@ function compoundForCar(car) {
   return COMPOUNDS[Math.abs(car.carId) % COMPOUNDS.length];
 }
 
-// Avanzamento di un campione lungo il giro: usa parametri stabili per
-// rendere il dataset deterministico ma realistico.
+// Advances a sample along the lap using stable parameters to keep
+// the dataset deterministic yet realistic.
 function buildTelemetrySamples(car, baseTime) {
   const samples = [];
   // Slightly different average speed per car -> non-trivial classification.
@@ -86,7 +86,7 @@ function buildTelemetrySamples(car, baseTime) {
       fuel: Number((100 - i * 0.4).toFixed(2)),
       state: 'RUNNING',
     });
-    // Avanza la posizione sul giro; quando supera 1, incrementa il giro.
+    // Advance track position; when it exceeds 1, increment the lap counter.
     trackPos += 0.04 + (speedBias + 6) * 0.0005;
     if (trackPos >= 1) {
       trackPos -= 1;
@@ -107,7 +107,7 @@ function buildEvents(car, baseTime) {
     type: 'state-change',
     details: { from: 'INIT', to: 'RUNNING', reason: 'race-start' },
   });
-  // Lap completed a meta dataset.
+  // Lap completed at the midpoint of the dataset.
   events.push({
     timestamp: new Date(baseTime.getTime() + 25 * SAMPLE_INTERVAL_MS),
     raceId: RACE_ID,
@@ -116,7 +116,7 @@ function buildEvents(car, baseTime) {
     type: 'lap-completed',
     details: { lap: 1, lapTime: 84.5 + (car.carId % 5) * 0.3 },
   });
-  // Per una sola auto simuliamo un pit-stop, per dare varieta al dataset.
+  // For a single car we simulate a pit-stop to add variety to the dataset.
   if (car.carId === 16) {
     events.push({
       timestamp: new Date(baseTime.getTime() + 30 * SAMPLE_INTERVAL_MS),
@@ -143,8 +143,8 @@ function buildState(car, baseTime) {
 }
 
 function buildClassification(baseTime) {
-  // Ordina per (lap desc, gap asc) - qui per semplicita usiamo l'ordine
-  // del roster con un piccolo gap progressivo.
+  // Sorted by (lap desc, gap asc) — for simplicity we use the roster order
+  // with a small progressive gap.
   const standings = ROSTER.map((car, idx) => ({
     position: idx + 1,
     carId: car.carId,
@@ -174,14 +174,14 @@ function buildRaceStartFlag(baseTime) {
 }
 
 async function main() {
-  console.log(`[seed] Connessione a ${MONGO_URL} (db=${DB_NAME}, raceId=${RACE_ID})`);
+  console.log(`[seed] Connecting to ${MONGO_URL} (db=${DB_NAME}, raceId=${RACE_ID})`);
   const client = new MongoClient(MONGO_URL, { serverSelectionTimeoutMS: 5000 });
   try {
     await client.connect();
     const db = client.db(DB_NAME);
     const baseTime = new Date();
 
-    // Pulisce solo i documenti relativi a questo RACE_ID (idempotente).
+    // Clears only documents related to this RACE_ID (idempotent).
     await Promise.all([
       db.collection('telemetry').deleteMany({ raceId: RACE_ID }),
       db.collection('events').deleteMany({ raceId: RACE_ID }),
@@ -193,14 +193,14 @@ async function main() {
     // Telemetry.
     const allTelemetry = ROSTER.flatMap((car) => buildTelemetrySamples(car, baseTime));
     const telemRes = await db.collection('telemetry').insertMany(allTelemetry, { ordered: false });
-    console.log(`[seed] telemetry: ${telemRes.insertedCount} documenti`);
+    console.log(`[seed] telemetry: ${telemRes.insertedCount} documents`);
 
-    // Eventi.
+    // Events.
     const allEvents = ROSTER.flatMap((car) => buildEvents(car, baseTime));
     const evtRes = await db.collection('events').insertMany(allEvents, { ordered: false });
-    console.log(`[seed] events: ${evtRes.insertedCount} documenti`);
+    console.log(`[seed] events: ${evtRes.insertedCount} documents`);
 
-    // Stati (upsert per (raceId, carId), coerente con indice unique).
+    // States (upsert by (raceId, carId), consistent with unique index).
     for (const car of ROSTER) {
       const state = buildState(car, baseTime);
       await db.collection('states').updateOne(
@@ -225,7 +225,7 @@ async function main() {
     await db.collection('race_control').insertOne(flag);
     console.log('[seed] race_control: 1 event (GREEN)');
 
-    console.log('[seed] OK - dataset pronto per i test della Fase 5.');
+    console.log('[seed] OK - dataset ready for Phase 5 tests.');
   } catch (err) {
     console.error('[seed] error:', err.message);
     process.exitCode = 1;

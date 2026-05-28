@@ -1,9 +1,9 @@
-// MQTT Publisher — singolo client condiviso per tutte le auto.
+// MQTT Publisher — single shared client for all cars.
 //
-// Gestisce connessione, riconnessione, e publish con QoS/retain corretti
-// secondo la policy definita in docs/mqtt-topics.md §2.
+// Handles connection, reconnection, and publish with correct QoS/retain
+// according to the policy defined in docs/mqtt-topics.md §2.
 //
-// Cfr. docs/simulator-architecture.md §3 (mqtt/publisher.js).
+// See docs/simulator-architecture.md §3 (mqtt/publisher.js).
 
 const path = require('path');
 
@@ -61,7 +61,7 @@ class MqttPublisher {
     this._publish(topic, payload, { qos: 1, retain: false }, 'event');
   }
 
-  // Publish race flag (QoS 1, retained) - Race Control
+  // Publish race flag (QoS 1, retained) — Race Control
   publishFlag(payload) {
     const topic = `f1/simulation/${this.raceId}/race-control/flags`;
     this._publish(topic, payload, { qos: 1, retain: true }, 'flag');
@@ -69,7 +69,7 @@ class MqttPublisher {
 
   _publish(topic, payload, options, schemaKey) {
     if (!this.client) {
-      this.log.warn('[MqttPublisher] Nessun client MQTT, messaggio scartato:', topic);
+      this.log.warn('[MqttPublisher] No MQTT client, message discarded:', topic);
       return;
     }
 
@@ -105,7 +105,7 @@ class MqttPublisher {
         flag: ajv.compile(require(path.join(schemaDir, 'flag.schema.json'))),
       };
     } catch (err) {
-      this.log.warn('[MqttPublisher] Validazione schema disabilitata:', err.message);
+      this.log.warn('[MqttPublisher] Schema validation disabled:', err.message);
       return null;
     }
   }
@@ -118,10 +118,10 @@ class MqttPublisher {
     const firstError = validate.errors && validate.errors[0]
       ? `${validate.errors[0].instancePath || '/'} ${validate.errors[0].message}`
       : 'unknown error';
-    this.log.warn(`[MqttPublisher] Payload ${schemaKey} non conforme su ${topic}: ${firstError}`);
+    this.log.warn(`[MqttPublisher] Non-conforming ${schemaKey} payload on ${topic}: ${firstError}`);
   }
 
-  // Pubblica tutti i messaggi di un tick per un'auto
+  // Publish all tick messages for a car
   publishCarMessages(messages) {
     if (!messages) return;
 

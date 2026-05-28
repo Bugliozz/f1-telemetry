@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://f1-telemetry.local/schemas/state.schema.json",
   "title": "CarState",
-  "description": "Snapshot dello stato FSM di un'auto, pubblicato on-change con retain sul topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/state.",
+  "description": "Car FSM state snapshot, published on-change with retain on topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/state.",
   "type": "object",
   "additionalProperties": false,
   "required": ["timestamp", "raceId", "teamId", "carId", "state"],
@@ -35,7 +35,7 @@
     "reason": {
       "type": ["string", "null"],
       "maxLength": 128,
-      "description": "Causa testuale della transizione (es. low-fuel, tire-overheat)."
+      "description": "Textual cause of the state transition (e.g. low-fuel, tire-overheat)."
     }
   }
 }
