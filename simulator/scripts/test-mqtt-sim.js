@@ -97,10 +97,10 @@ const ctx = {
 // Race start
 const startMsgs = car.startRace(1, ctx.timestamp);
 assert(car.fsm.state === 'RUNNING', 'After startRace, state must be RUNNING');
-assert(startMsgs.state != null, 'startRace produce un messaggio state');
+assert(startMsgs.state != null, 'startRace produces a state message');
 assert(startMsgs.state.state === 'RUNNING', 'state-change state is RUNNING');
 
-console.log('  Esecuzione 100 tick...');
+console.log('  Running 100 ticks...');
 
 const telemetryHistory = [];
 let eventCount = 0;
@@ -117,9 +117,9 @@ for (let i = 0; i < 100; i++) {
 }
 
 console.log(`  Generated telemetry: ${telemetryHistory.length} samples`);
-console.log(`  Eventi generati: ${eventCount}`);
+console.log(`  Events generated: ${eventCount}`);
 
-// Verifiche
+// Assertions
 assert(telemetryHistory.length === 100, `100 telemetry samples (got ${telemetryHistory.length})`);
 
 // Verify that speed varies and is not constant
@@ -134,7 +134,7 @@ assert(minSpeed >= 0, `Min speed >= 0 (got ${minSpeed.toFixed(1)})`);
 // RPM varies with speed
 const rpms = telemetryHistory.map(t => t.rpm);
 const uniqueRpms = new Set(rpms);
-assert(uniqueRpms.size > 20, `RPM varia: ${uniqueRpms.size} valori unici su 100 tick`);
+assert(uniqueRpms.size > 20, `RPM varies: ${uniqueRpms.size} unique values over 100 ticks`);
 
 // Tires: different temperatures per corner (asymmetry)
 const lastTelemetry = telemetryHistory[telemetryHistory.length - 1];
@@ -142,28 +142,28 @@ console.log(`  Tire temps: FL=${lastTelemetry.tireTemp.fl}, FR=${lastTelemetry.t
 const tireDiff = Math.abs(lastTelemetry.tireTemp.fl - lastTelemetry.tireTemp.fr);
 assert(tireDiff > 0.01, `FL/FR tire asymmetry: diff=${tireDiff.toFixed(2)}`);
 
-// Fuel decresce
+// Fuel decreases
 const firstFuel = telemetryHistory[0].fuel;
 const lastFuel = lastTelemetry.fuel;
 console.log(`  Fuel: ${firstFuel} → ${lastFuel} kg`);
-assert(lastFuel < firstFuel, `Fuel decresce: ${firstFuel} → ${lastFuel}`);
+assert(lastFuel < firstFuel, `Fuel decreases: ${firstFuel} → ${lastFuel}`);
 
-// DRS attivo in almeno un campione
+// DRS active in at least one sample
 const drsActive = telemetryHistory.filter(t => t.drs === true);
-assert(drsActive.length > 0, `DRS attivato in almeno 1 campione (got ${drsActive.length})`);
+assert(drsActive.length > 0, `DRS active in at least 1 sample (got ${drsActive.length})`);
 
-// Brake attivo nelle zone di decelerazione
+// Brake active in braking zones
 const brakeActive = telemetryHistory.filter(t => t.brake > 0);
-assert(brakeActive.length > 0, `Brake attivato in almeno 1 campione (got ${brakeActive.length})`);
+assert(brakeActive.length > 0, `Brake active in at least 1 sample (got ${brakeActive.length})`);
 
-// Payload schema compliance (campi obbligatori)
+// Payload schema compliance (required fields)
 const REQUIRED_FIELDS = ['timestamp', 'raceId', 'teamId', 'carId', 'lap', 'trackPos',
   'speed', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'tireTemp', 'fuel', 'compound', 'state'];
 const sample = telemetryHistory[50];
 for (const field of REQUIRED_FIELDS) {
   assert(sample[field] !== undefined, `Required field '${field}' is present in telemetry`);
 }
-assert(typeof sample.tireTemp === 'object', 'tireTemp e\' un oggetto');
+assert(typeof sample.tireTemp === 'object', 'tireTemp is an object');
 assert(sample.tireTemp.fl !== undefined, 'tireTemp.fl present');
 assert(sample.tireTemp.fr !== undefined, 'tireTemp.fr present');
 assert(sample.tireTemp.rl !== undefined, 'tireTemp.rl present');
@@ -176,7 +176,7 @@ for (const t of telemetryHistory) {
 }
 
 // Lap progresses (25 seconds at ~250 km/h avg -> ~1.7 km -> ~0.3 laps)
-assert(car.lap >= 0, `Lap counter valido: ${car.lap}`);
+assert(car.lap >= 0, `Valid lap counter: ${car.lap}`);
 
 // ============================================================
 // TEST 1B: Car integration edge cases
@@ -240,11 +240,11 @@ const serraglioMsgs = serraglioCar.tick(dt, {
   activeFlag: 'GREEN',
 });
 assert(targetSpeed(0.589) >= 295,
-  `Serraglio ha target da rettilineo (got ${targetSpeed(0.589).toFixed(1)} km/h)`);
+  `Serraglio has straight target speed (got ${targetSpeed(0.589).toFixed(1)} km/h)`);
 assert(serraglioMsgs.telemetry && serraglioMsgs.telemetry.throttle >= 0.9,
-  `Auto sul Serraglio accelera (throttle=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.throttle})`);
+  `Car on Serraglio accelerates (throttle=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.throttle})`);
 assert(serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake === 0,
-  `Auto sul Serraglio non frena (brake=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake})`);
+  `Car on Serraglio does not brake (brake=${serraglioMsgs.telemetry && serraglioMsgs.telemetry.brake})`);
 
 const firstVariant = BRAKING_ZONES.find(z => z.id === 'prima-variante');
 const startApproachCar = new Car({
@@ -279,11 +279,11 @@ for (let i = 0; i < 120 && !firstBrakeFromStart; i += 1) {
   }
 }
 assert(earlyBrakeBeforeRettifilo === null,
-  `Rettifilo principale non deve avere frenate premature allo start (sample=${JSON.stringify(earlyBrakeBeforeRettifilo)})`);
+  `Main straight must not have premature braking at the start (sample=${JSON.stringify(earlyBrakeBeforeRettifilo)})`);
 assert(firstBrakeFromStart && firstBrakeFromStart.trackPos >= firstVariant.start,
-  `Prima frenata dopo lo start deve iniziare alla staccata Rettifilo (trackPos=${firstBrakeFromStart && firstBrakeFromStart.trackPos}, start=${firstVariant.start})`);
+  `First braking after start must begin at the Prima Variante braking point (trackPos=${firstBrakeFromStart && firstBrakeFromStart.trackPos}, start=${firstVariant.start})`);
 assert(firstBrakeFromStart && firstBrakeFromStart.speed >= 300,
-  `Alla staccata della Prima Variante lo start deve arrivare gia veloce (speed=${firstBrakeFromStart && firstBrakeFromStart.speed})`);
+  `Car must arrive at Prima Variante braking zone already at high speed (speed=${firstBrakeFromStart && firstBrakeFromStart.speed})`);
 
 const firstVariantCar = new Car({
   teamId: 'ferrari',
@@ -308,11 +308,11 @@ const firstVariantMsgs = firstVariantCar.tick(dt, {
   activeFlag: 'GREEN',
 });
 assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.brake === 1,
-  `Prima Variante frena al 100% al cartello 150m (brake=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.brake})`);
+  `Prima Variante brakes at 100% at the 150m board (brake=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.brake})`);
 assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.throttle === 0,
-  `Prima Variante chiude il gas in staccata (throttle=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.throttle})`);
+  `Prima Variante closes throttle under braking (throttle=${firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.throttle})`);
 assert(firstVariantMsgs.telemetry && firstVariantMsgs.telemetry.drs === false,
-  'DRS chiuso automaticamente durante la frenata della Prima Variante');
+  'DRS closed automatically during Prima Variante braking');
 
 const roggiaApproachCar = new Car({
   teamId: 'mclaren',
@@ -337,9 +337,9 @@ const roggiaApproachMsgs = roggiaApproachCar.tick(dt, {
   activeFlag: 'GREEN',
 });
 assert(roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.brake === 0,
-  `Rettifilo verso Roggia non deve frenare prima dei 100m (brake=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.brake})`);
+  `Straight before Roggia must not brake before the 100m board (brake=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.brake})`);
 assert(roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.throttle >= 0.9,
-  `Rettifilo verso Roggia resta in pieno gas (throttle=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.throttle})`);
+  `Straight before Roggia stays flat out (throttle=${roggiaApproachMsgs.telemetry && roggiaApproachMsgs.telemetry.throttle})`);
 
 const curvaGrandeCar = new Car({
   teamId: 'redbull',
@@ -364,9 +364,9 @@ const curvaGrandeMsgs = curvaGrandeCar.tick(dt, {
   activeFlag: 'GREEN',
 });
 assert(curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.brake === 0,
-  `Curva Grande non deve frenare (brake=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.brake})`);
+  `Curva Grande must not brake (brake=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.brake})`);
 assert(curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.throttle === 1,
-  `Curva Grande deve restare full throttle (throttle=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.throttle})`);
+  `Curva Grande must stay full throttle (throttle=${curvaGrandeMsgs.telemetry && curvaGrandeMsgs.telemetry.throttle})`);
 
 const parabolicaCar = new Car({
   teamId: 'mercedes',
@@ -391,9 +391,9 @@ const parabolicaMsgs = parabolicaCar.tick(dt, {
   activeFlag: 'GREEN',
 });
 assert(parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.brake === 0,
-  `Parabolica deve aver rilasciato il freno in uscita (brake=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.brake})`);
+  `Parabolica must have released brakes on exit (brake=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.brake})`);
 assert(parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.throttle > 0.25 && parabolicaMsgs.telemetry.throttle < 1,
-  `Parabolica deve riaprire il gas progressivamente (throttle=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.throttle})`);
+  `Parabolica must progressively reopen throttle (throttle=${parabolicaMsgs.telemetry && parabolicaMsgs.telemetry.throttle})`);
 
 const lapCar = new Car({
   teamId: 'ferrari',
@@ -417,9 +417,9 @@ for (let i = 0; i < 1300 && lapEvents.length < 2; i++) {
 }
 assert(lapEvents.length >= 2, `lap-completed emitted for two laps (got ${lapEvents.length})`);
 assert(lapEvents[0] && lapEvents[0].details.lap === 1,
-  `primo lap-completed ha lap=1 (got ${lapEvents[0] && lapEvents[0].details.lap})`);
+  `first lap-completed has lap=1 (got ${lapEvents[0] && lapEvents[0].details.lap})`);
 assert(lapEvents[1] && lapEvents[1].details.lap === 2,
-  `secondo lap-completed ha lap=2 (got ${lapEvents[1] && lapEvents[1].details.lap})`);
+  `second lap-completed has lap=2 (got ${lapEvents[1] && lapEvents[1].details.lap})`);
 
 const pitConfig = { ...config, engineFailureProbPerTick: 0 };
 const pitCar = new Car({
@@ -454,8 +454,8 @@ for (let i = 0; i < 1800 && !pitExitTelemetry; i++) {
   }
 }
 assert(pitEntryTelemetry && pitEntryTelemetry.trackPos >= pitConfig.pitEntryPos,
-  `PIT scatta alla pit entry (trackPos=${pitEntryTelemetry && pitEntryTelemetry.trackPos})`);
-assert(pitStopEvent != null, 'pit-stop emesso dopo ingresso pit');
+  `PIT triggers at pit entry (trackPos=${pitEntryTelemetry && pitEntryTelemetry.trackPos})`);
+assert(pitStopEvent != null, 'pit-stop event emitted after pit entry');
 assert(pitExitTelemetry && pitExitTelemetry.lap > pitEntryLap && pitExitTelemetry.trackPos >= pitConfig.pitExitPos,
   `pit-exit after lap wrap and pitExitPos (lap=${pitExitTelemetry && pitExitTelemetry.lap}, trackPos=${pitExitTelemetry && pitExitTelemetry.trackPos})`);
 
@@ -495,7 +495,7 @@ scLeader.tick(2, {
   safetyCar: { isLeader: true, gapToCarAheadS: 0, targetGapS: scConfig.safetyCarTargetGapS },
 });
 assert(scLeader.speed <= scConfig.safetyCarSpeedKmh + 0.1,
-  `SC leader limitato a ${scConfig.safetyCarSpeedKmh} km/h (got ${scLeader.speed.toFixed(1)})`);
+  `SC leader capped at ${scConfig.safetyCarSpeedKmh} km/h (got ${scLeader.speed.toFixed(1)})`);
 
 const scChaser = new Car({
   teamId: 'ferrari',
@@ -516,9 +516,9 @@ const chaserMsgs = scChaser.tick(1, {
   safetyCar: { isLeader: false, gapToCarAheadS: 8, targetGapS: scConfig.safetyCarTargetGapS },
 });
 assert(scChaser.speed > scConfig.safetyCarSpeedKmh,
-  `SC auto lontana accelera per compattare (got ${scChaser.speed.toFixed(1)})`);
+  `SC distant car accelerates to bunch up (got ${scChaser.speed.toFixed(1)})`);
 assert(scChaser.speed <= scConfig.safetyCarCatchupSpeedKmh,
-  `SC catch-up resta sotto ${scConfig.safetyCarCatchupSpeedKmh} km/h (got ${scChaser.speed.toFixed(1)})`);
+  `SC catch-up stays below ${scConfig.safetyCarCatchupSpeedKmh} km/h (got ${scChaser.speed.toFixed(1)})`);
 assert(chaserMsgs.telemetry && chaserMsgs.telemetry.drs === false,
   'DRS disattivato sotto Safety Car');
 
@@ -541,7 +541,7 @@ scClose.tick(1, {
   safetyCar: { isLeader: false, gapToCarAheadS: 0.1, targetGapS: scConfig.safetyCarTargetGapS },
 });
 assert(scClose.speed < scConfig.safetyCarSpeedKmh,
-  `SC auto troppo vicina rallenta per tenere gap (got ${scClose.speed.toFixed(1)})`);
+  `SC car too close slows down to maintain gap (got ${scClose.speed.toFixed(1)})`);
 
 const scOrchestrator = new Orchestrator({
   roster: [
@@ -559,9 +559,9 @@ scOrchestrator.cars[1].lap = 1;
 scOrchestrator.cars[1].trackPos = 0.45;
 const scContexts = scOrchestrator._buildSafetyCarContexts('SC');
 assert(scContexts.get(1) && scContexts.get(1).isLeader === true,
-  'Orchestrator identifica il leader sotto SC');
+  'Orchestrator identifies the leader under SC');
 assert(scContexts.get(16) && scContexts.get(16).gapToCarAheadS > scConfig.safetyCarTargetGapS,
-  `Orchestrator calcola gap SC verso auto davanti (got ${scContexts.get(16) && scContexts.get(16).gapToCarAheadS})`);
+  `Orchestrator computes SC gap to car ahead (got ${scContexts.get(16) && scContexts.get(16).gapToCarAheadS})`);
 
 // ============================================================
 // TEST 1D: Virtual Safety Car
@@ -597,7 +597,7 @@ const leaderMsgs = vscLeader.tick(2, {
 assert(vscLeader.speed <= vscConfig.virtualSafetyCarSpeedKmh + 0.1,
   `VSC limits speed to ${vscConfig.virtualSafetyCarSpeedKmh} km/h (got ${vscLeader.speed.toFixed(1)})`);
 assert(leaderMsgs.telemetry && leaderMsgs.telemetry.drs === false,
-  'DRS disattivato sotto Virtual Safety Car');
+  'DRS disabled under Virtual Safety Car');
 
 const leaderProgress = 0.5;
 const maxVscProgress = leaderProgress - (vscConfig.virtualSafetyCarMinGapM / LENGTH_M);
@@ -621,7 +621,7 @@ vscChaser.tick(2, {
 });
 const chaserProgress = vscChaser.lap + vscChaser.trackPos;
 assert(chaserProgress <= maxVscProgress + 1e-9,
-  `VSC blocca il sorpasso (progress=${chaserProgress.toFixed(6)}, max=${maxVscProgress.toFixed(6)})`);
+  `VSC prevents overtaking (progress=${chaserProgress.toFixed(6)}, max=${maxVscProgress.toFixed(6)})`);
 
 const vscOrchestrator = new Orchestrator({
   roster: [
@@ -639,9 +639,9 @@ vscOrchestrator.cars[1].lap = 1;
 vscOrchestrator.cars[1].trackPos = 0.49;
 const vscContexts = vscOrchestrator._buildVirtualSafetyCarContexts('VSC');
 assert(vscContexts.get(1) && vscContexts.get(1).isLeader === true,
-  'Orchestrator identifica il leader sotto VSC');
+  'Orchestrator identifies the leader under VSC');
 assert(vscContexts.get(16) && vscContexts.get(16).maxProgress < 1.5,
-  'Orchestrator calcola il limite anti-sorpasso VSC');
+  'Orchestrator computes the VSC anti-overtaking limit');
 
 // ============================================================
 // TEST 1E: Race flags (GREEN / YELLOW / RED / CHECKERED)
@@ -676,7 +676,7 @@ const greenFlagMsgs = greenFlagCar.tick(1, {
 assert(greenFlagCar.speed > 250,
   `GREEN keeps the race active and the car accelerates (got ${greenFlagCar.speed.toFixed(1)})`);
 assert(greenFlagMsgs.telemetry && greenFlagMsgs.telemetry.drs === true,
-  'GREEN non disattiva il DRS nelle zone abilitate');
+  'GREEN does not disable DRS in enabled zones');
 
 const yellowFlagCar = new Car({
   teamId: 'ferrari',
@@ -698,9 +698,9 @@ const yellowFlagMsgs = yellowFlagCar.tick(1, {
   activeFlagSector: 3,
 });
 assert(yellowFlagCar.speed < greenFlagCar.speed,
-  `YELLOW rallenta nel settore attivo (${yellowFlagCar.speed.toFixed(1)} < ${greenFlagCar.speed.toFixed(1)})`);
+  `YELLOW slows down in the active sector (${yellowFlagCar.speed.toFixed(1)} < ${greenFlagCar.speed.toFixed(1)})`);
 assert(yellowFlagMsgs.telemetry && yellowFlagMsgs.telemetry.drs === false,
-  'YELLOW disattiva il DRS nel settore interessato');
+  'YELLOW disables DRS in the affected sector');
 
 const yellowOtherSectorCar = new Car({
   teamId: 'ferrari',
@@ -722,9 +722,9 @@ const yellowOtherSectorMsgs = yellowOtherSectorCar.tick(1, {
   activeFlagSector: 2,
 });
 assert(yellowOtherSectorCar.speed === greenFlagCar.speed,
-  'YELLOW locale non rallenta fuori dal settore interessato');
+  'Local YELLOW does not slow down outside the affected sector');
 assert(yellowOtherSectorMsgs.telemetry && yellowOtherSectorMsgs.telemetry.drs === true,
-  'YELLOW locale fuori settore non disattiva il DRS');
+  'Local YELLOW outside sector does not disable DRS');
 
 const redFlagCar = new Car({
   teamId: 'mercedes',
@@ -744,11 +744,11 @@ const redFlagMsgs = redFlagCar.tick(1, {
   activeFlag: 'RED',
 });
 assert(redFlagCar.speed < 220,
-  `RED fa frenare l'auto (got ${redFlagCar.speed.toFixed(1)})`);
+  `RED makes the car brake (got ${redFlagCar.speed.toFixed(1)})`);
 assert(redFlagMsgs.telemetry && redFlagMsgs.telemetry.brake > 0,
   'RED produces braking in telemetry');
 assert(redFlagMsgs.telemetry && redFlagMsgs.telemetry.drs === false,
-  'RED disattiva il DRS');
+  'RED disables DRS');
 
 for (let i = 0; i < 3; i++) {
   redFlagCar.tick(1, {
@@ -789,7 +789,7 @@ const checkeredMsgs = checkeredFlagCar.tick(0.25, {
 assert(checkeredFlagCar.fsm.state === 'FINISHED',
   `CHECKERED closes the race on the final lap (state=${checkeredFlagCar.fsm.state})`);
 assert(checkeredMsgs.state && checkeredMsgs.state.state === 'FINISHED',
-  'CHECKERED produce lo state FINISHED');
+  'CHECKERED produces the FINISHED state');
 
 // ============================================================
 // TEST 1F: Combined race scenarios
@@ -898,13 +898,13 @@ section('TEST 1G: Scenario tuning');
 
 const redScenarioConfig = applyScenario(config, SCENARIOS.RED_FLAG);
 assert(redScenarioConfig.faultGraceS === 300,
-  `RED scenario ha grace window anti-fault a 300s (got ${redScenarioConfig.faultGraceS})`);
+  `RED scenario has anti-fault grace window at 300s (got ${redScenarioConfig.faultGraceS})`);
 assert(redScenarioConfig.engineFailureProbPerTick === 0.0012,
   'RED scenario resta probabilistico ad alta failure dopo la grace window');
 assert(redScenarioConfig.tireOverheatThresholdC === 142,
   'RED scenario uses recalibrated overheat threshold for 5 laps');
 assert(redScenarioConfig.tireOverheatTicksRequired === 8,
-  'RED scenario richiede overheat persistente prima del fault');
+  'RED scenario requires persistent overheat before fault');
 
 const redScenarioCar = new Car({
   teamId: 'redbull',
@@ -924,7 +924,7 @@ for (let i = 0; i < (redScenarioConfig.faultGraceS * 4) - 1; i++) {
   });
 }
 assert(redScenarioCar.fsm.state === 'RUNNING',
-  `RED scenario non produce fault prima della grace window (state=${redScenarioCar.fsm.state})`);
+  `RED scenario does not produce fault before the grace window (state=${redScenarioCar.fsm.state})`);
 const redScenarioGraceMsgs = redScenarioCar.tick(0.25, {
   raceId: 1,
   timestamp: new Date().toISOString(),
@@ -933,15 +933,15 @@ const redScenarioGraceMsgs = redScenarioCar.tick(0.25, {
   activeFlag: 'GREEN',
 });
 assert(redScenarioCar.fsm.state === 'FAULT',
-  `RED scenario consente fault dopo la grace window (state=${redScenarioCar.fsm.state})`);
+  `RED scenario allows fault after the grace window (state=${redScenarioCar.fsm.state})`);
 assert((redScenarioGraceMsgs.events || []).some(e => e.type === 'fault'),
   'RED scenario publishes fault event after the grace window');
 
 // ============================================================
-// TEST 2: 10 auto — 80 tick (20 secondi simulati)
+// TEST 2: 10 cars — 80 ticks (20 simulated seconds)
 // ============================================================
 
-section('TEST 2: 10 auto — 80 tick (20 secondi simulati)');
+section('TEST 2: 10 cars — 80 ticks (20 simulated seconds)');
 
 const mockPub = new MockPublisher();
 const multiConfig = { ...config, seed: 12345, totalLaps: 15 };
@@ -953,21 +953,21 @@ const orchestrator = new Orchestrator({
   logger: { debug() {}, info() {}, warn() {}, error() {} },
 });
 
-// startRace manuale (normalmente fatto in start(), qui lo facciamo a mano per controllare)
+// Manual startRace (normally called in start(); done here explicitly for control)
 const ts = new Date().toISOString();
 for (const c of orchestrator.cars) {
   const startMsgs = c.startRace(1, ts);
   mockPub.publishCarMessages(startMsgs);
 }
 
-console.log(`  Auto nel roster: ${orchestrator.cars.length}`);
-assert(orchestrator.cars.length === 10, `10 auto create (got ${orchestrator.cars.length})`);
+console.log(`  Cars in roster: ${orchestrator.cars.length}`);
+assert(orchestrator.cars.length === 10, `10 cars created (got ${orchestrator.cars.length})`);
 const startingCompounds = new Set(orchestrator.cars.map((c) => c.compound));
 console.log(`  Starting compounds: ${Array.from(startingCompounds).sort().join(', ')}`);
 assert(startingCompounds.size > 1, `Starting compounds staggered across grid (got ${startingCompounds.size})`);
 
-// Simula 80 tick manuali: dopo la staccata Rettifilo emergono le differenze
-// tra auto, mentre nei primi secondi dal via sono tutte limitate da MAX_ACCEL.
+// Simulate 80 manual ticks: differences between cars emerge after the Prima Variante braking zone,
+// while in the first seconds from the start all cars are limited by MAX_ACCEL.
 const multiCtx = {
   raceId: 1,
   timestamp: ts,
@@ -1032,7 +1032,7 @@ console.log('  Average speeds per team:', Object.entries(teamAvgs)
 const rawFuels = orchestrator.cars.map(c => c.fuel);
 const uniqueRawFuels = new Set(rawFuels.map(f => f.toFixed(4)));
 console.log(`  Fuel range: ${Math.min(...rawFuels).toFixed(4)} - ${Math.max(...rawFuels).toFixed(4)} kg`);
-assert(uniqueRawFuels.size > 1, `Fuel diverso tra auto: ${uniqueRawFuels.size} valori unici`);
+assert(uniqueRawFuels.size > 1, `Fuel differs between cars: ${uniqueRawFuels.size} unique values`);
 
 // ============================================================
 // TEST 3: Verify schema compliance on all samples
@@ -1045,7 +1045,7 @@ for (const t of mockPub.telemetry) {
   for (const field of REQUIRED_FIELDS) {
     if (t[field] === undefined) {
       schemaErrors++;
-      console.error(`  Schema error: campo '${field}' mancante in car ${t.carId}`);
+      console.error(`  Schema error: field '${field}' missing in car ${t.carId}`);
     }
   }
   if (typeof t.tireTemp !== 'object' ||
@@ -1106,35 +1106,35 @@ console.log(`  Verified samples: ${mockPub.telemetry.length}`);
 assert(schemaErrors === 0, `No schema errors (${schemaErrors} found)`);
 
 // ============================================================
-// TEST 4: Verifica eventi state-change prodotti
+// TEST 4: State-change events
 // ============================================================
 
 section('TEST 4: Events and transitions');
 
 const stateChanges = mockPub.events.filter(e => e.type === 'state-change');
 console.log(`  State changes: ${stateChanges.length}`);
-assert(stateChanges.length >= 10, `Almeno 10 state-change (INIT→RUNNING per ciascuna): got ${stateChanges.length}`);
+assert(stateChanges.length >= 10, `At least 10 state-change events (INIT→RUNNING for each): got ${stateChanges.length}`);
 
-// Tutti gli state-change hanno from e to
+// All state-changes have from and to
 for (const sc of stateChanges) {
-  assert(sc.details && sc.details.from, `state-change ha from: ${JSON.stringify(sc.details)}`);
-  assert(sc.details && sc.details.to, `state-change ha to: ${JSON.stringify(sc.details)}`);
+  assert(sc.details && sc.details.from, `state-change has from: ${JSON.stringify(sc.details)}`);
+  assert(sc.details && sc.details.to, `state-change has to: ${JSON.stringify(sc.details)}`);
 }
 
 // ============================================================
-// RISULTATO
+// RESULTS
 // ============================================================
 
-section('RISULTATO');
+section('RESULTS');
 
-console.log(`  ✓ Passati: ${passed}`);
-console.log(`  ✗ Falliti: ${failed}`);
+console.log(`  ✓ Passed: ${passed}`);
+console.log(`  ✗ Failed: ${failed}`);
 console.log();
 
 if (failed > 0) {
-  console.error('❌ TEST FALLITI!');
+  console.error('❌ TESTS FAILED!');
   process.exit(1);
 } else {
-  console.log('✅ TUTTI I TEST PASSATI!');
+  console.log('✅ ALL TESTS PASSED!');
   process.exit(0);
 }

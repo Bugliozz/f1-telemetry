@@ -1,7 +1,7 @@
 // Test 5-lap race modes without a real MQTT broker.
 //
-// Usa Orchestrator/Car/RaceController reali con clock e publisher finti.
-// Eseguire con: node scripts/test-race-modes.js
+// Uses real Orchestrator/Car/RaceController with a fake clock and publisher.
+// Run with: node scripts/test-race-modes.js
 
 const assert = require('assert');
 

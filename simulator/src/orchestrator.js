@@ -1,10 +1,10 @@
-// Orchestrator — ciclo tick, lifecycle, fan-out alle Car.
+// Orchestrator — tick cycle, lifecycle, fan-out to Cars.
 //
-// Un solo `setInterval(tickFn, TICK_MS)` gestisce tutte le auto.
-// A ogni tick: calcola dt, valuta Race Control, aggiorna tutte le auto,
-// pubblica i messaggi.
+// A single `setInterval(tickFn, TICK_MS)` drives all cars.
+// Each tick: compute dt, evaluate Race Control, update all cars,
+// publish messages.
 //
-// Cfr. docs/simulator-architecture.md §4.
+// See docs/simulator-architecture.md §4.
 
 const EventEmitter = require('events');
 const Car = require('./car/car');
@@ -27,10 +27,10 @@ class Orchestrator extends EventEmitter {
     this.totalLaps = config.totalLaps || 5;
     this.tickMs = config.tickMs || 250;
 
-    // PRNG globale per Race Control (separato dalle auto)
+    // Global PRNG for Race Control (separate from cars)
     const rcRng = createCarPrng(config.seed, 0);
 
-    // Race Controller — motore centrale delle flag (Fase 4)
+    // Race Controller — central flag engine (Phase 4)
     this.raceController = new RaceController({
       raceId: this.raceId,
       triggerConfig: config.raceControlTriggers || {},
@@ -38,7 +38,7 @@ class Orchestrator extends EventEmitter {
       rng: rcRng,
     });
 
-    // Crea le auto dal roster
+    // Build cars from roster
     this.cars = roster.map((entry) => {
       const rng = createCarPrng(config.seed, entry.carId);
       return new Car({
@@ -74,7 +74,7 @@ class Orchestrator extends EventEmitter {
     this._lastTickMs = this._startTimeMs;
 
     // Publish the initial GREEN flag (retained, so subscribers
-    // ricevono immediatamente alla connessione)
+    // receive it immediately upon connection)
     const greenPayload = {
       timestamp: this.clock.isoNow(),
       raceId: this.raceId,
@@ -95,7 +95,7 @@ class Orchestrator extends EventEmitter {
     }
     this._raceStarted = true;
 
-    // Avvia il tick loop
+    // Start the tick loop
     this._intervalId = setInterval(() => {
       this._tick();
     }, this.tickMs);
@@ -113,7 +113,7 @@ class Orchestrator extends EventEmitter {
     const flagHistory = this.raceController.history;
     this.log.info(`[Orchestrator] Simulation finished after ${elapsed}s, ${this._tickCount} ticks, ${this._totalPublished} published messages`);
     if (flagHistory.length > 0) {
-      this.log.info(`[Orchestrator] Flag history (${flagHistory.length} cambi):`);
+      this.log.info(`[Orchestrator] Flag history (${flagHistory.length} changes):`);
       for (const entry of flagHistory) {
         this.log.info(`  ${entry.from} → ${entry.to} [${entry.source}] ${entry.reason || ''}`);
       }
@@ -125,7 +125,7 @@ class Orchestrator extends EventEmitter {
     const rawDtMs = nowMs - this._lastTickMs;
     this._lastTickMs = nowMs;
 
-    // Clamp dt a [tickMs*0.5, tickMs*2] per stabilita' (§4.1)
+    // Clamp dt to [tickMs*0.5, tickMs*2] for stability (§4.1)
     const minDtMs = this.tickMs * 0.5;
     const maxDtMs = this.tickMs * 2;
     const dtMs = Math.max(minDtMs, Math.min(rawDtMs, maxDtMs));
@@ -140,7 +140,7 @@ class Orchestrator extends EventEmitter {
     // Check whether the leader has completed all laps
     this._updateLeaderLap();
 
-    // --- RACE CONTROL: valuta trigger automatici PRIMA delle auto ---
+    // --- RACE CONTROL: evaluate automatic triggers BEFORE cars ---
     const rcResult = this.raceController.tick(this.cars, {
       leaderLap: this._leaderLap,
       totalLaps: this.totalLaps,
@@ -148,19 +148,19 @@ class Orchestrator extends EventEmitter {
       timestamp,
     });
 
-    // Se la flag e' cambiata, pubblica su MQTT
+    // If the flag changed, publish to MQTT
     if (rcResult.flagChanged && rcResult.flagPayload) {
       this.publisher.publishFlag(rcResult.flagPayload);
       this._totalPublished++;
     }
 
-    // Aggiorna checkered dal RaceController (sostituisce la logica
-    // hardcoded precedente)
+    // Update checkered from RaceController (replaces previous
+    // hardcoded logic)
     if (this.raceController.activeFlag === FLAGS.CHECKERED) {
       this._checkeredSent = true;
     }
 
-    // Costruisci il contesto globale del tick con le info di Race Control
+    // Build global tick context with Race Control info
     const flagCtx = this.raceController.buildFlagContext();
     const ctx = {
       raceId: this.raceId,
@@ -168,14 +168,14 @@ class Orchestrator extends EventEmitter {
       totalLaps: this.totalLaps,
       checkeredActive: this._checkeredSent,
       leaderLap: this._leaderLap,
-      // Contesto Race Control per le auto (Fase 4)
+      // Race Control context for cars (Phase 4)
       activeFlag: flagCtx.flag,
       activeFlagSector: flagCtx.sector,
     };
     const safetyCarContexts = this._buildSafetyCarContexts(flagCtx.flag);
     const virtualSafetyCarContexts = this._buildVirtualSafetyCarContexts(flagCtx.flag);
 
-    // Tick di tutte le auto
+    // Tick all cars
     let allTerminal = true;
     for (const car of this.cars) {
       try {
@@ -192,16 +192,16 @@ class Orchestrator extends EventEmitter {
         }
       } catch (err) {
         this.log.error(`[Orchestrator] Error in Car ${car.carId}:`, err.message);
-        // FSM → FAULT con reason internal-error (§12.2)
+        // FSM → FAULT with reason internal-error (§12.2)
         try {
           const { transition: fsmTransition, TRIGGERS } = require('./car/fsm');
           car.fsm = fsmTransition(car.fsm, TRIGGERS.INTERNAL_ERROR, `internal-error:${err.message}`);
-        } catch (_) { /* ignora errori nel recovery */ }
+        } catch (_) { /* ignore errors during recovery */ }
       }
     }
 
-    // Log periodico
-    if (this._tickCount % (4 * 10) === 0) { // ogni ~10 secondi a 4 Hz
+    // Periodic log
+    if (this._tickCount % (4 * 10) === 0) { // every ~10 seconds at 4 Hz
       this._logStatus();
     }
 
@@ -249,7 +249,7 @@ class Orchestrator extends EventEmitter {
       this.publisher.publishCarMessages(messages);
       this._countMessages(messages);
       this._scenarioFaultsApplied.add(key);
-      this.log.info(`[Orchestrator] Scenario fault applicato: car ${carId}`);
+      this.log.info(`[Orchestrator] Scenario fault applied: car ${carId}`);
     }
   }
 

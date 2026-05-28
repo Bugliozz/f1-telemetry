@@ -1,37 +1,37 @@
 # MongoDB Dump — F1 Telemetry
 
-Dump del database `f1_telemetry` esportato con `mongodump --archive` durante una gara simulata di 5 giri (10 auto, 5 team).
+Dump of the `f1_telemetry` database exported with `mongodump --archive` during a simulated 5-lap race (10 cars, 5 teams).
 
-## Contenuto
+## Contents
 
-| Collection | Documenti |
+| Collection | Documents |
 |---|---|
 | `telemetry` | ~14 000 (stream 2–5 Hz) |
 | `events` | ~282 |
-| `states` | 10 (uno per auto) |
+| `states` | 10 (one per car) |
 | `race_control` | 2 |
 | `classifications` | 1 |
 
-## Ripristinare il dump (con Docker attivo)
+## Restore the dump (with Docker running)
 
 ```bash
-# avvia solo MongoDB
+# start MongoDB only
 docker compose up -d mongodb
 
-# ripristina
+# restore
 docker exec -i f1-final-mongodb mongorestore \
   --db f1_telemetry \
   --drop \
   --archive < mongo/dump/f1_telemetry.archive
 
-# verifica
+# verify
 docker exec f1-final-mongodb mongosh --quiet \
   --eval "db.getSiblingDB('f1_telemetry').telemetry.countDocuments()"
 ```
 
-## Rigenerare il dump
+## Regenerate the dump
 
-Con i container attivi (`docker compose up -d`):
+With containers running (`docker compose up -d`):
 
 ```bash
 docker exec f1-final-mongodb mongodump \
