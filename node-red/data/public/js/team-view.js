@@ -27,7 +27,7 @@ import {
     TEAM_COLORS,
     TRACK_SECTORS,
     MAX_EVENT_LOG_ITEMS,
-} from '/js/core.js';
+} from '/js/core.js?v=20260529b';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -356,14 +356,21 @@ function renderCarStates(teamId) {
 
 // ─── Race event log ───────────────────────────────────────────────────────────
 
-function replayEventsForTeam(teamId) {
+function renderEmptyEventLog() {
     if (!elements.eventLog) return;
-    clearEventDedup();
     elements.eventLog.innerHTML = '';
+
     const empty = document.createElement('li');
     empty.className   = 'race-event-empty';
     empty.textContent = 'No events yet';
     elements.eventLog.appendChild(empty);
+}
+
+function replayEventsForTeam(teamId) {
+    if (!elements.eventLog) return;
+    clearEventDedup();
+    renderEmptyEventLog();
+
     for (const frame of state.raceEventBuffer) {
         if (!frame || !frame.data) continue;
         if (frame.type !== 'race-control' && frame.data.teamId !== teamId) continue;
@@ -613,6 +620,10 @@ on('event', (frame) => {
 on('race-control', (data, _effects) => {
     if (!local.selectedTeam) return;
     appendRaceEvent({ type: 'race-control', timestamp: data && data.timestamp, data });
+});
+
+on('race-reset', () => {
+    renderEmptyEventLog();
 });
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────

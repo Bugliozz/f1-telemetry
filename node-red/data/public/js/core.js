@@ -129,11 +129,12 @@ export const state = {
     eventIdOrder:       [],
     raceEventBuffer:    _sessionBuffer,
     bufferedEventIds:   new Set(_sessionBuffer.map(eventBufferKey)),
+    currentRaceStartKey: null,
 };
 
 // ─── Pub/sub ──────────────────────────────────────────────────────────────────
 //
-// Supported data types: 'snapshot' | 'classification' | 'state' | 'event' | 'race-control'
+// Supported data types: 'snapshot' | 'classification' | 'state' | 'event' | 'race-control' | 'race-reset'
 // Connection lifecycle:  'ws-status'  (payload: 'connecting' | 'connected' | 'error' | 'reconnecting')
 
 const _subs = Object.create(null);
@@ -523,6 +524,36 @@ export function clearRaceEventBuffer() {
     try { sessionStorage.removeItem(SESSION_BUFFER_KEY); } catch (_) {}
 }
 
+function raceStartKey(frame) {
+    if (!frame || frame.type !== 'race-control') return null;
+
+    const data = frame.data || {};
+    const flag = String(data.flag || '').toUpperCase();
+    if (flag !== 'GREEN' || data.active === false || data.reason !== 'race-start') return null;
+
+    const raceId = data.raceId == null ? '' : String(data.raceId);
+    const timestamp = data.timestamp || frame.timestamp || '';
+    return raceId && timestamp ? raceId + '|' + timestamp : null;
+}
+
+function latestRaceStartIndex(eventLog) {
+    let index = -1;
+    for (let i = 0; i < eventLog.length; i += 1) {
+        if (raceStartKey(eventLog[i])) index = i;
+    }
+    return index;
+}
+
+function resetEventsForRaceStart(frame) {
+    const key = raceStartKey(frame);
+    if (!key || state.currentRaceStartKey === key) return false;
+
+    state.currentRaceStartKey = key;
+    clearRaceEventBuffer();
+    emit('race-reset', frame);
+    return true;
+}
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
 export function send(command) {
@@ -551,8 +582,31 @@ function handleFrame(raw) {
                     rememberStanding(race.classification, row);
                 }
             }
-            if (race.flag) rememberRaceControl(race.flag, race.effects);
-            for (const ef of race.eventLog || []) {
+            const flagFrame = race.flag
+                ? { type: 'race-control', timestamp: race.flag.timestamp, data: race.flag, effects: race.effects }
+                : null;
+
+            if (flagFrame) {
+                resetEventsForRaceStart(flagFrame);
+                rememberRaceControl(race.flag, race.effects);
+            }
+
+            const eventLog = Array.isArray(race.eventLog) ? race.eventLog : [];
+            const raceStartIndex = latestRaceStartIndex(eventLog);
+            const firstEventIndex = raceStartIndex >= 0 ? raceStartIndex : 0;
+            if (raceStartIndex >= 0) resetEventsForRaceStart(eventLog[raceStartIndex]);
+
+            if (raceStartIndex < 0 && raceStartKey(flagFrame)) {
+                const key = eventBufferKey(flagFrame);
+                if (!state.bufferedEventIds.has(key)) {
+                    state.bufferedEventIds.add(key);
+                    state.raceEventBuffer.push(flagFrame);
+                    if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+                    emit('race-control', flagFrame.data, flagFrame.effects);
+                }
+            }
+
+            for (const ef of eventLog.slice(firstEventIndex)) {
                 const key = eventBufferKey(ef);
                 if (state.bufferedEventIds.has(key)) continue;
                 state.bufferedEventIds.add(key);
@@ -590,7 +644,8 @@ function handleFrame(raw) {
     } else if (frame.type === 'race-control') {
         rememberRaceControl(frame.data, frame.effects);
         const rcFrame = { type: 'race-control', timestamp: frame.data && frame.data.timestamp, data: frame.data };
-        const key = eventBufferKey(frame);
+        resetEventsForRaceStart(rcFrame);
+        const key = eventBufferKey(rcFrame);
         if (!state.bufferedEventIds.has(key)) {
             state.bufferedEventIds.add(key);
             state.raceEventBuffer.push(rcFrame);
