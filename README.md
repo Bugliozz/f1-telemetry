@@ -79,8 +79,9 @@ docker compose up --build -d
 
 | URL | Description |
 |-----|-------------|
-| <http://localhost:1881/dashboard> | Race dashboard (Monza track, live car positions) |
-| <http://localhost:1881> | Node-RED editor |
+| <http://localhost:1881> | Race map (Monza track, live car positions) |
+| <http://localhost:1881/dashboard> | Race dashboard |
+| <http://localhost:1881/admin> | Node-RED editor |
 
 ### 5. Stop
 
@@ -164,7 +165,7 @@ f1-telemetry/
 
 **Services fail to start** — check that ports 1881, 1884, 9002, 27018 are free on the host.
 
-**Node-RED shows "flows paused"** — open the editor at `http://localhost:1881`, click Deploy, then restart the simulator container:
+**Node-RED shows "flows paused"** — open the editor at `http://localhost:1881/admin`, click Deploy, then restart the simulator container:
 ```bash
 docker compose restart simulator
 ```
