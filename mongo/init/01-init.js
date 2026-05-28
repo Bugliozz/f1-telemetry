@@ -73,7 +73,7 @@ db.createCollection('telemetry', {
             rr: { bsonType: 'number' }
           }
         },
-        fuel: { bsonType: 'number', minimum: 0, maximum: 30 },
+        fuel: { bsonType: 'number', minimum: 0, maximum: 40 },
         state: { enum: FSM_STATES }
       }
     }
