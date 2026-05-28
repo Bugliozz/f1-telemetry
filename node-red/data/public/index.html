@@ -4,11 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>F1 Telemetry — Monza</title>
-    <link rel="stylesheet" href="/dashboard.css?v=20260526s" />
+    <link rel="stylesheet" href="/dashboard.css?v=20260526t" />
 </head>
 <body>
     <div id="scenario-modal" class="scenario-modal scenario-modal--hidden" role="dialog" aria-modal="true" aria-labelledby="scenario-title">
         <div class="scenario-modal__panel">
+            <button id="scenario-close-btn" class="scenario-modal__close scenario-modal__close--hidden" type="button" aria-label="Close scenario picker">
+                <span aria-hidden="true">x</span>
+            </button>
             <div class="scenario-modal__eyebrow">Race setup</div>
             <h2 id="scenario-title">Choose scenario</h2>
             <div class="scenario-options" aria-label="Race scenarios">
@@ -66,7 +69,7 @@
                     </div>
                 </div>
                 <button id="restart-race-btn" class="restart-race-btn restart-race-btn--hidden" type="button">
-                    Nuova Gara
+                    New Race
                 </button>
             </div>
 
@@ -98,6 +101,6 @@
         </aside>
     </main>
 
-    <script type="module" src="/js/overview.js?v=20260529b"></script>
+    <script type="module" src="/js/overview.js?v=20260529d"></script>
 </body>
 </html>

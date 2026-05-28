@@ -37,12 +37,44 @@ body {
 }
 
 .scenario-modal__panel {
+    position: relative;
     width: min(720px, 100%);
     padding: 22px;
     border: 1px solid #2a2f3d;
     border-radius: 8px;
     background: #11141d;
     box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.scenario-modal__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #2a2f3d;
+    border-radius: 50%;
+    background: #161926;
+    color: #e6e8ee;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.scenario-modal__close:hover,
+.scenario-modal__close:focus-visible {
+    border-color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+    color: #ffffff;
+    outline: none;
+}
+
+.scenario-modal__close--hidden {
+    display: none;
 }
 
 .scenario-modal__eyebrow {
