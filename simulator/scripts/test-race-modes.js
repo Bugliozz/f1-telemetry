@@ -179,15 +179,21 @@ function testBalancedSeeds() {
   assert.ok(!hasFlag(nominal, 'RED'), 'balanced nominal must not red flag');
   console.log('  OK nominal seed reaches checkered');
 
-  const eventful = runRace(SCENARIOS.BALANCED, 4);
-  assert.strictEqual(eventful.activeFlag, 'CHECKERED');
-  assert.strictEqual(eventful.leaderLap, TOTAL_LAPS);
-  assert.ok(!hasFlag(eventful, 'RED'), 'balanced eventful must not red flag');
-  assert.ok(
-    countEvents(eventful, 'fault') > 0 || hasFlag(eventful, 'VSC'),
-    'balanced eventful seed should produce a fault or VSC event',
-  );
-  console.log('  OK eventful seed stays below red flag');
+  // Balanced mode can be eventful (faults/VSC) but never red-flags: the
+  // massIncidentThreshold is unreachable with this roster. Scan a small set of
+  // seeds and assert the structural property plus "at least one is eventful",
+  // rather than pinning a single magic seed — team performance factors are now
+  // generated per seed, so which seeds turn eventful shifts when tuning changes.
+  const seeds = [2, 3, 4, 5, 6, 7, 8];
+  const runs = seeds.map((seed) => runRace(SCENARIOS.BALANCED, seed));
+  runs.forEach((result, i) => {
+    assert.strictEqual(result.activeFlag, 'CHECKERED', `balanced seed ${seeds[i]} must reach checkered`);
+    assert.strictEqual(result.leaderLap, TOTAL_LAPS, `balanced seed ${seeds[i]} must finish all laps`);
+    assert.ok(!hasFlag(result, 'RED'), `balanced seed ${seeds[i]} must not red flag`);
+  });
+  const eventful = runs.some((result) => countEvents(result, 'fault') > 0 || hasFlag(result, 'VSC'));
+  assert.ok(eventful, 'at least one balanced seed should produce a fault or VSC event');
+  console.log('  OK balanced seeds finish under green and at least one is eventful');
 }
 
 function testFailureLikelySeeds() {

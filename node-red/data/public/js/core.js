@@ -369,8 +369,34 @@ export function bindConnectionInfoPopup(anchor) {
 
 // ─── Helpers / formatters ─────────────────────────────────────────────────────
 
+// Teams not in TEAM_COLORS get a stable, distinct colour derived from the
+// teamId. Hues are spread by the golden angle so additional teams stay far
+// apart on the wheel; the value is deterministic (same colour across reloads
+// and clients) and cached so a teamId always renders identically.
+const GOLDEN_ANGLE = 137.508;
+const autoColorCache = new Map();
+
+function hashTeamId(teamId) {
+    let hash = 2166136261;
+    for (let i = 0; i < teamId.length; i += 1) {
+        hash ^= teamId.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
+function autoColor(teamId) {
+    const cached = autoColorCache.get(teamId);
+    if (cached) return cached;
+    const hue = (hashTeamId(teamId) * GOLDEN_ANGLE) % 360;
+    const color = `hsl(${hue.toFixed(1)}, 70%, 55%)`;
+    autoColorCache.set(teamId, color);
+    return color;
+}
+
 export function teamColor(teamId) {
-    return TEAM_COLORS[teamId] || FALLBACK_COLOR;
+    if (!teamId) return FALLBACK_COLOR;
+    return TEAM_COLORS[teamId] || autoColor(teamId);
 }
 
 export function carKey(car) {

@@ -17,6 +17,7 @@ const {
 const { initialTireTemp, updateTireTemp, consumeFuel, INITIAL_FUEL_KG } = require('./tire-fuel');
 const { COMPOUNDS, buildCompounds, randomCompound, pickDifferentCompound } = require('./compounds');
 const { createCarPrng } = require('../util/prng');
+const { stableUnitForKey } = require('../util/hash');
 
 // Salt used to derive the per-car tire PRNG from the global seed, so that
 // compound draws and wear variance remain reproducible without
@@ -30,25 +31,10 @@ function tirePrngCarKey(carId) {
   return Math.imul(carId | 0, TIRE_RNG_CAR_MULTIPLIER) ^ TIRE_RNG_SALT;
 }
 
-function stableUnitForCarId(carId) {
-  const text = String(carId == null ? '' : carId);
-  let hash = 2166136261;
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b);
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35);
-  hash ^= hash >>> 16;
-  return (hash >>> 0) / 4294967296;
-}
-
 function driverPerformanceFactor(carId, variancePct) {
   const variance = Number.isFinite(variancePct) && variancePct > 0 ? variancePct : 0;
   if (variance === 0) return 1;
-  return 1 + (stableUnitForCarId(carId) * 2 - 1) * variance;
+  return 1 + (stableUnitForKey(carId) * 2 - 1) * variance;
 }
 const { initialFsm, transition, STATES, TRIGGERS, isTerminal } = require('./fsm');
 const {

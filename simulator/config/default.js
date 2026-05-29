@@ -97,15 +97,14 @@ const config = Object.freeze({
   tireTempJitterC: 1.5,
   // Fuel consumption jitter (±5%)
   fuelRateJitterPct: 0.05,
-  // Team performance differential (multiplicative factor on target speed)
-  // Simulates that some cars are intrinsically faster
-  teamPerformanceFactor: {
-    redbull: 1.030,
-    ferrari: 1.018,
-    mclaren: 1.008,
-    mercedes: 0.995,
-    alpine: 0.970,
-  },
+  // Team performance differential (multiplicative factor on target speed).
+  // Factors are generated per race from (seed, teamId) within
+  // ±teamPerformanceSpread (see src/car/team-profiles.js), so adding a team to
+  // the roster needs no config change. This map is an optional OVERRIDE: any
+  // teamId listed here is pinned to that fixed value; empty = all generated.
+  teamPerformanceFactor: {},
+  // Half-width of the generated team performance band (±3% ≈ the old grid).
+  teamPerformanceSpread: 0.03,
   maxRaceSpeedKmh: 350,
 
   // --- Race flag behaviour ---

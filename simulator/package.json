@@ -7,6 +7,7 @@
     "start": "node index.js",
     "test:physics": "node scripts/test-physics.js",
     "test:compounds": "node scripts/test-compounds.js",
+    "test:team-profiles": "node scripts/test-team-profiles.js",
     "test:tire-fuel": "node scripts/test-tire-fuel.js",
     "test:fsm": "node scripts/test-fsm.js",
     "test:conditions": "node scripts/test-conditions.js",
@@ -19,7 +20,7 @@
     "ensure:persistence-indexes": "node scripts/ensure-persistence-indexes.js",
     "query:history": "node scripts/query-history.js",
     "seed": "node scripts/seed.js",
-    "test": "npm run test:physics && npm run test:compounds && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:race-control && npm run test:race-modes && npm run test:persistence && npm run test:mqtt-sim"
+    "test": "npm run test:physics && npm run test:compounds && npm run test:team-profiles && npm run test:tire-fuel && npm run test:fsm && npm run test:conditions && npm run test:race-control && npm run test:race-modes && npm run test:persistence && npm run test:mqtt-sim"
   },
   "dependencies": {
     "mongodb": "^6.12.0",

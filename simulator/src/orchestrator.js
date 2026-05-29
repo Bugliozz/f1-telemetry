@@ -8,6 +8,7 @@
 
 const EventEmitter = require('events');
 const Car = require('./car/car');
+const { buildTeamProfiles } = require('./car/team-profiles');
 const { createCarPrng } = require('./util/prng');
 const { createClock } = require('./util/clock');
 const { STATES } = require('./car/fsm');
@@ -38,6 +39,21 @@ class Orchestrator extends EventEmitter {
       rng: rcRng,
     });
 
+    // Generate per-team performance factors once for this race, then inject
+    // them into the config the cars read (they still look up
+    // config.teamPerformanceFactor[teamId], so the Car contract is unchanged).
+    const teamProfiles = buildTeamProfiles(roster, {
+      seed: config.seed,
+      spread: config.teamPerformanceSpread,
+      overrides: config.teamPerformanceFactor,
+    });
+    const carConfig = Object.freeze({ ...config, teamPerformanceFactor: teamProfiles });
+    this.log.info(
+      `[Orchestrator] Team performance factors: ${Object.entries(teamProfiles)
+        .map(([team, factor]) => `${team}=${factor.toFixed(3)}`)
+        .join(' ')}`,
+    );
+
     // Build cars from roster
     this.cars = roster.map((entry) => {
       const rng = createCarPrng(config.seed, entry.carId);
@@ -46,7 +62,7 @@ class Orchestrator extends EventEmitter {
         carId: entry.carId,
         driver: entry.driver,
         rng,
-        config,
+        config: carConfig,
       });
     });
 
