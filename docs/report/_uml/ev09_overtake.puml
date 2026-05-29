@@ -1,0 +1,24 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title overtake event (reserved)
+participant "classify fn\n(Node-RED)" as CL
+queue ".../race-control/classification\n(retained)" as B
+participant "Dashboard\nleaderboard" as D
+control "event.schema.json\n+ Mongo validator" as S
+note over S : "overtake" is a DEFINED event type\n(schema enum + Mongo validator) but is\nNOT currently emitted by any producer.
+CL -> CL : sort cars by progress (lap+trackPos)\nrecompute standings every snapshot
+CL -> B : classification{standings[]} (retained)
+B -> D : leaderboard re-renders;\nposition swaps are shown implicitly
+note over CL, D : EXTENSION POINT: comparing two\nconsecutive standings would let the\nclassifier publish an explicit\n{type:"overtake"} car event
+@enduml

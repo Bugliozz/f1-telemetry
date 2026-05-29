@@ -1,9 +1,9 @@
-// Car class - orchestrates the internal state of a single car.
+// Car class — orchestrates the internal state of a single car.
 //
 // Integrates physics.js, tire-fuel.js, fsm.js and conditions.js into a single
-// `tick(dt, ctx)` method that updates state and produces pending messages
-// (telemetry, state, events). No direct I/O: messages are returned to the
-// Orchestrator, which passes them to the MqttPublisher.
+// `tick(dt, ctx)` method that updates state and produces outbound messages
+// (telemetry, state, events). No direct I/O: messages are returned
+// to the Orchestrator, which forwards them to the MqttPublisher.
 //
 // See docs/simulator-architecture.md §5 (Car model).
 
@@ -18,15 +18,15 @@ const { initialTireTemp, updateTireTemp, consumeFuel, INITIAL_FUEL_KG } = requir
 const { COMPOUNDS, buildCompounds, randomCompound, pickDifferentCompound } = require('./compounds');
 const { createCarPrng } = require('../util/prng');
 
-// Salt that derives the per-car tire PRNG from the global seed, so compound
-// and wear-variance draws stay reproducible without disturbing the main
-// per-car stream that drives physics/fault determinism.
+// Salt used to derive the per-car tire PRNG from the global seed, so that
+// compound draws and wear variance remain reproducible without
+// disturbing the main per-car stream that governs physics and faults.
 const TIRE_RNG_SALT = 0x7152e;
 const TIRE_RNG_CAR_MULTIPLIER = 0x9e3779b1;
 
 function tirePrngCarKey(carId) {
-  // xorshift32 first draws are correlated for nearby seeds. Mix the car id
-  // before applying the salt so starting compounds vary across the grid.
+  // The first draws of xorshift32 are correlated for nearby seeds. Mix
+  // the car id before the salt to vary the starting compound on the grid.
   return Math.imul(carId | 0, TIRE_RNG_CAR_MULTIPLIER) ^ TIRE_RNG_SALT;
 }
 
@@ -84,7 +84,7 @@ class Car {
     this.currentSector = 1;
     this.simulatedTimeS = 0;
 
-    // Per-car variability (computed once, fixed for the whole race)
+    // Per-car variability (computed once, fixed for the entire race)
     const jitterKmh = this.config.speedJitterKmh || 3;
     this._speedOffset = (this.rng() - 0.5) * 2 * jitterKmh;
 
@@ -97,10 +97,10 @@ class Car {
     );
 
     // Tire compound state: random starting compound, wear accumulator in [0, 1]
-    // and a per-car wear multiplier that staggers pit stops between cars on the
-    // same compound (see compounds.js and PIANO_MODIFICHE_GOMME.md §2.2). Drawn
-    // from a dedicated stream so it stays reproducible from the global seed
-    // without shifting the main per-car stream used for physics/faults.
+    // and a per-car wear multiplier that spreads pit stops across cars on the
+    // same compound (see compounds.js §2.2). Drawn from a dedicated stream
+    // to remain reproducible from the global seed without shifting the main
+    // per-car stream used for physics and faults.
     this._tireRng = createCarPrng(this.config.seed, tirePrngCarKey(carId));
     this._compounds = buildCompounds(this.config.tireCompounds);
     this.compound = randomCompound(this._tireRng);
@@ -123,7 +123,7 @@ class Car {
 
     this.simulatedTimeS += dt;
 
-    // Car in terminal state: no more telemetry (§7.2)
+    // Car in terminal state: no further telemetry (§7.2)
     if (isTerminal(this.fsm.state)) {
       return messages;
     }
@@ -134,7 +134,7 @@ class Car {
       return messages;
     }
 
-    // --- FAULT: decelerates to 0, reduced telemetry ---
+    // --- FAULT: decelerating to 0, reduced telemetry ---
     if (this.fsm.state === STATES.FAULT) {
       const prevSpeed = this.speed;
       this.speed = updateSpeed(this.speed, 0, dt);
@@ -156,7 +156,7 @@ class Car {
       return messages;
     }
 
-    // --- PIT: limited speed, waits for timer ---
+    // --- PIT: speed limited, waiting for the stop timer ---
     if (this.fsm.state === STATES.PIT) {
       const pitTarget = this.config.pitLaneSpeedKmh || 80;
       const pitStopElapsed = this._pitServiced && this.condTracker.pitEnteredAtS != null
@@ -177,10 +177,10 @@ class Car {
       this.trackPos = posResult.trackPos;
       this.lap = posResult.lap;
 
-      // Tire service only: modern F1 pit stops do not refuel the car. The car
-      // leaves on a *different* compound (F1 rule) with a fresh wear accumulator.
-      // The compound is drawn from the dedicated tire stream so the swap stays
-      // reproducible without shifting the main physics/fault stream (see §2.2).
+      // Tyre change only: modern F1 pit stops do not refuel.
+      // The car rejoins with a *different* compound (F1 rule) and wear accumulator reset.
+      // The compound is drawn from the dedicated stream to remain reproducible
+      // without shifting the main physics/fault stream (see §2.2).
       if (!this._pitServiced && this._crossedTrackPos(prevPos, posResult, this.config.pitBoxPos || 0.985)) {
         this.tireTemp = initialTireTemp(this.config.tireResetTempC || 90);
         this.compound = pickDifferentCompound(this.compound, this._tireRng);
@@ -202,7 +202,7 @@ class Car {
         });
       }
 
-      // Evaluate condition → pit-out / race-end / engine-failure
+      // Evaluate condition → pit-out / race end / engine failure
       const evalResult = evaluate(this.fsm.state, this._buildObservation(ctx), this.condTracker);
       this.condTracker = evalResult.tracker;
       if (evalResult.trigger) {
@@ -213,7 +213,7 @@ class Car {
       return messages;
     }
 
-    // --- RUNNING: the core of the simulation ---
+    // --- RUNNING: the simulation core ---
     this._tickRunning(dt, ctx, raceId, timestamp, messages);
     return messages;
   }
@@ -225,7 +225,7 @@ class Car {
     const rawTarget = targetSpeed(this.trackPos);
     const adjustedTarget = rawTarget * this._teamFactor * this._driverFactor + this._speedOffset;
 
-    // Instantaneous jitter (micro-variations per tick)
+    // Instant jitter (micro-variations per tick)
     const instantJitter = (this.rng() - 0.5) * 1.5;
     const nominalTarget = Math.max(0, adjustedTarget + instantJitter);
     const maxRaceSpeed = this._numberConfig('maxRaceSpeedKmh', 350);
@@ -241,11 +241,11 @@ class Car {
     }
 
     // Throttle and brake derived from physics, then refined with the
-    // Monza pedal profile under green-flag race conditions.
+    // Monza pedal profile under racing conditions (green flag).
     let { throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt);
     ({ throttle, brake } = this._applyRacingControls({ throttle, brake }, ctx, yellowLimited));
 
-    // Position advance
+    // Avanzamento posizione
     const prevPos = { trackPos: this.trackPos, lap: this.lap };
     let posResult = advance(prevPos, this.speed, dt);
     const vscClamp = this._clampVirtualSafetyCarOvertake(prevPos, posResult, ctx, dt);
@@ -255,10 +255,10 @@ class Car {
       ({ throttle, brake } = this._controlsForSpeedChange(prevSpeed, this.speed, finalTarget, dt));
     }
 
-    // Sector crossing check
+    // Controllo attraversamento settore
     this._checkSectorCrossing(posResult, raceId, timestamp, messages);
 
-    // Lap completed
+    // Giro completato
     if (posResult.lapsCompleted > 0) {
       this._onLapCompleted(posResult, raceId, timestamp, messages);
     }
@@ -266,10 +266,10 @@ class Car {
     this.trackPos = posResult.trackPos;
     this.lap = posResult.lap;
 
-    // Tire wear: accumulate normalised wear in [0, 1] from the compound's
-    // per-lap degradation index, scaled by the per-car variance and the
-    // fraction of a lap covered this tick. Softer compounds wear faster, so
-    // they reach the pit threshold sooner (see compounds.js, PIANO §2.3).
+    // Tyre wear: accumulates normalised wear in [0, 1] from the compound's
+    // per-lap degradation index, scaled by per-car variance and the lap
+    // fraction covered this tick. Softer compounds wear out first and reach
+    // the pit threshold sooner (see compounds.js §2.3).
     const compound = this._compounds[this.compound] || this._compounds.medium || COMPOUNDS.medium;
     const lapFraction = Math.max(
       0,
@@ -280,10 +280,10 @@ class Car {
       this._tireWear + compound.wearPerLap * this._wearVariance * lapFraction,
     );
 
-    // Thermal coupling: a worn tire heats up more. wearFactor grows from 1
-    // (fresh) towards 1 + thermalGain (fully worn); the gain is small so a
-    // normal stint stays inside the operating range and never trips the
-    // tire-overheat FAULT (see tire-fuel.js wearFactor note).
+    // Thermal coupling: a worn tyre heats up more. wearFactor grows from 1
+    // (new) toward 1 + thermalGain (fully worn); the gain is small so a
+    // normal stint stays in the operating range without triggering a FAULT
+    // due to overheating (see tire-fuel.js wearFactor note).
     const thermalGain = this._numberConfig('tireWearThermalGain', 0.15);
     const wearFactor = 1 + this._tireWear * thermalGain;
     const tireTempJitter = this.config.tireTempJitterC || 1.5;
@@ -336,7 +336,7 @@ class Car {
     });
   }
 
-  // --- Helpers ---
+  // --- Helper functions ---
 
   _fuelPerformanceMultiplier() {
     const fuel = Number.isFinite(this.fuel) ? this.fuel : INITIAL_FUEL_KG;
@@ -460,8 +460,8 @@ class Car {
       };
     }
 
-    // Outside braking zones, avoid small brake corrections produced by
-    // target jitter: in a real race the driver stays on throttle.
+    // Outside braking zones, avoid small brake corrections caused by
+    // target jitter: in a real race the driver stays on the throttle.
     if (baseBrake > 0.25) {
       return { throttle: 0, brake: baseBrake };
     }
@@ -536,7 +536,7 @@ class Car {
     const gear = this.fsm.state === STATES.INIT ? 0 : gearForSpeed(this.speed);
     const rpm = this.fsm.state === STATES.INIT ? 0 : rpmForSpeed(this.speed, rpmJitter);
 
-    // DRS active only in RUNNING state on long straights
+    // DRS active only in RUNNING state on straights
     let drs = false;
     if (this.fsm.state === STATES.RUNNING && controls.drsAllowed !== false && Array.isArray(this.config.drsZones)) {
       for (const zone of this.config.drsZones) {
@@ -589,7 +589,7 @@ class Car {
         rl: Math.round(this.tireTemp.rl * 10) / 10,
         rr: Math.round(this.tireTemp.rr * 10) / 10,
       },
-      // Per-corner wear: FL/RL loaded more at Monza (right-hand chicanes + braking).
+      // Wear per corner: FL/RL most loaded at Monza (right chicanes + braking zones).
       tireWear: {
         fl: Math.round(Math.min(1, this._tireWear * 1.04) * 1000) / 1000,
         fr: Math.round(Math.min(1, this._tireWear * 0.97) * 1000) / 1000,
@@ -629,7 +629,7 @@ class Car {
       },
     });
 
-    // Post-transition: initialize timer
+    // Post-transition: initialise the timer
     if (fsmResult.state === STATES.PIT) {
       const pitDuration = samplePitDurationS(this.rng,
         this.config.pitDurationMinS, this.config.pitDurationMaxS);

@@ -2,6 +2,7 @@ import {
     state,
     on,
     connectWebSocket,
+    bindConnectionInfoPopup,
     send,
     carKey,
     teamColor,
@@ -20,7 +21,7 @@ import {
     clearRaceEventBuffer,
     STATE_CLASS,
     TRACK_SECTORS,
-} from '/js/core.js';
+} from '/js/core.js?v=20260529c';
 
 // ─── Local constants ──────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ const TRACK_PATH_START_OFFSET = 0.390;
 const ANIMATION_MIN_DURATION  = 100;
 const ANIMATION_MAX_DURATION  = 1500;
 const ANIMATION_DEFAULT_INTERVAL = 500;
+const SCENARIO_PROMPT_DELAY_MS = 650;
 
 const TRACK_ANNOTATIONS = Object.freeze({
     labels: [
@@ -64,6 +66,7 @@ const elements = {
     scenarioModal:       document.getElementById('scenario-modal'),
     scenarioStatus:      document.getElementById('scenario-status'),
     scenarioButtons:     Array.from(document.querySelectorAll('[data-scenario]')),
+    scenarioCloseBtn:    document.getElementById('scenario-close-btn'),
     restartBtn:          document.getElementById('restart-race-btn'),
 };
 
@@ -80,7 +83,9 @@ const local = {
     timeOffset:       null,
     scenarioStarted:  false,
     scenarioSelectionOpen: false,
+    scenarioSelectionRequested: false,
     scenarioStartPending: false,
+    scenarioPromptTimer: null,
     rafHandle:        null,
     telemetryPopup:   null,
     leaderboardRows:  new Map(),
@@ -100,6 +105,7 @@ function setConnectionStatus(label, kind) {
     if (!elements.connection) return;
     elements.connection.textContent = label;
     elements.connection.className = 'status-pill status-pill--' + kind;
+    elements.connection.setAttribute('aria-label', 'Connection status: ' + label);
 }
 
 function setSnapshotInfo(text) {
@@ -116,12 +122,38 @@ function setScenarioControlsEnabled(enabled) {
     for (const btn of elements.scenarioButtons) btn.disabled = !enabled;
 }
 
+function setScenarioCloseVisible(visible) {
+    if (elements.scenarioCloseBtn) {
+        elements.scenarioCloseBtn.classList.toggle('scenario-modal__close--hidden', !visible);
+    }
+}
+
 function hideScenarioModal() {
     if (elements.scenarioModal) elements.scenarioModal.classList.add('scenario-modal--hidden');
+    setScenarioCloseVisible(false);
 }
 
 function showScenarioModal() {
+    setScenarioCloseVisible(local.scenarioSelectionRequested);
     if (elements.scenarioModal) elements.scenarioModal.classList.remove('scenario-modal--hidden');
+}
+
+function cancelScenarioPrompt() {
+    if (!local.scenarioPromptTimer) return;
+    window.clearTimeout(local.scenarioPromptTimer);
+    local.scenarioPromptTimer = null;
+}
+
+function scheduleScenarioPrompt() {
+    cancelScenarioPrompt();
+    local.scenarioPromptTimer = window.setTimeout(() => {
+        local.scenarioPromptTimer = null;
+        if (!local.scenarioStarted && !local.scenarioStartPending) {
+            local.scenarioSelectionOpen = true;
+            local.scenarioSelectionRequested = false;
+            showScenarioModal();
+        }
+    }, SCENARIO_PROMPT_DELAY_MS);
 }
 
 function showRestartButton() {
@@ -132,11 +164,24 @@ function hideRestartButton() {
     if (elements.restartBtn) elements.restartBtn.classList.add('restart-race-btn--hidden');
 }
 
+function closeRequestedScenarioModal() {
+    if (!local.scenarioSelectionRequested) return;
+    cancelScenarioPrompt();
+    local.scenarioStarted = true;
+    local.scenarioSelectionOpen = false;
+    local.scenarioSelectionRequested = false;
+    local.scenarioStartPending = false;
+    hideScenarioModal();
+    showRestartButton();
+}
+
 function stopRace() {
     send({ type: 'stop-race', raceId: DEFAULT_RACE_ID, timestamp: new Date().toISOString() });
     clearRaceEventBuffer();
+    cancelScenarioPrompt();
     local.scenarioStarted = false;
     local.scenarioSelectionOpen = true;
+    local.scenarioSelectionRequested = true;
     local.scenarioStartPending = false;
     hideRestartButton();
     setScenarioControlsEnabled(true);
@@ -146,8 +191,10 @@ function stopRace() {
 
 function startScenario(scenario) {
     if (local.scenarioStarted) return;
+    cancelScenarioPrompt();
     local.scenarioStarted = true;
     local.scenarioSelectionOpen = false;
+    local.scenarioSelectionRequested = false;
     local.scenarioStartPending = true;
     setScenarioControlsEnabled(false);
     setScenarioStatus('starting race...');
@@ -155,6 +202,7 @@ function startScenario(scenario) {
     if (!sent) {
         local.scenarioStarted = false;
         local.scenarioSelectionOpen = true;
+        local.scenarioSelectionRequested = true;
         local.scenarioStartPending = false;
         setScenarioControlsEnabled(true);
         setScenarioStatus('waiting for connection...');
@@ -167,6 +215,7 @@ function bindScenarioButtons() {
     for (const btn of elements.scenarioButtons) {
         btn.addEventListener('click', () => startScenario(btn.dataset.scenario));
     }
+    if (elements.scenarioCloseBtn) elements.scenarioCloseBtn.addEventListener('click', closeRequestedScenarioModal);
     if (elements.restartBtn) elements.restartBtn.addEventListener('click', stopRace);
 }
 
@@ -686,24 +735,36 @@ function renderSnapshot(frame) {
         })
     );
     if (raceActive) {
+        cancelScenarioPrompt();
         local.scenarioStarted = true;
         local.scenarioSelectionOpen = false;
+        local.scenarioSelectionRequested = false;
         local.scenarioStartPending = false;
         hideScenarioModal();
         hideRestartButton();
+    } else if (local.scenarioStartPending) {
+        cancelScenarioPrompt();
+        local.scenarioStarted = true;
+        local.scenarioSelectionOpen = false;
+        local.scenarioSelectionRequested = false;
+        hideScenarioModal();
+        hideRestartButton();
+    } else if (allCarsFinished(frame) && !local.scenarioSelectionRequested) {
+        cancelScenarioPrompt();
+        local.scenarioStarted = true;
+        local.scenarioSelectionOpen = false;
+        local.scenarioSelectionRequested = false;
+        hideScenarioModal();
+        showRestartButton();
     } else if (local.scenarioSelectionOpen) {
+        cancelScenarioPrompt();
         local.scenarioStarted = false;
         showScenarioModal();
         hideRestartButton();
-    } else if (local.scenarioStartPending) {
-        local.scenarioStarted = true;
-        hideScenarioModal();
-        hideRestartButton();
-    } else if (allCarsFinished(frame)) {
-        local.scenarioStarted = true;
-        hideScenarioModal();
-        showRestartButton();
     } else if (!local.scenarioStarted) {
+        cancelScenarioPrompt();
+        local.scenarioSelectionOpen = true;
+        local.scenarioSelectionRequested = false;
         showScenarioModal();
     }
 
@@ -1078,11 +1139,16 @@ on('ws-status', (status) => {
     setConnectionStatus(label, kind);
 
     if (status === 'connected' && !local.scenarioStarted) {
+        local.scenarioStartPending = false;
         setScenarioControlsEnabled(true);
         setScenarioStatus('ready');
+        scheduleScenarioPrompt();
     } else if ((status === 'error' || status === 'reconnecting') && !local.scenarioStarted) {
+        cancelScenarioPrompt();
+        local.scenarioSelectionOpen = true;
         setScenarioControlsEnabled(false);
         if (status === 'reconnecting') setScenarioStatus('reconnecting...');
+        showScenarioModal();
     }
 });
 
@@ -1108,6 +1174,7 @@ async function bootstrap() {
         bindTelemetryInteractions();
     }
     bindScenarioButtons();
+    bindConnectionInfoPopup(elements.connection);
     connectWebSocket();
 }
 

@@ -1,24 +1,24 @@
-// Race Control Subscriber — sottoscrizione MQTT per flag esterne.
+// Race Control Subscriber — MQTT subscription for external flags.
 //
-// Si sottoscrive a `f1/simulation/{raceId}/race-control/flags` con QoS 1
-// (come definito in docs/mqtt-topics.md §2). Quando arriva un messaggio
-// da una sorgente esterna (es. Node-RED, CLI), lo passa al RaceController
-// come trigger manuale.
+// Subscribes to `f1/simulation/{raceId}/race-control/flags` with QoS 1
+// (as defined in docs/mqtt-topics.md §2). When a message arrives
+// from an external source (e.g. Node-RED, CLI), it passes it to the
+// RaceController as a manual trigger.
 //
 // This allows the race to be controlled from outside the
 // simulator (manual race-control mode).
 //
-// Il subscriber gestisce anche la riconnessione: alla riconnessione
-// si ri-sottoscrive automaticamente.
+// The subscriber also handles reconnections: on reconnect
+// it re-subscribes automatically.
 //
-// Cfr. docs/simulator-architecture.md §8.1
+// See docs/simulator-architecture.md §8.1
 
 class RaceControlSubscriber {
   /**
    * @param {object} opts
-   * @param {object} opts.mqttClient   - already connected MQTT client
+   * @param {object} opts.mqttClient   - already-connected MQTT client
    * @param {number} opts.raceId
-   * @param {object} opts.raceController - istanza di RaceController
+   * @param {object} opts.raceController - RaceController instance
    * @param {object} [opts.logger]
    */
   constructor({ mqttClient, raceId, raceController, logger }) {
@@ -33,23 +33,23 @@ class RaceControlSubscriber {
   }
 
   /**
-   * Avvia la sottoscrizione. Da chiamare dopo la connessione MQTT.
+   * Starts the subscription. To be called after the MQTT connection is established.
    */
   start() {
     if (this._started) {
-      this.log.debug('[RaceControlSubscriber] start() ignorato: gia attivo');
+      this.log.debug('[RaceControlSubscriber] start() ignored: already active');
       return;
     }
 
     if (!this.client) {
-      this.log.warn('[RaceControlSubscriber] Nessun client MQTT configurato');
+      this.log.warn('[RaceControlSubscriber] No MQTT client configured');
       return;
     }
 
     this._started = true;
     this._subscribe();
 
-    // Incoming message handling
+    // Gestione messaggi in arrivo
     this.client.on('message', (topic, message) => {
       if (topic !== this._topic) return;
       this._handleMessage(message);
@@ -57,11 +57,11 @@ class RaceControlSubscriber {
 
     // Re-subscribe alla riconnessione
     this.client.on('reconnect', () => {
-      this.log.info('[RaceControlSubscriber] Riconnessione, ri-sottoscrivo...');
+      this.log.info('[RaceControlSubscriber] Reconnected, re-subscribing...');
       this._subscribe();
     });
 
-    this.log.info(`[RaceControlSubscriber] In ascolto su ${this._topic}`);
+    this.log.info(`[RaceControlSubscriber] Listening on ${this._topic}`);
   }
 
   _subscribe() {
@@ -71,7 +71,7 @@ class RaceControlSubscriber {
         this._subscribed = false;
       } else {
         this._subscribed = true;
-        this.log.debug('[RaceControlSubscriber] Sottoscritto a:', this._topic);
+        this.log.debug('[RaceControlSubscriber] Subscribed to:', this._topic);
       }
     });
   }
@@ -81,30 +81,30 @@ class RaceControlSubscriber {
     try {
       payload = JSON.parse(message.toString());
     } catch (err) {
-      this.log.warn('[RaceControlSubscriber] Payload non valido (non JSON):', err.message);
+      this.log.warn('[RaceControlSubscriber] Invalid payload (not JSON):', err.message);
       return;
     }
 
     // Ignore messages that do NOT have the expected structure
     if (!payload || typeof payload.flag !== 'string') {
-      this.log.warn('[RaceControlSubscriber] Payload senza campo "flag"');
+      this.log.warn('[RaceControlSubscriber] Payload missing "flag" field');
       return;
     }
 
-    // Ignora messaggi con active === false (sono revoche, gestite dal
-    // RaceController stesso quando manda GREEN)
+    // Ignore messages with active === false (they are revocations, handled by
+    // the RaceController itself when it sends GREEN)
     if (payload.active === false) {
-      this.log.debug('[RaceControlSubscriber] Flag con active=false, ignorata');
+      this.log.debug('[RaceControlSubscriber] Flag with active=false, ignored');
       return;
     }
 
-    // Ignora messaggi con lo stesso raceId (sono messaggi di echo
-    // pubblicati da questo stesso simulatore)
-    // NOTA: per ora li processiamo comunque per supportare il caso
-    // di un controller esterno che pubblica sullo stesso topic.
-    // In futuro si puo' aggiungere un campo "source" per filtrare.
+    // Ignore messages with the same raceId (they are echo messages
+    // published by this same simulator).
+    // NOTE: for now we process them anyway to support the case of
+    // an external controller publishing on the same topic.
+    // A "source" field could be added in future to filter these out.
 
-    this.log.info(`[RaceControlSubscriber] Flag esterna ricevuta: ${payload.flag} (reason: ${payload.reason || 'n/a'})`);
+    this.log.info(`[RaceControlSubscriber] External flag received: ${payload.flag} (reason: ${payload.reason || 'n/a'})`);
 
     const result = this.raceController.forceFlag(payload.flag, {
       sector: payload.sector != null ? payload.sector : undefined,
@@ -114,7 +114,7 @@ class RaceControlSubscriber {
     });
 
     if (result.flagChanged) {
-      this.log.info(`[RaceControlSubscriber] Flag applicata: ${payload.flag}`);
+      this.log.info(`[RaceControlSubscriber] Flag applied: ${payload.flag}`);
     } else {
       this.log.debug(`[RaceControlSubscriber] Flag not applicable from current state`);
     }

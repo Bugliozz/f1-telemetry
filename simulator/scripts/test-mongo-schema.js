@@ -125,7 +125,7 @@ async function main() {
       brake: 0,
       drs: true,
       tireTemp: { fl: 95, fr: 96, rl: 98, rr: 99 },
-      fuel: 80,
+      fuel: 38.2,
       state: 'RUNNING',
     });
     ok('valid telemetry insert accepted');

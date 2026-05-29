@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://f1-telemetry.local/schemas/telemetry.schema.json",
   "title": "Telemetry",
-  "description": "Campione di telemetria pubblicato dal simulatore sul topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/telemetry. Frequenza 2-5 Hz.",
+  "description": "Telemetry sample published by the simulator on topic f1/simulation/{raceId}/teams/{teamId}/cars/{carId}/telemetry. Frequency 2-5 Hz.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -27,73 +27,73 @@
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO-8601 UTC con millisecondi (es. 2026-04-27T14:32:10.512Z)."
+      "description": "ISO-8601 UTC with milliseconds (e.g. 2026-04-27T14:32:10.512Z)."
     },
     "raceId": {
       "type": "integer",
       "minimum": 1,
-      "description": "Identificatore univoco della gara simulata."
+      "description": "Unique identifier of the simulated race."
     },
     "teamId": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]{1,31}$",
-      "description": "Slug minuscolo del team (es. ferrari, mercedes)."
+      "description": "Lowercase team slug (e.g. ferrari, mercedes)."
     },
     "carId": {
       "type": "integer",
       "minimum": 1,
       "maximum": 99,
-      "description": "Numero macchina."
+      "description": "Car number."
     },
     "compound": {
       "type": "string",
       "enum": ["soft", "medium", "hard"],
-      "description": "Mescola dry corrente."
+      "description": "Current dry tyre compound."
     },
     "lap": {
       "type": "integer",
       "minimum": 0,
-      "description": "Giro corrente (0 prima della partenza)."
+      "description": "Current lap (0 before the race start)."
     },
     "trackPos": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Posizione normalizzata sul giro corrente."
+      "description": "Normalised position on the current lap."
     },
     "speed": {
       "type": "number",
       "minimum": 0,
       "maximum": 400,
-      "description": "Velocita in km/h."
+      "description": "Speed in km/h."
     },
     "rpm": {
       "type": "integer",
       "minimum": 0,
       "maximum": 16000,
-      "description": "Giri motore al minuto."
+      "description": "Engine revolutions per minute."
     },
     "gear": {
       "type": "integer",
       "minimum": 0,
       "maximum": 8,
-      "description": "0 = folle, 1-7 = marce avanti, 8 = retro."
+      "description": "0 = neutral, 1-7 = forward gears, 8 = reverse."
     },
     "throttle": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Posizione pedale acceleratore [0,1]."
+      "description": "Throttle pedal position [0,1]."
     },
     "brake": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Posizione pedale freno [0,1]."
+      "description": "Brake pedal position [0,1]."
     },
     "drs": {
       "type": "boolean",
-      "description": "Sensore digitale: DRS attivo."
+      "description": "Digital sensor: DRS active."
     },
     "tireTemp": {
       "type": "object",
@@ -105,7 +105,7 @@
         "rl": { "type": "number", "minimum": -10, "maximum": 200 },
         "rr": { "type": "number", "minimum": -10, "maximum": 200 }
       },
-      "description": "Temperatura gomme in C per ciascun angolo (front/rear left/right)."
+      "description": "Tyre temperature in °C for each corner (front-left, front-right, rear-left, rear-right)."
     },
     "tireWear": {
       "type": "object",
@@ -117,7 +117,7 @@
         "rl": { "type": "number", "minimum": 0, "maximum": 1 },
         "rr": { "type": "number", "minimum": 0, "maximum": 1 }
       },
-      "description": "Degrado gomme normalizzato [0,1] per ciascun angolo. 1.0 = completamente consumata."
+      "description": "Normalised tyre wear [0,1] per corner. 1.0 = fully worn."
     },
     "fuel": {
       "type": "number",
@@ -128,7 +128,7 @@
     "state": {
       "type": "string",
       "enum": ["INIT", "RUNNING", "PIT", "FAULT", "RETIRED", "FINISHED"],
-      "description": "Stato corrente della FSM auto, denormalizzato per analytics."
+      "description": "Current car FSM state, denormalised for analytics."
     }
   }
 }

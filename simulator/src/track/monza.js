@@ -1,10 +1,9 @@
-// Costanti e profilo del circuito di Monza (Autodromo Nazionale).
+// Constants and circuit profile for Monza (Autodromo Nazionale).
 //
-// Il profilo non descrive solo "quanto deve andare forte" l'auto in un
-// punto: contiene anche le braking zone e la logica pedali di base. Questo
-// evita un comportamento poco realistico in cui una semplice interpolazione
-// lineare fa frenare l'auto sui rettilinei o non la fa frenare nel punto di
-// staccata corretto.
+// The profile does not only describe "how fast" the car should go at a
+// given point: it also contains the braking zones and basic pedal logic.
+// This avoids unrealistic behaviour where a simple linear interpolation
+// brakes the car on straights or fails to brake at the correct braking point.
 
 const LENGTH_M = 5793;
 const POS_PER_M = 1 / LENGTH_M;
@@ -92,10 +91,10 @@ const BRAKING_ZONES = Object.freeze([
   }),
 ]);
 
-// Lap lookup table. Braking-start points keep the entry speed,
-// then the target quickly drops to the apex. Between one braking zone and the
-// successiva il profilo resta in accelerazione o in hold, cosi' il freno non
-// viene generato sui rettilinei.
+// Per-lap speed table. Braking zone entry points hold the entry speed,
+// then the target drops sharply toward the apex. Between braking zones
+// the profile stays in acceleration or hold, so braking is not
+// generated on the straights.
 const SPEED_PROFILE = Object.freeze([
   Object.freeze({ pos: 0.000, kmh: 345 }), // Rettilineo Start/Finish
   Object.freeze({ pos: 0.050, kmh: 350 }), // DRS, pieno gas
@@ -130,7 +129,7 @@ const SPEED_PROFILE = Object.freeze([
   Object.freeze({ pos: 0.832, kmh: 250 }),
   Object.freeze({ pos: 0.840, kmh: 185 }), // Apice Parabolica
   Object.freeze({ pos: 0.860, kmh: 245 }),
-  Object.freeze({ pos: 0.880, kmh: 290 }), // Throttle reopened before the end
+  Object.freeze({ pos: 0.880, kmh: 290 }), // Acceleratore riaperto prima della fine
   Object.freeze({ pos: 0.940, kmh: 340 }),
   Object.freeze({ pos: 1.000, kmh: 345 }), // = 0.000 (chiusura periodica)
 ]);

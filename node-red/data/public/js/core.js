@@ -80,7 +80,14 @@ export const MAX_EVENT_LOG_ITEMS = 80;
 
 const FALLBACK_COLOR = '#9ca3af';
 const WS_PATH = '/api/ws/f1';
+const WS_RECONNECT_DELAY_MS = 2000;
 const SESSION_BUFFER_KEY = 'f1_race_event_buffer';
+const SOCKET_READY_STATE = Object.freeze({
+    0: 'CONNECTING',
+    1: 'OPEN',
+    2: 'CLOSING',
+    3: 'CLOSED'
+});
 
 // ─── Shared state ─────────────────────────────────────────────────────────────
 
@@ -101,21 +108,58 @@ function saveBufferToSession(buf) {
     } catch (_) { /* quota exceeded — silently ignore */ }
 }
 
+function eventBufferKey(frame) {
+    if (!frame) return '';
+    const d = frame.data || {};
+    return [
+        frame.type    || '',
+        frame.timestamp || '',
+        d.timestamp   || '',
+        d.raceId      || '',
+        d.teamId      || '',
+        d.carId       || '',
+        d.type        || '',
+        d.flag        || ''
+    ].join('|');
+}
+
+const _sessionBuffer = loadBufferFromSession();
+
 export const state = {
-    socket:           null,
-    knownTeams:       new Set(),
-    latestCars:       new Map(),
-    latestStandings:  new Map(),
-    raceFlags:        new Map(),
-    raceEffects:      new Map(),
-    eventIds:         new Set(),
-    eventIdOrder:     [],
-    raceEventBuffer:  loadBufferFromSession(),
+    socket:             null,
+    knownTeams:         new Set(),
+    latestCars:         new Map(),
+    latestStandings:    new Map(),
+    raceFlags:          new Map(),
+    raceEffects:        new Map(),
+    eventIds:           new Set(),
+    eventIdOrder:       [],
+    raceEventBuffer:    _sessionBuffer,
+    bufferedEventIds:   new Set(_sessionBuffer.map(eventBufferKey)),
+    currentRaceStartKey: null,
+    connection: {
+        status: 'disconnected',
+        url: null,
+        host: null,
+        path: WS_PATH,
+        protocol: null,
+        readyState: null,
+        attempt: 0,
+        connectedAt: null,
+        disconnectedAt: null,
+        lastStatusAt: null,
+        lastMessageAt: null,
+        lastErrorAt: null,
+        lastFrameType: null,
+        closeCode: null,
+        closeReason: '',
+        reconnectDelayMs: WS_RECONNECT_DELAY_MS,
+    },
 };
 
 // ─── Pub/sub ──────────────────────────────────────────────────────────────────
 //
-// Supported data types: 'snapshot' | 'classification' | 'state' | 'event' | 'race-control'
+// Supported data types: 'snapshot' | 'classification' | 'state' | 'event' | 'race-control' | 'race-reset'
 // Connection lifecycle:  'ws-status'  (payload: 'connecting' | 'connected' | 'error' | 'reconnecting')
 
 const _subs = Object.create(null);
@@ -138,6 +182,189 @@ export function getLatestCar(key) {
 
 export function getKnownTeams() {
     return Array.from(state.knownTeams);
+}
+
+function webSocketTarget() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    return {
+        proto,
+        host,
+        path: WS_PATH,
+        url: proto + '//' + host + WS_PATH,
+    };
+}
+
+function readyStateLabel(value) {
+    return value == null ? 'UNKNOWN' : (SOCKET_READY_STATE[value] || 'UNKNOWN');
+}
+
+function setConnectionLifecycle(status, patch) {
+    Object.assign(state.connection, patch || {}, {
+        status,
+        lastStatusAt: new Date().toISOString(),
+    });
+    return getConnectionInfo();
+}
+
+export function getConnectionInfo() {
+    const currentReadyState = state.socket ? state.socket.readyState : state.connection.readyState;
+    return {
+        ...state.connection,
+        readyState: currentReadyState,
+        readyStateLabel: readyStateLabel(currentReadyState),
+    };
+}
+
+function formatConnectionTime(value) {
+    if (!value) return '--';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '--';
+    return date.toLocaleTimeString([], { hour12: false });
+}
+
+function formatConnectionAge(value) {
+    if (!value) return '--';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '--';
+    const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);
+    return formatDuration(seconds, seconds < 60 ? 0 : 1) || '--';
+}
+
+function connectionStatusLabel(status) {
+    if (status === 'connected') return 'Connected';
+    if (status === 'connecting') return 'Connecting';
+    if (status === 'reconnecting') return 'Reconnecting';
+    if (status === 'error') return 'Error';
+    return 'Disconnected';
+}
+
+function connectionStatusTone(status) {
+    if (status === 'connected') return 'ok';
+    if (status === 'connecting') return 'idle';
+    return 'error';
+}
+
+function addConnectionPopoverRow(container, labelText, valueText, tone) {
+    const row = document.createElement('div');
+    row.className = 'connection-popover__row';
+
+    const label = document.createElement('span');
+    label.className = 'connection-popover__label';
+    label.textContent = labelText;
+
+    const value = document.createElement('span');
+    value.className = 'connection-popover__value';
+    if (tone) value.classList.add('connection-popover__value--' + tone);
+    value.textContent = valueText || '--';
+
+    row.appendChild(label);
+    row.appendChild(value);
+    container.appendChild(row);
+}
+
+function renderConnectionPopover(popover) {
+    const info = getConnectionInfo();
+    const target = webSocketTarget();
+    const endpoint = info.url || target.url;
+    const host = info.host || target.host;
+    const protocol = info.protocol || target.proto.replace(':', '').toUpperCase();
+
+    popover.innerHTML = '';
+
+    const title = document.createElement('div');
+    title.className = 'connection-popover__title';
+    title.textContent = 'Connection';
+    popover.appendChild(title);
+
+    const rows = document.createElement('div');
+    rows.className = 'connection-popover__grid';
+    popover.appendChild(rows);
+
+    addConnectionPopoverRow(rows, 'Status', connectionStatusLabel(info.status), connectionStatusTone(info.status));
+    addConnectionPopoverRow(rows, 'Socket', info.readyStateLabel);
+    addConnectionPopoverRow(rows, 'Endpoint', endpoint);
+    addConnectionPopoverRow(rows, 'Protocol', protocol);
+    addConnectionPopoverRow(rows, 'Host', host);
+    addConnectionPopoverRow(rows, 'Last msg', info.lastMessageAt ? formatConnectionTime(info.lastMessageAt) : 'waiting');
+    addConnectionPopoverRow(rows, 'Frame', info.lastFrameType || '--');
+
+    if (info.status === 'connected') {
+        addConnectionPopoverRow(rows, 'Uptime', formatConnectionAge(info.connectedAt));
+    } else if (info.status === 'reconnecting') {
+        addConnectionPopoverRow(rows, 'Retry', Math.round(info.reconnectDelayMs / 1000) + 's');
+        if (info.closeCode) {
+            addConnectionPopoverRow(rows, 'Close', String(info.closeCode) + (info.closeReason ? ' ' + info.closeReason : ''));
+        }
+    } else if (info.lastErrorAt) {
+        addConnectionPopoverRow(rows, 'Last error', formatConnectionTime(info.lastErrorAt), 'error');
+    }
+}
+
+function placeConnectionPopover(anchor, popover) {
+    const gap = 8;
+    const margin = 8;
+    const anchorRect = anchor.getBoundingClientRect();
+    const popupRect = popover.getBoundingClientRect();
+
+    let left = anchorRect.right - popupRect.width;
+    let top = anchorRect.bottom + gap;
+
+    if (top + popupRect.height > window.innerHeight - margin) {
+        top = anchorRect.top - popupRect.height - gap;
+    }
+
+    left = Math.min(Math.max(left, margin), Math.max(margin, window.innerWidth - popupRect.width - margin));
+    top = Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - popupRect.height - margin));
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+}
+
+export function bindConnectionInfoPopup(anchor) {
+    if (!anchor || anchor.dataset.connectionInfoBound === 'true') return;
+    anchor.dataset.connectionInfoBound = 'true';
+    anchor.tabIndex = 0;
+    anchor.setAttribute('aria-label', 'Connection status details');
+
+    const popover = document.createElement('div');
+    popover.id = 'connection-info-popover';
+    popover.className = 'connection-popover connection-popover--hidden';
+    popover.setAttribute('role', 'tooltip');
+    document.body.appendChild(popover);
+    anchor.setAttribute('aria-describedby', popover.id);
+
+    let visible = false;
+    let refreshTimer = null;
+
+    const refresh = () => {
+        if (!visible) return;
+        renderConnectionPopover(popover);
+        placeConnectionPopover(anchor, popover);
+    };
+
+    const show = () => {
+        visible = true;
+        renderConnectionPopover(popover);
+        popover.classList.remove('connection-popover--hidden');
+        placeConnectionPopover(anchor, popover);
+        window.clearInterval(refreshTimer);
+        refreshTimer = window.setInterval(refresh, 1000);
+    };
+
+    const hide = () => {
+        visible = false;
+        popover.classList.add('connection-popover--hidden');
+        window.clearInterval(refreshTimer);
+        refreshTimer = null;
+    };
+
+    anchor.addEventListener('pointerenter', show);
+    anchor.addEventListener('pointerleave', hide);
+    anchor.addEventListener('focus', show);
+    anchor.addEventListener('blur', hide);
+    window.addEventListener('resize', refresh);
+    on('ws-status', refresh);
 }
 
 // ─── Helpers / formatters ─────────────────────────────────────────────────────
@@ -500,8 +727,39 @@ export function clearEventDedup() {
 
 export function clearRaceEventBuffer() {
     state.raceEventBuffer.length = 0;
+    state.bufferedEventIds.clear();
     clearEventDedup();
     try { sessionStorage.removeItem(SESSION_BUFFER_KEY); } catch (_) {}
+}
+
+function raceStartKey(frame) {
+    if (!frame || frame.type !== 'race-control') return null;
+
+    const data = frame.data || {};
+    const flag = String(data.flag || '').toUpperCase();
+    if (flag !== 'GREEN' || data.active === false || data.reason !== 'race-start') return null;
+
+    const raceId = data.raceId == null ? '' : String(data.raceId);
+    const timestamp = data.timestamp || frame.timestamp || '';
+    return raceId && timestamp ? raceId + '|' + timestamp : null;
+}
+
+function latestRaceStartIndex(eventLog) {
+    let index = -1;
+    for (let i = 0; i < eventLog.length; i += 1) {
+        if (raceStartKey(eventLog[i])) index = i;
+    }
+    return index;
+}
+
+function resetEventsForRaceStart(frame) {
+    const key = raceStartKey(frame);
+    if (!key || state.currentRaceStartKey === key) return false;
+
+    state.currentRaceStartKey = key;
+    clearRaceEventBuffer();
+    emit('race-reset', frame);
+    return true;
 }
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
@@ -521,6 +779,7 @@ function handleFrame(raw) {
         return;
     }
     if (!frame) return;
+    state.connection.lastFrameType = frame.type || 'unknown';
 
     if (frame.type === 'snapshot') {
         for (const race of frame.races || []) {
@@ -532,8 +791,45 @@ function handleFrame(raw) {
                     rememberStanding(race.classification, row);
                 }
             }
-            if (race.flag) rememberRaceControl(race.flag, race.effects);
+            const flagFrame = race.flag
+                ? { type: 'race-control', timestamp: race.flag.timestamp, data: race.flag, effects: race.effects }
+                : null;
+
+            if (flagFrame) {
+                resetEventsForRaceStart(flagFrame);
+                rememberRaceControl(race.flag, race.effects);
+            }
+
+            const eventLog = Array.isArray(race.eventLog) ? race.eventLog : [];
+            const raceStartIndex = latestRaceStartIndex(eventLog);
+            const firstEventIndex = raceStartIndex >= 0 ? raceStartIndex : 0;
+            if (raceStartIndex >= 0) resetEventsForRaceStart(eventLog[raceStartIndex]);
+
+            if (raceStartIndex < 0 && raceStartKey(flagFrame)) {
+                const key = eventBufferKey(flagFrame);
+                if (!state.bufferedEventIds.has(key)) {
+                    state.bufferedEventIds.add(key);
+                    state.raceEventBuffer.push(flagFrame);
+                    if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+                    emit('race-control', flagFrame.data, flagFrame.effects);
+                }
+            }
+
+            for (const ef of eventLog.slice(firstEventIndex)) {
+                const key = eventBufferKey(ef);
+                if (state.bufferedEventIds.has(key)) continue;
+                state.bufferedEventIds.add(key);
+                if (ef.type === 'event') {
+                    state.raceEventBuffer.push(ef);
+                    emit('event', ef);
+                } else if (ef.type === 'race-control') {
+                    state.raceEventBuffer.push({ type: 'race-control', timestamp: ef.data && ef.data.timestamp, data: ef.data });
+                    emit('race-control', ef.data, ef.effects);
+                }
+                if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            }
         }
+        saveBufferToSession(state.raceEventBuffer);
         emit('snapshot', frame);
     } else if (frame.type === 'classification') {
         if (frame.data && Array.isArray(frame.data.standings)) {
@@ -546,33 +842,79 @@ function handleFrame(raw) {
         mergeLatestCar(frame.data);
         emit('state', frame.data);
     } else if (frame.type === 'event') {
-        state.raceEventBuffer.push(frame);
-        if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
-        saveBufferToSession(state.raceEventBuffer);
-        emit('event', frame);
+        const key = eventBufferKey(frame);
+        if (!state.bufferedEventIds.has(key)) {
+            state.bufferedEventIds.add(key);
+            state.raceEventBuffer.push(frame);
+            if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            saveBufferToSession(state.raceEventBuffer);
+            emit('event', frame);
+        }
     } else if (frame.type === 'race-control') {
         rememberRaceControl(frame.data, frame.effects);
-        state.raceEventBuffer.push({ type: 'race-control', timestamp: frame.data && frame.data.timestamp, data: frame.data });
-        if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
-        saveBufferToSession(state.raceEventBuffer);
+        const rcFrame = { type: 'race-control', timestamp: frame.data && frame.data.timestamp, data: frame.data };
+        resetEventsForRaceStart(rcFrame);
+        const key = eventBufferKey(rcFrame);
+        if (!state.bufferedEventIds.has(key)) {
+            state.bufferedEventIds.add(key);
+            state.raceEventBuffer.push(rcFrame);
+            if (state.raceEventBuffer.length > MAX_EVENT_LOG_ITEMS * 3) state.raceEventBuffer.shift();
+            saveBufferToSession(state.raceEventBuffer);
+        }
         emit('race-control', frame.data, frame.effects);
     }
 }
 
 export function connectWebSocket() {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = proto + '//' + window.location.host + WS_PATH;
+    const target = webSocketTarget();
 
-    const socket = new WebSocket(url);
+    const socket = new WebSocket(target.url);
     state.socket = socket;
-    emit('ws-status', 'connecting');
+    const attempt = state.connection.attempt + 1;
+    emit('ws-status', 'connecting', setConnectionLifecycle('connecting', {
+        url: target.url,
+        host: target.host,
+        path: target.path,
+        protocol: target.proto.replace(':', '').toUpperCase(),
+        readyState: socket.readyState,
+        attempt,
+        connectedAt: null,
+        disconnectedAt: null,
+        lastMessageAt: null,
+        lastFrameType: null,
+        closeCode: null,
+        closeReason: '',
+        reconnectDelayMs: WS_RECONNECT_DELAY_MS,
+    }));
 
-    socket.addEventListener('open',    ()      => emit('ws-status', 'connected'));
-    socket.addEventListener('message', (event) => handleFrame(event.data));
-    socket.addEventListener('error',   ()      => emit('ws-status', 'error'));
-    socket.addEventListener('close',   ()      => {
+    socket.addEventListener('open', () => {
+        emit('ws-status', 'connected', setConnectionLifecycle('connected', {
+            readyState: socket.readyState,
+            connectedAt: new Date().toISOString(),
+            disconnectedAt: null,
+            lastErrorAt: null,
+        }));
+    });
+    socket.addEventListener('message', (event) => {
+        state.connection.readyState = socket.readyState;
+        state.connection.lastMessageAt = new Date().toISOString();
+        handleFrame(event.data);
+    });
+    socket.addEventListener('error', () => {
+        emit('ws-status', 'error', setConnectionLifecycle('error', {
+            readyState: socket.readyState,
+            lastErrorAt: new Date().toISOString(),
+        }));
+    });
+    socket.addEventListener('close', (event) => {
         if (state.socket === socket) state.socket = null;
-        emit('ws-status', 'reconnecting');
-        setTimeout(connectWebSocket, 2000);
+        emit('ws-status', 'reconnecting', setConnectionLifecycle('reconnecting', {
+            readyState: socket.readyState,
+            disconnectedAt: new Date().toISOString(),
+            closeCode: event.code,
+            closeReason: event.reason || '',
+            reconnectDelayMs: WS_RECONNECT_DELAY_MS,
+        }));
+        setTimeout(connectWebSocket, WS_RECONNECT_DELAY_MS);
     });
 }

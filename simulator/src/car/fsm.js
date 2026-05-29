@@ -1,26 +1,26 @@
-// Finite State Machine (FSM) for a single car.
+// Finite state machine (FSM) for a single car.
 //
-// Pure module, without I/O and without mutations. Receives a current state and
+// Pure module, no I/O and no mutations. Receives a current state and
 // a trigger, returns a new state record. Consistent with the rest of
-// `simulator/src/car/` (cfr. physics.js, tire-fuel.js).
+// `simulator/src/car/` (see physics.js, tire-fuel.js).
 //
 // States (see docs/simulator-architecture.md §7 and schemas/state.schema.json):
 //
 //   INIT       before race start, car stationary on the grid.
-//   RUNNING    in race, follows the Monza profile.
+//   RUNNING    in race, following the Monza profile.
 //   PIT        in pit-lane (entry, stop, exit).
-//   FAULT      recoverable failure or under diagnosis (decelerates to 0).
-//   RETIRED    final retirement (absorbing).
+//   FAULT      recoverable failure or under diagnosis (decelerating to 0).
+//   RETIRED    permanent retirement (absorbing).
 //   FINISHED   race completed normally (absorbing).
 //
-// Triggers (transition causes, mapped 1:1 to the state payload `reason`):
+// Triggers (transition causes, mapped 1:1 to the `reason` field of the payload):
 //
 //   race-start, tire-service, pit-out, tire-overheat,
 //   engine-failure, unrecoverable, race-end, manual-retire, internal-error
 //
 // The transition table is defined in TRANSITIONS. The conditions that decide
 // which trigger to send each tick (e.g. tireTemp > 180 for 3 consecutive ticks
-// → 'tire-overheat') live in conditions.js. This module only models the
+// → 'tire-overheat') live in conditions.js. This module models only the
 // machine structure: allowed states, allowed transitions, absorbing states.
 //
 // API:
@@ -30,24 +30,24 @@
 //
 //   transition(currentFsm, trigger, customReason?)
 //     returns { state, previousState, reason, changed }.
-//     - `changed: false` if the trigger is not applicable from the
-//        current state, if the state is absorbing (RETIRED/FINISHED), or if the
+//     - `changed: false` if the trigger is not applicable from the current
+//        state, if the state is absorbing (RETIRED/FINISHED), or if the
 //        transition would lead to the same state.
 //     - `reason` defaults to the trigger value; pass `customReason`
 //        to enrich it (e.g. 'tire-overheat:fl=185').
 //     - Input is never mutated.
 //
 //   canTransition(state, trigger)
-//     true iff an applicable transition exists.
+//     true if and only if an applicable transition exists.
 //
 //   isTerminal(state), isValidState(state)
 //     utility predicates.
 //
-// Design note: the 'manual-retire' trigger is allowed from any
-// non-absorbing state (Race Control lifecycle / external command -> DNS or retirement
-// at any phase). 'internal-error' forces FAULT from any non-absorbing
-// state (see §12.2 of the architecture: exception in Car.tick() →
-// FAULT). On FAULT itself it is a no-op.
+// Design note: the 'manual-retire' trigger is allowed from any non-absorbing
+// state (Race Control lifecycle / external command → DNS or retirement at any
+// phase). 'internal-error' forces FAULT from any non-absorbing state
+// (see §12.2 of the architecture: exception in Car.tick() → FAULT).
+// On FAULT itself it is a no-op.
 
 const STATES = Object.freeze({
   INIT: 'INIT',

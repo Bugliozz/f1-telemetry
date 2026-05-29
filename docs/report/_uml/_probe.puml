@@ -1,0 +1,8 @@
+@startuml
+!pragma layout smetana
+skinparam dpi 130
+state RUNNING
+state FAULT
+RUNNING --> FAULT : tire-overheat
+FAULT --> RETIRED : unrecoverable
+@enduml

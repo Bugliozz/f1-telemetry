@@ -1,0 +1,29 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title derived: tire-overheat
+participant "Car telemetry\n(5 Hz sample)" as TEL
+participant "SF-Detect\nTelemetry Events" as DET
+queue ".../cars/{id}/events\n(Broker, QoS1)" as B
+participant "Node-RED\ningest" as N
+database "MongoDB\nevents" as M
+participant "Dashboard" as D
+TEL -> DET : telemetry sample {tireTemp{fl,fr,rl,rr}}
+DET -> DET : hottestTire().value >= 170 C ?
+DET -> DET : dedup window 10 s per car/reason
+DET -> DET : build event{type:"fault",\ndetails:{reason:tire-overheat, corner,\ntireTemp, threshold:170,\nsource:node-red-event-detection}}
+DET -> B : republish car event (derived:true)
+B -> N : deliver
+N -> M : store event document
+N -> D : dashboard/event frame
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title RED flag
+participant "triggers.js\nevaluateTriggers()" as T
+participant "flag-state.js\nchangeFlag()" as FF
+participant "RaceController" as RC
+participant "MQTT\nPublisher" as P
+queue ".../race-control/flags\n(retained, QoS1)" as B
+participant "Node-RED" as N
+database "MongoDB\nrace_control" as M
+participant "Dashboard" as D
+T -> T : count(FAULT + RETIRED) >= 3\n(massIncidentThreshold)
+T --> RC : {flag:RED, reason:mass-incident:N-cars}
+RC -> FF : changeFlag(*, RED)
+FF --> RC : changed:true
+RC -> P : flag{...,active:true} (retained)
+P -> B : publish
+B -> N : deliver
+N -> M : append race_control history
+N -> D : dashboard/race-control frame
+note over N : race suspended; needs a MANUAL\nGREEN to restart; Node-RED pauses the\nstationary-running detector while RED
+@enduml

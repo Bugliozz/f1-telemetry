@@ -1,7 +1,7 @@
-// Bootstrap del simulatore F1 — entry point.
+// F1 simulator bootstrap — entry point.
 //
-// Legge configurazione, crea le dipendenze, avvia l'Orchestrator.
-// Cfr. docs/simulator-architecture.md §12.1.
+// Reads configuration, creates dependencies, starts the Orchestrator.
+// See docs/simulator-architecture.md §12.1.
 
 const mqtt = require('mqtt');
 const config = require('./config/default');
@@ -68,7 +68,7 @@ async function startSimulation(scenarioId, source) {
   startInProgress = true;
   try {
     const scenarioConfig = applyScenario(config, scenarioId);
-    log.info(`[main] Scenario selezionato: ${scenarioConfig.scenario.label} (${scenarioConfig.scenario.id})`);
+    log.info(`[main] Selected scenario: ${scenarioConfig.scenario.label} (${scenarioConfig.scenario.id})`);
 
     if (scenarioConfig.resetRaceOnStart) {
       await resetRaceData({
@@ -89,7 +89,7 @@ async function startSimulation(scenarioId, source) {
     orchestrator.start();
     orchestrator.once('finish', handleRaceFinished);
 
-    // Start the external flag subscriber after the initial GREEN flag.
+    // Start the external flag subscriber after the initial GREEN.
     rcSubscriber = new RaceControlSubscriber({
       mqttClient: client,
       raceId: scenarioConfig.raceId,
@@ -127,7 +127,7 @@ function subscribeStopTopic() {
 }
 
 function handleRaceFinished() {
-  log.info('[main] Race finished — ready for next race.');
+  log.info('[main] Race finished — ready for the next one.');
   orchestrator = null;
   rcSubscriber = null;
   subscribeStartTopic();
@@ -158,27 +158,27 @@ client.on('message', (topic, message) => {
       log.error('[main] Simulation startup failed:', err.message);
     });
   } catch (err) {
-    log.warn('[main] Comando start scenario non valido:', err.message);
+    log.warn('[main] Invalid start scenario command:', err.message);
   }
 });
 
 async function shutdown(signal) {
-  log.info(`[main] Ricevuto ${signal}, shutdown in corso...`);
+  log.info(`[main] Received ${signal}, shutting down...`);
   if (orchestrator) orchestrator.stop();
   await publisher.end();
-  log.info('[main] Disconnected. Bye!');
+  log.info('[main] Disconnected. Goodbye!');
   process.exit(0);
 }
 
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 process.once('SIGINT', () => shutdown('SIGINT'));
 
-// Aspetta la connessione prima di avviare
+// Wait for connection before starting
 client.on('connect', () => {
   subscribeStopTopic();
 
   if (orchestrator) {
-    log.info('[main] MQTT broker reconnected, simulation already active');
+    log.info('[main] MQTT broker reconnected, simulation already running');
     return;
   }
 
@@ -197,10 +197,10 @@ client.on('error', (err) => {
   log.error('[main] MQTT connection error:', err.message);
 });
 
-// Timeout connessione
+// Connection timeout
 setTimeout(() => {
   if (!publisher.connected) {
-    log.error('[main] Timeout connessione al broker dopo 10s. Uscita.');
+    log.error('[main] Broker connection timeout after 10s. Exiting.');
     process.exit(1);
   }
 }, 10000);

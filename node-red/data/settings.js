@@ -1,21 +1,21 @@
 module.exports = {
-    // File statici (dashboard assets: SVG circuito, CSS, JS)
+    // Static files (dashboard assets: circuit SVG, CSS, JS)
     httpStatic: '/data/public',
 
-    // URL base dell'editor Node-RED
+    // Base URL for the Node-RED editor
     httpAdminRoot: '/admin',
 
-    // URL base per i nodi HTTP
+    // Base URL for HTTP nodes
     httpNodeRoot: '/api',
 
-    // Directory dei flow (relativa a questa cartella)
+    // Flow directory (relative to this folder)
     userDir: '/data',
     flowFile: 'flows.json',
 
-    // Credenziali cifrate (chiave da NON committare — usare variabile d'ambiente)
+    // Encrypted credentials (key must NOT be committed — use an environment variable)
     credentialSecret: process.env.NODE_RED_CREDENTIAL_SECRET || 'f1-telemetry-dev-secret',
 
-    // Editor abilitato (disabilitare in produzione)
+    // Editor enabled (disable in production)
     disableEditor: false,
 
     // Logging
@@ -27,7 +27,7 @@ module.exports = {
         }
     },
 
-    // Sicurezza editor (opzionale, abilitare in produzione)
+    // Editor security (optional, enable in production)
     // adminAuth: {
     //     type: 'credentials',
     //     users: [{ username: 'admin', password: '<bcrypt-hash>', permissions: '*' }]
@@ -35,7 +35,7 @@ module.exports = {
 
     editorTheme: {
         projects: {
-            // Disabilitato: usiamo Git direttamente sulla cartella montata
+            // Disabled: Git is used directly on the mounted folder
             enabled: false
         }
     },

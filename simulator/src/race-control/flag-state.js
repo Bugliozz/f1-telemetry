@@ -1,10 +1,10 @@
-// Flag State - state machine for race flags.
+// Flag State — state machine for race flags.
 //
-// Pure module, without I/O and without mutations. Manages transitions
-// allowed between global flags and maintains the current Race
-// Control (flag attiva, settore interessato, timestamp di attivazione).
+// Pure module, no I/O and no mutations. Manages the allowed transitions
+// between global flags and maintains the current Race Control state
+// (active flag, affected sector, activation timestamp).
 //
-// Flag supportate (da schemas/flag.schema.json):
+// Supported flags (from schemas/flag.schema.json):
 //   GREEN, YELLOW, RED, CHECKERED, SC, VSC
 //
 // Transition rules (model F1 reality):
@@ -16,8 +16,8 @@
 //   RED    → GREEN  (restart)
 //   CHECKERED -> (absorbing, no transition)
 //
-// La YELLOW e' l'unica flag che puo' avere un settore specifico (locale).
-// Tutte le altre sono globali (sector = null).
+// YELLOW is the only flag that can have a specific (local) sector.
+// All others are global (sector = null).
 
 const FLAGS = Object.freeze({
   GREEN:     'GREEN',
@@ -37,7 +37,7 @@ const ALLOWED_TRANSITIONS = Object.freeze({
   [FLAGS.SC]:        [FLAGS.GREEN, FLAGS.RED, FLAGS.CHECKERED],
   [FLAGS.VSC]:       [FLAGS.GREEN, FLAGS.RED, FLAGS.CHECKERED],
   [FLAGS.RED]:       [FLAGS.GREEN, FLAGS.CHECKERED],
-  [FLAGS.CHECKERED]: [], // assorbente
+  [FLAGS.CHECKERED]: [], // absorbing
 });
 
 function isValidFlag(flag) {
@@ -74,8 +74,8 @@ function initialFlagState() {
 /**
  * Attempts a flag transition.
  *
- * @param {object} current   - current state (from initialFlagState or previous changeFlag)
- * @param {string} newFlag   - la nuova flag da attivare
+ * @param {object} current   - current state (from initialFlagState or a previous changeFlag)
+ * @param {string} newFlag   - the new flag to activate
  * @param {object} opts      - { sector, reason, nowS }
  * @returns {{ ...flagState, changed: boolean }}
  */
@@ -87,7 +87,7 @@ function changeFlag(current, newFlag, opts = {}) {
   if (newFlag === cur.flag && newFlag !== FLAGS.YELLOW) return noChange;
   if (!canTransitionFlag(cur.flag, newFlag)) return noChange;
 
-  // Solo YELLOW ammette settore specifico
+  // Only YELLOW accepts a specific sector
   const sector = newFlag === FLAGS.YELLOW && opts.sector != null
     ? opts.sector
     : null;

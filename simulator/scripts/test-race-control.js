@@ -1,11 +1,11 @@
 // Test Race Control — flag-state, triggers, race-controller.
 //
-// Verifica:
+// Checks:
 //   1. flag-state: allowed/denied transitions, terminal state
-//   2. triggers: tutti i trigger automatici
-//   3. race-controller: integrazione tick + forceFlag
+//   2. triggers: all automatic triggers
+//   3. race-controller: tick + forceFlag integration
 //
-// Eseguire con: node scripts/test-race-control.js
+// Run with: node scripts/test-race-control.js
 
 const assert = require('assert');
 
@@ -74,8 +74,8 @@ function testFlagState() {
   // changeFlag — sector only for YELLOW
   const result2 = changeFlag(init, 'SC', { sector: 1, reason: 'test' });
   assert.ok(result2.changed);
-  assert.strictEqual(result2.sector, null); // SC e' globale
-  console.log('  ✅ changeFlag() SC sector ignored (globale)');
+  assert.strictEqual(result2.sector, null); // SC is global
+  console.log('  ✅ changeFlag() SC sector ignored (global)');
 
   // changeFlag — invalid
   const result3 = changeFlag(init, 'GREEN');
@@ -89,7 +89,7 @@ function testFlagState() {
   assert.ok(!afterCheckered.changed);
   console.log('  ✅ changeFlag() CHECKERED is absorbing');
 
-  console.log('  ✅ Flag State: tutti i test passati');
+  console.log('  ✅ Flag State: all tests passed');
 }
 
 // --- 2. Triggers ---
@@ -307,7 +307,7 @@ function testTriggers() {
     console.log('  ✅ No triggers on CHECKERED (terminal)');
   }
 
-  console.log('  ✅ Triggers: tutti i test passati');
+  console.log('  ✅ Triggers: all tests passed');
 }
 
 // --- 3. Race Controller ---
@@ -423,7 +423,7 @@ function testRaceController() {
     console.log('  ✅ tick() auto RED FLAG on mass incident');
   }
 
-  console.log('  ✅ Race Controller: tutti i test passati');
+  console.log('  ✅ Race Controller: all tests passed');
 }
 
 // --- Run ---
@@ -432,10 +432,10 @@ try {
   testFlagState();
   testTriggers();
   testRaceController();
-  console.log('\n🏁 Tutti i test Race Control passati! ✅\n');
+  console.log('\n🏁 All Race Control tests passed! ✅\n');
   process.exit(0);
 } catch (err) {
-  console.error('\n❌ Test fallito:', err.message);
+  console.error('\n❌ Test failed:', err.message);
   console.error(err.stack);
   process.exit(1);
 }

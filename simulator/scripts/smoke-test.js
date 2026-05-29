@@ -1,6 +1,6 @@
 /**
- * Smoke Test — Fase 0
- * Verifica la connettività tra Mosquitto, MongoDB e Node-RED
+ * Smoke Test — Phase 0
+ * Verifies connectivity between Mosquitto, MongoDB, and Node-RED
  */
 
 const mqtt = require('mqtt');
@@ -29,14 +29,14 @@ async function testMQTT() {
     const client = mqtt.connect(MQTT_URL, { connectTimeout: 5000 });
 
     const timeout = setTimeout(() => {
-      fail('Connessione MQTT', new Error('timeout'));
+      fail('MQTT connection', new Error('timeout'));
       client.end(true);
       resolve();
     }, 5000);
 
     client.on('connect', () => {
       clearTimeout(timeout);
-      ok('Connessione MQTT su porta 1883');
+      ok('MQTT connection on port 1883');
 
       const testTopic = 'f1/smoke-test';
       client.subscribe(testTopic, { qos: 1 }, (err) => {
@@ -53,7 +53,7 @@ async function testMQTT() {
 
     client.on('error', (err) => {
       clearTimeout(timeout);
-      fail('Connessione MQTT', err);
+      fail('MQTT connection', err);
       client.end(true);
       resolve();
     });
@@ -65,7 +65,7 @@ async function testMongoDB() {
   const client = new MongoClient(MONGO_URL, { serverSelectionTimeoutMS: 5000 });
   try {
     await client.connect();
-    ok('Connessione MongoDB su porta 27017');
+    ok('MongoDB connection on port 27017');
 
     const db = client.db('f1_telemetry');
     const collections = await db.listCollections().toArray();
@@ -76,11 +76,11 @@ async function testMongoDB() {
       if (names.includes(col)) {
         ok(`Collection '${col}' present`);
       } else {
-        fail(`Collection '${col}'`, new Error('non trovata'));
+        fail(`Collection '${col}'`, new Error('not found'));
       }
     }
   } catch (err) {
-    fail('Connessione MongoDB', err);
+    fail('MongoDB connection', err);
   } finally {
     await client.close();
   }
@@ -91,7 +91,7 @@ async function testNodeRed() {
   try {
     const res = await fetch(NODE_RED_URL, { signal: AbortSignal.timeout(5000) });
     if (res.ok || res.status === 200) {
-      ok(`Node-RED raggiungibile su porta 1880 (HTTP ${res.status})`);
+      ok(`Node-RED reachable on port 1880 (HTTP ${res.status})`);
     } else {
       fail('Node-RED', new Error(`HTTP ${res.status}`));
     }
@@ -101,13 +101,13 @@ async function testNodeRed() {
 }
 
 async function main() {
-  console.log('=== F1 Telemetry — Smoke Test Fase 0 ===');
+  console.log('=== F1 Telemetry — Smoke Test Phase 0 ===');
 
   await testMQTT();
   await testMongoDB();
   await testNodeRed();
 
-  console.log(`\n=== Risultato: ${passed} ✅  ${failed} ❌ ===`);
+  console.log(`\n=== Result: ${passed} ✅  ${failed} ❌ ===`);
   process.exitCode = failed > 0 ? 1 : 0;
 }
 

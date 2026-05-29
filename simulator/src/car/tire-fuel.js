@@ -1,41 +1,41 @@
-// Tire thermal model and fuel consumption.
+// Tyre thermal model and fuel consumption.
 //
-// Pure functions, without I/O and without input mutations. Consistent with the
-// rest of `simulator/src/car/` (cfr. physics.js): the orchestrator passes the
-// current state plus tick inputs and returns a new state.
+// Pure functions, no I/O and no mutations of inputs. Consistent with the
+// rest of `simulator/src/car/` (see physics.js): the orchestrator passes the
+// current state plus tick inputs and receives a new state.
 //
-// Tire model (`updateTireTemp`):
+// Tyre model (`updateTireTemp`):
 //
 //   dT/dt = heating - cooling
-//   heating_axle = K_HEAT_SPEED * (speed/300)^2 * wearFactor
+//   axle_heating = K_HEAT_SPEED * (speed/300)^2 * wearFactor
 //                + K_HEAT_BRAKE    * brake     [front axle only]
 //                + K_HEAT_THROTTLE * throttle  [rear axle only]
-//   cooling_axle = K_COOL * (T - ambient)
+//   axle_cooling = K_COOL * (T - ambient)
 //
-// Tires start at INITIAL_TIRE_TEMP_C (~95°C, already up to temperature after
-// the formation lap) and tend asymptotically towards an equilibrium value
+// Tyres start at INITIAL_TIRE_TEMP_C (~95°C, already up to temperature after
+// the formation lap) and converge asymptotically toward an equilibrium value
 // that depends on driving style. Corner convention: front = (fl, fr)
 // and rear = (rl, rr); left and right are treated symmetrically
-// (the left/right cornering load model is deferred to a later phase when
-// lateralG from Race Control becomes available).
+// (lateral load model in corners is deferred to a later phase when
+// Race Control lateral G is available).
 //
-// `wearFactor` (default 1) is a multiplier on the heating term that the
-// orchestrator increases lap by lap to simulate progressive degradation
-// (e.g. wearFactor = 1 + lap * WEAR_PER_LAP). With equal inputs the tire
+// `wearFactor` (default 1) is a multiplier on the heating term that
+// the orchestrator increments lap by lap to simulate progressive degradation
+// (e.g. wearFactor = 1 + lap * WEAR_PER_LAP). For the same inputs, the tyre
 // heats up more as the race progresses, but a normal stint must
-// stay within the operating range: the tire-overheat FSM condition is a severe fault, not
-// an inevitable event after a few laps.
+// stay in the operating range: the FSM tire-overheat condition is a serious
+// failure, not an inevitable event after a few laps.
 //
 // Fuel model (`consumeFuel`):
 //
 //   dFuel/dt = -( K_FUEL_BASE + K_FUEL_LOAD * (speed/300)^2 * throttle )
 //
-// Fuel decreases monotonically, clamped at 0. The `base` term models
-// accessory consumption (pump, pre-load); the `load` term models the power
-// delivered by the engine as a function of speed and throttle opening.
-// Constants are tuned so that at average pace (200 km/h, throttle 0.7)
-// consumption is ~5 kg/lap at Monza (~110 s/lap). With refuelling removed,
-// the sprint tank must cover the full 5-lap race with an operational margin,
+// Fuel decreases monotonically, clamped to 0. The `base` term models
+// accessory consumption (pump, preload); the `load` term models engine
+// power output as a function of speed and throttle position.
+// Constants are calibrated so that at average speed (200 km/h, throttle 0.7)
+// consumption is ~5 kg/lap at Monza (~110 s/lap). Without refuelling,
+// the sprint tank must cover the entire 5-lap race with an operating margin,
 // keeping fuel as a continuously decreasing telemetry signal.
 
 const INITIAL_TIRE_TEMP_C = 95;

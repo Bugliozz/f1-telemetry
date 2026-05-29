@@ -94,6 +94,318 @@
     "color": "#DDAA99"
   },
   {
+    "id": "sf-normalize-mqtt",
+    "type": "subflow",
+    "name": "SF - Normalize MQTT",
+    "info": "Parses MQTT topic, normalizes payload into internal envelope.\nOutput 1: normalized msg (ok).\nOutput 2: error msg.",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 100,
+        "wires": [
+          {
+            "id": "sf-fn-normalize-internal"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 560,
+        "y": 80,
+        "wires": [
+          {
+            "id": "sf-fn-normalize-internal",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 560,
+        "y": 140,
+        "wires": [
+          {
+            "id": "sf-fn-normalize-internal",
+            "port": 1
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#87A980"
+  },
+  {
+    "id": "sf-detect-telemetry-events",
+    "type": "subflow",
+    "name": "SF - Detect Telemetry Events",
+    "info": "Detects tire overheat, low fuel, stationary running and track-position jumps.\nOutput 1: event envelope messages.\nOutput 2: mqtt event messages.",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 100,
+        "wires": [
+          {
+            "id": "sf-fn-detect-telemetry-events-internal"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 560,
+        "y": 80,
+        "wires": [
+          {
+            "id": "sf-fn-detect-telemetry-events-internal",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 560,
+        "y": 140,
+        "wires": [
+          {
+            "id": "sf-fn-detect-telemetry-events-internal",
+            "port": 1
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#E2D96E"
+  },
+  {
+    "id": "sf-race-control-flag-handler",
+    "type": "subflow",
+    "name": "SF - Race Control Flag Handler",
+    "info": "Validates and stores the race-control flag, derives race effects.\nOutput 1: dashboard msg.\nOutput 2: persistence (MongoDB) msg.\nOutput 3: effects broadcast msg.\nOutput 4: error msg.",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 160,
+        "wires": [
+          {
+            "id": "sf-fn-race-control-flag-internal"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 640,
+        "y": 80,
+        "wires": [
+          {
+            "id": "sf-fn-race-control-flag-internal",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 640,
+        "y": 160,
+        "wires": [
+          {
+            "id": "sf-fn-race-control-flag-internal",
+            "port": 1
+          }
+        ]
+      },
+      {
+        "x": 640,
+        "y": 240,
+        "wires": [
+          {
+            "id": "sf-fn-race-control-flag-internal",
+            "port": 2
+          }
+        ]
+      },
+      {
+        "x": 640,
+        "y": 320,
+        "wires": [
+          {
+            "id": "sf-fn-race-control-flag-internal",
+            "port": 3
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#FF8C69"
+  },
+  {
+    "id": "sf-encrypt-secure-flag",
+    "type": "subflow",
+    "name": "SF - Encrypt Secure Flag",
+    "info": "Encrypts a race-control flag command with AES-256-GCM using the env key.\nOutput 1: encrypted message (secure out).\nOutput 2: error message.",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 100,
+        "wires": [
+          {
+            "id": "sf-fn-encrypt-secure-flag-internal"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 560,
+        "y": 80,
+        "wires": [
+          {
+            "id": "sf-fn-encrypt-secure-flag-internal",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 560,
+        "y": 140,
+        "wires": [
+          {
+            "id": "sf-fn-encrypt-secure-flag-internal",
+            "port": 1
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#A9C7E0"
+  },
+  {
+    "id": "sf-decrypt-secure-flag",
+    "type": "subflow",
+    "name": "SF - Decrypt Secure Flag",
+    "info": "Decrypts a secure race-control flag with AES-256-GCM using the env key.\nOutput 1: clear flag message.\nOutput 2: error message.",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 100,
+        "wires": [
+          {
+            "id": "sf-fn-decrypt-secure-flag-internal"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 560,
+        "y": 80,
+        "wires": [
+          {
+            "id": "sf-fn-decrypt-secure-flag-internal",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 560,
+        "y": 140,
+        "wires": [
+          {
+            "id": "sf-fn-decrypt-secure-flag-internal",
+            "port": 1
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#A9C7E0"
+  },
+  {
+    "id": "sf-dashboard-command-parser",
+    "type": "subflow",
+    "name": "SF - Dashboard Command Parser",
+    "info": "Routes WebSocket dashboard commands to the correct parser.\nOutput 1: flag-action (race-control flag, ready for secure encryption).\nOutput 2: start-action (start-scenario, ready for MQTT publish).\nOutput 3: stop-action (stop-race, ready for MQTT publish).\nOutput 4: errors (merged parse errors from all three parsers).",
+    "category": "F1 Telemetry",
+    "in": [
+      {
+        "x": 80,
+        "y": 200,
+        "wires": [
+          {
+            "id": "fn-dashboard-race-control-command"
+          },
+          {
+            "id": "fn-dashboard-start-scenario-command"
+          },
+          {
+            "id": "fn-dashboard-stop-race-command"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 600,
+        "y": 80,
+        "wires": [
+          {
+            "id": "fn-dashboard-race-control-command",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 600,
+        "y": 200,
+        "wires": [
+          {
+            "id": "fn-dashboard-start-scenario-command",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 600,
+        "y": 320,
+        "wires": [
+          {
+            "id": "fn-dashboard-stop-race-command",
+            "port": 0
+          }
+        ]
+      },
+      {
+        "x": 600,
+        "y": 440,
+        "wires": [
+          {
+            "id": "fn-dashboard-race-control-command",
+            "port": 1
+          },
+          {
+            "id": "fn-dashboard-start-scenario-command",
+            "port": 1
+          },
+          {
+            "id": "fn-dashboard-stop-race-command",
+            "port": 1
+          }
+        ]
+      }
+    ],
+    "env": [],
+    "meta": {},
+    "color": "#C0A0D0"
+  },
+  {
     "id": "mqtt-broker-config",
     "type": "mqtt-broker",
     "name": "Mosquitto",
@@ -152,6 +464,103 @@
     "x": 370,
     "y": 80,
     "wires": []
+  },
+  {
+    "id": "sf-fn-normalize-internal",
+    "type": "function",
+    "z": "sf-normalize-mqtt",
+    "name": "Parse topic + normalize",
+    "func": "const nowIso = new Date().toISOString();\n\nfunction fail(reason, details) {\n    msg.payload = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: nowIso,\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'parse-normalize-mqtt' };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction toInt(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parseTopic(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts[0] !== 'f1' || parts[1] !== 'simulation') {\n        throw new Error('unsupported topic root');\n    }\n\n    const raceId = toInt(parts[2]);\n    if (!raceId) throw new Error('invalid raceId in topic');\n\n    if (parts[3] === 'teams') {\n        if (parts.length !== 8 || parts[5] !== 'cars') {\n            throw new Error('invalid car topic shape');\n        }\n        const kindMap = { telemetry: 'telemetry', state: 'state', events: 'event' };\n        const kind = kindMap[parts[7]];\n        const carId = toInt(parts[6]);\n        if (!kind) throw new Error('unsupported car topic kind');\n        if (!parts[4]) throw new Error('missing teamId in topic');\n        if (!carId) throw new Error('invalid carId in topic');\n        return { kind, raceId, teamId: parts[4], carId, route: 'car' };\n    }\n\n    if (parts[3] === 'race-control') {\n        if (parts.length !== 5) throw new Error('invalid race-control topic shape');\n        const kindMap = { flags: 'flag', classification: 'classification' };\n        const kind = kindMap[parts[4]];\n        if (!kind) throw new Error('unsupported race-control topic kind');\n        return { kind, raceId, route: 'race-control' };\n    }\n\n    throw new Error('unsupported topic branch');\n}\n\nfunction parseTopicCached(topic) {\n    const key = String(topic || '');\n    let cache = context.get('topicMetaCache') || {};\n    if (cache[key]) return cache[key];\n\n    const meta = parseTopic(key);\n    if (Object.keys(cache).length >= 64) cache = {};\n    cache[key] = meta;\n    context.set('topicMetaCache', cache);\n    return meta;\n}\n\nfunction parsePayload(payload) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(payload)) payload = payload.toString('utf8');\n    if (typeof payload === 'string') {\n        const trimmed = payload.trim();\n        if (!trimmed) throw new Error('empty payload');\n        return JSON.parse(trimmed);\n    }\n    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {\n        return payload;\n    }\n    throw new Error('payload is not a JSON object');\n}\n\nfunction sameString(left, right) {\n    return String(left) === String(right);\n}\n\nfunction sameNumber(left, right) {\n    return Number(left) === Number(right);\n}\n\ntry {\n    const meta = parseTopicCached(msg.topic);\n    const input = parsePayload(msg.payload);\n    const conflicts = [];\n\n    if (input.raceId != null && !sameNumber(input.raceId, meta.raceId)) {\n        conflicts.push('raceId');\n    }\n    if (meta.teamId != null && input.teamId != null && !sameString(input.teamId, meta.teamId)) {\n        conflicts.push('teamId');\n    }\n    if (meta.carId != null && input.carId != null && !sameNumber(input.carId, meta.carId)) {\n        conflicts.push('carId');\n    }\n    if (conflicts.length > 0) {\n        return fail('topic/payload mismatch', { conflicts, topicMeta: meta });\n    }\n\n    const timestampCandidate = input.timestamp || nowIso;\n    const parsedTimestamp = new Date(timestampCandidate);\n    if (Number.isNaN(parsedTimestamp.getTime())) {\n        return fail('invalid timestamp', { timestamp: timestampCandidate });\n    }\n\n    const normalizedPayload = {\n        ...input,\n        timestamp: parsedTimestamp.toISOString(),\n        raceId: meta.raceId\n    };\n    if (meta.teamId != null) normalizedPayload.teamId = meta.teamId;\n    if (meta.carId != null) normalizedPayload.carId = meta.carId;\n\n    const envelope = {\n        kind: meta.kind,\n        raceId: meta.raceId,\n        teamId: meta.teamId || null,\n        carId: meta.carId || null,\n        topic: msg.topic,\n        timestamp: normalizedPayload.timestamp,\n        receivedAt: nowIso,\n        payload: normalizedPayload\n    };\n\n    msg.kind = meta.kind;\n    msg.meta = { ...meta, topic: msg.topic, receivedAt: nowIso };\n    msg.payload = envelope;\n    msg.doc = envelope;\n    const lastStatusAt = context.get('lastStatusAt') || 0;\n    const nowMs = Date.now();\n    if (nowMs - lastStatusAt >= 1000) {\n        context.set('lastStatusAt', nowMs);\n        node.status({ fill: 'green', shape: 'dot', text: `${meta.kind} race ${meta.raceId}` });\n    }\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'normalize failed');\n}\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 310,
+    "y": 100,
+    "wires": [
+      [],
+      []
+    ]
+  },
+  {
+    "id": "sf-fn-detect-telemetry-events-internal",
+    "type": "function",
+    "z": "sf-detect-telemetry-events",
+    "name": "Detect telemetry events",
+    "func": "const LIMITS = {\n    tireTempCriticalC: 170,\n    fuelWarningKg: 5,\n    stationarySpeedKmh: 1,\n    stationaryMs: 5000,\n    trackProgressJump: 0.2,\n    trackProgressBackstep: 0.05\n};\n\nconst DEDUP_WINDOWS_MS = {\n    'tire-overheat': 10000,\n    'low-fuel': 30000,\n    'stationary-running': 10000,\n    'track-position-jump': 10000\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asFiniteNumber(value) {\n    const n = Number(value);\n    return Number.isFinite(n) ? n : null;\n}\n\nfunction round(value, digits) {\n    return Number(value.toFixed(digits));\n}\n\nfunction hottestTire(tireTemp) {\n    if (!tireTemp || typeof tireTemp !== 'object') return null;\n    return ['fl', 'fr', 'rl', 'rr'].reduce((hottest, corner) => {\n        const value = asFiniteNumber(tireTemp[corner]);\n        if (value == null) return hottest;\n        if (!hottest || value > hottest.value) return { corner, value };\n        return hottest;\n    }, null);\n}\n\nconst envelope = msg.payload || {};\nconst sample = envelope.payload || {};\nconst raceId = asInteger(sample.raceId != null ? sample.raceId : envelope.raceId);\nconst carId = asInteger(sample.carId != null ? sample.carId : envelope.carId);\nconst lap = asInteger(sample.lap);\nconst trackPos = asFiniteNumber(sample.trackPos);\nconst teamId = sample.teamId != null ? String(sample.teamId) : null;\n\nif (!raceId || !carId || !teamId || lap == null || trackPos == null) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'telemetry skipped' });\n    return [null, null];\n}\n\nconst nowMs = Date.now();\nconst nowIso = new Date(nowMs).toISOString();\nconst sampleTimestamp = new Date(sample.timestamp || envelope.timestamp || nowIso);\nconst observedMs = Number.isNaN(sampleTimestamp.getTime()) ? nowMs : sampleTimestamp.getTime();\nconst raceKey = 'race.' + raceId;\nconst detectorCarsKey = raceKey + '.eventDetection.cars';\nconst lastEventsKey = raceKey + '.lastEvents';\nconst detectorCars = flow.get(detectorCarsKey) || {};\nconst lastEvents = flow.get(lastEventsKey) || {};\nconst previous = detectorCars[String(carId)] || {};\nconst eventEnvelopes = [];\nconst mqttEvents = [];\n\nconst lastCleanupAt = context.get('lastCleanupAt') || 0;\nif (nowMs - lastCleanupAt >= 5000) {\n    for (const [key, lastSeenMs] of Object.entries(lastEvents)) {\n        if (nowMs - lastSeenMs > 120000) delete lastEvents[key];\n    }\n    context.set('lastCleanupAt', nowMs);\n}\n\nfunction shouldEmit(reason, windowMs) {\n    const key = carId + ':' + reason;\n    if (lastEvents[key] && nowMs - lastEvents[key] < windowMs) return false;\n    lastEvents[key] = nowMs;\n    return true;\n}\n\nfunction pushEvent(type, details, reason) {\n    if (!shouldEmit(reason, DEDUP_WINDOWS_MS[reason] || 10000)) return;\n\n    const eventDoc = {\n        timestamp: sample.timestamp || envelope.timestamp || nowIso,\n        raceId,\n        teamId,\n        carId,\n        type,\n        details\n    };\n    const topic = 'f1/simulation/' + raceId + '/teams/' + teamId + '/cars/' + carId + '/events';\n    const eventEnvelope = {\n        kind: 'event',\n        raceId,\n        teamId,\n        carId,\n        topic,\n        timestamp: eventDoc.timestamp,\n        receivedAt: nowIso,\n        payload: eventDoc\n    };\n\n    eventEnvelopes.push({\n        topic,\n        kind: 'event',\n        meta: { kind: 'event', raceId, teamId, carId, route: 'car', topic, receivedAt: nowIso, derived: true },\n        payload: eventEnvelope,\n        doc: eventEnvelope\n    });\n    mqttEvents.push({ topic, qos: 1, retain: false, payload: eventDoc });\n}\n\nconst tire = hottestTire(sample.tireTemp);\nif (tire && tire.value >= LIMITS.tireTempCriticalC) {\n    pushEvent('fault', {\n        reason: 'tire-overheat',\n        corner: tire.corner,\n        tireTemp: round(tire.value, 2),\n        threshold: LIMITS.tireTempCriticalC,\n        source: 'node-red-event-detection'\n    }, 'tire-overheat');\n}\n\nconst fuel = asFiniteNumber(sample.fuel);\nconst state = typeof sample.state === 'string' ? sample.state : 'RUNNING';\nconst flagDoc = flow.get(raceKey + '.flag') || {};\nconst activeFlag = String(flagDoc.flag || '').toUpperCase();\nconst flagActive = flagDoc.active !== false;\nconst raceSuspended = flagActive && activeFlag === 'RED';\nif (fuel != null && fuel <= LIMITS.fuelWarningKg && state !== 'PIT' && state !== 'RETIRED' && state !== 'FINISHED') {\n    pushEvent('state-change', {\n        from: state,\n        to: 'PIT',\n        reason: 'low-fuel'\n    }, 'low-fuel');\n}\n\nconst speed = asFiniteNumber(sample.speed);\nconst stationary = !raceSuspended && state === 'RUNNING' && speed != null && speed <= LIMITS.stationarySpeedKmh;\nconst stationarySinceMs = stationary ? (previous.stationarySinceMs || observedMs) : null;\nif (stationary && observedMs - stationarySinceMs >= LIMITS.stationaryMs) {\n    pushEvent('retirement', {\n        reason: 'stationary-running',\n        durationMs: observedMs - stationarySinceMs,\n        speed: round(speed, 3),\n        threshold: LIMITS.stationarySpeedKmh,\n        source: 'node-red-event-detection'\n    }, 'stationary-running');\n}\n\nconst progress = lap + trackPos;\nif (Number.isFinite(previous.progress)) {\n    const delta = progress - previous.progress;\n    const isRaceRestart = lap === 0 && previous.lap > 0 && delta < -1;\n    if (!isRaceRestart && (delta > LIMITS.trackProgressJump || delta < -LIMITS.trackProgressBackstep)) {\n        pushEvent('fault', {\n            reason: 'track-position-jump',\n            previousLap: previous.lap,\n            previousTrackPos: round(previous.trackPos, 5),\n            currentLap: lap,\n            currentTrackPos: round(trackPos, 5),\n            delta: round(delta, 5),\n            source: 'node-red-event-detection'\n        }, 'track-position-jump');\n    }\n}\n\ndetectorCars[String(carId)] = {\n    lap,\n    trackPos,\n    progress,\n    stationarySinceMs,\n    observedMs\n};\nflow.set(detectorCarsKey, detectorCars);\nflow.set(lastEventsKey, lastEvents);\n\nif (eventEnvelopes.length > 0) {\n    node.status({ fill: 'orange', shape: 'dot', text: eventEnvelopes.length + ' event(s)' });\n} else {\n    const lastStatusAt = context.get('lastStatusAt') || 0;\n    if (nowMs - lastStatusAt >= 1000) {\n        context.set('lastStatusAt', nowMs);\n        node.status({ fill: 'green', shape: 'ring', text: 'nominal' });\n    }\n}\nreturn [eventEnvelopes.length ? eventEnvelopes : null, mqttEvents.length ? mqttEvents : null];",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 310,
+    "y": 100,
+    "wires": [
+      [],
+      []
+    ]
+  },
+  {
+    "id": "sf-fn-race-control-flag-internal",
+    "type": "function",
+    "z": "sf-race-control-flag-handler",
+    "name": "Handle race-control flag",
+    "func": "const ALLOWED_FLAGS = {\n    GREEN: true,\n    YELLOW: true,\n    RED: true,\n    CHECKERED: true,\n    SC: true,\n    VSC: true\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction isoTimestamp(value) {\n    const parsed = new Date(value || Date.now());\n    if (Number.isNaN(parsed.getTime())) return null;\n    return parsed.toISOString();\n}\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'race-control-flag-handler' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, null, null, msg];\n}\n\nfunction rememberRaceId(raceId) {\n    const raceIds = flow.get('raceIds') || [];\n    if (!raceIds.includes(raceId)) {\n        raceIds.push(raceId);\n        flow.set('raceIds', raceIds);\n    }\n}\n\nfunction buildEffects(flagDoc) {\n    const base = {\n        mode: 'nominal',\n        speedMultiplier: 1,\n        overtakingAllowed: true,\n        raceSuspended: false,\n        safetyCar: false,\n        virtualSafetyCar: false,\n        localSector: null,\n        finish: false\n    };\n\n    if (!flagDoc.active) {\n        return { ...base, mode: 'clear' };\n    }\n\n    if (flagDoc.flag === 'YELLOW') {\n        return {\n            ...base,\n            mode: 'caution',\n            speedMultiplier: 0.65,\n            overtakingAllowed: false,\n            localSector: flagDoc.sector\n        };\n    }\n    if (flagDoc.flag === 'RED') {\n        return {\n            ...base,\n            mode: 'suspended',\n            speedMultiplier: 0,\n            overtakingAllowed: false,\n            raceSuspended: true\n        };\n    }\n    if (flagDoc.flag === 'SC') {\n        return {\n            ...base,\n            mode: 'safety-car',\n            speedMultiplier: 0.45,\n            overtakingAllowed: false,\n            safetyCar: true\n        };\n    }\n    if (flagDoc.flag === 'VSC') {\n        return {\n            ...base,\n            mode: 'virtual-safety-car',\n            speedMultiplier: 0.55,\n            overtakingAllowed: false,\n            virtualSafetyCar: true\n        };\n    }\n    if (flagDoc.flag === 'CHECKERED') {\n        return {\n            ...base,\n            mode: 'finish',\n            speedMultiplier: 0.8,\n            finish: true\n        };\n    }\n\n    return base;\n}\n\nconst envelope = msg.payload || {};\nconst source = envelope.payload || {};\nconst raceId = asInteger(source.raceId != null ? source.raceId : envelope.raceId);\nconst flag = typeof source.flag === 'string' ? source.flag.toUpperCase() : '';\nconst timestamp = isoTimestamp(source.timestamp || envelope.timestamp);\nconst active = source.active;\nlet sector = source.sector == null ? null : asInteger(source.sector);\n\nif (!raceId) return fail('invalid raceId', { raceId: source.raceId || envelope.raceId });\nif (!ALLOWED_FLAGS[flag]) return fail('invalid flag', { flag: source.flag });\nif (typeof active !== 'boolean') return fail('invalid flag active state', { active });\nif (!timestamp) return fail('invalid flag timestamp', { timestamp: source.timestamp || envelope.timestamp });\nif (flag === 'YELLOW' && sector != null && (sector < 1 || sector > 3)) {\n    return fail('invalid yellow sector', { sector: source.sector });\n}\nif (flag !== 'YELLOW') sector = null;\n\nconst flagDoc = {\n    ...source,\n    timestamp,\n    raceId,\n    flag,\n    active,\n    sector,\n    reason: source.reason == null ? null : String(source.reason)\n};\nconst effects = buildEffects(flagDoc);\nconst raceKey = 'race.' + raceId;\n\nflow.set(raceKey + '.flag', flagDoc);\nflow.set(raceKey + '.raceEffects', effects);\nrememberRaceId(raceId);\n\nconst normalizedEnvelope = {\n    kind: 'flag',\n    raceId,\n    teamId: null,\n    carId: null,\n    topic: envelope.topic || msg.topic,\n    timestamp,\n    receivedAt: envelope.receivedAt || new Date().toISOString(),\n    payload: flagDoc\n};\n\nconst dashboardMsg = {\n    ...msg,\n    kind: 'flag',\n    dashboardType: 'race-control',\n    dashboardEffects: effects,\n    payload: normalizedEnvelope,\n    doc: normalizedEnvelope\n};\nconst mongoMsg = {\n    ...msg,\n    kind: 'flag',\n    payload: normalizedEnvelope,\n    doc: normalizedEnvelope\n};\nconst effectMsg = {\n    topic: 'race-control/effects',\n    payload: {\n        type: 'race-effect',\n        timestamp,\n        raceId,\n        flag: flagDoc,\n        effects\n    }\n};\n\nnode.status({ fill: 'green', shape: 'dot', text: flag + ' race ' + raceId });\nreturn [dashboardMsg, mongoMsg, effectMsg, null];",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 340,
+    "y": 160,
+    "wires": [
+      [],
+      [],
+      [],
+      []
+    ]
+  },
+  {
+    "id": "sf-fn-decrypt-secure-flag-internal",
+    "type": "function",
+    "z": "sf-decrypt-secure-flag",
+    "name": "Decrypt secure flag",
+    "func": "const crypto = global.get('crypto');\nconst KEY_ENV = 'F1_TELEMETRY_CRYPTO_KEY_B64';\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'decrypt-secure-flag' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction keyFromEnv() {\n    const value = String(env.get(KEY_ENV) || '').trim();\n    if (!value) throw new Error(KEY_ENV + ' missing');\n    const key = Buffer.from(value, 'base64');\n    if (key.length !== 32) throw new Error(KEY_ENV + ' must decode to 32 bytes');\n    return key;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction b64(value, expectedLength, name) {\n    if (typeof value !== 'string' || !value) throw new Error('missing ' + name);\n    const buf = Buffer.from(value, 'base64');\n    if (expectedLength && buf.length !== expectedLength) throw new Error('invalid ' + name + ' length');\n    return buf;\n}\n\nfunction clearTopicFromSecure(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts.length !== 6 || parts[0] !== 'f1' || parts[1] !== 'simulation' || parts[3] !== 'secure' || parts[4] !== 'race-control' || parts[5] !== 'flags') {\n        throw new Error('invalid secure topic');\n    }\n    const raceId = Number(parts[2]);\n    if (!Number.isInteger(raceId)) throw new Error('invalid raceId in secure topic');\n    return 'f1/simulation/' + raceId + '/race-control/flags';\n}\n\ntry {\n    if (!crypto) throw new Error('crypto module unavailable');\n    const secureTopic = msg.topic;\n    const clearTopic = clearTopicFromSecure(secureTopic);\n    const envelope = asObject(msg.payload);\n    const iv = b64(envelope.iv, 12, 'iv');\n    const tag = b64(envelope.tag, 16, 'tag');\n    const ciphertext = b64(envelope.ciphertext, 0, 'ciphertext');\n\n    const decipher = crypto.createDecipheriv('aes-256-gcm', keyFromEnv(), iv);\n    decipher.setAAD(Buffer.from(secureTopic, 'utf8'));\n    decipher.setAuthTag(tag);\n    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');\n\n    msg.topic = clearTopic;\n    msg.qos = 1;\n    msg.retain = true;\n    msg.secure = { decrypted: true, sourceTopic: secureTopic };\n    msg.payload = JSON.parse(plaintext);\n    node.status({ fill: 'green', shape: 'dot', text: 'decrypted ' + clearTopic });\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'decrypt failed');\n}",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 320,
+    "y": 100,
+    "wires": [
+      [],
+      []
+    ]
+  },
+  {
+    "id": "sf-fn-encrypt-secure-flag-internal",
+    "type": "function",
+    "z": "sf-encrypt-secure-flag",
+    "name": "Encrypt secure flag",
+    "func": "const crypto = global.get('crypto');\nconst KEY_ENV = 'F1_TELEMETRY_CRYPTO_KEY_B64';\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'encrypt-secure-flag' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction keyFromEnv() {\n    const value = String(env.get(KEY_ENV) || '').trim();\n    if (!value) throw new Error(KEY_ENV + ' missing');\n    const key = Buffer.from(value, 'base64');\n    if (key.length !== 32) throw new Error(KEY_ENV + ' must decode to 32 bytes');\n    return key;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction raceIdFromTopic(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts[0] === 'f1' && parts[1] === 'simulation') {\n        const n = Number(parts[2]);\n        if (Number.isInteger(n)) return n;\n    }\n    return null;\n}\n\ntry {\n    if (!crypto) throw new Error('crypto module unavailable');\n    const payload = asObject(msg.payload);\n    const raceId = Number.isInteger(Number(payload.raceId)) ? Number(payload.raceId) : raceIdFromTopic(msg.topic);\n    if (!raceId) throw new Error('invalid raceId for secure topic');\n\n    const secureTopic = 'f1/simulation/' + raceId + '/secure/race-control/flags';\n    const iv = crypto.randomBytes(12);\n    const cipher = crypto.createCipheriv('aes-256-gcm', keyFromEnv(), iv);\n    cipher.setAAD(Buffer.from(secureTopic, 'utf8'));\n    const plaintext = Buffer.from(JSON.stringify(payload), 'utf8');\n    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);\n    const tag = cipher.getAuthTag();\n\n    msg.topic = secureTopic;\n    msg.qos = 1;\n    msg.retain = false;\n    msg.payload = {\n        iv: iv.toString('base64'),\n        ciphertext: ciphertext.toString('base64'),\n        tag: tag.toString('base64')\n    };\n    node.status({ fill: 'green', shape: 'dot', text: 'encrypted race ' + raceId });\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'encrypt failed');\n}",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 320,
+    "y": 100,
+    "wires": [
+      [],
+      []
+    ]
   },
   {
     "id": "4387d22aa66ff05d",
@@ -281,19 +690,6 @@
     "wires": []
   },
   {
-    "id": "eee84d8f12461430",
-    "type": "link out",
-    "z": "95b217a05ca849c9",
-    "name": "OUT - MQTT errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 365,
-    "y": 540,
-    "wires": []
-  },
-  {
     "id": "442c51aad43e7169",
     "type": "catch",
     "z": "95b217a05ca849c9",
@@ -304,7 +700,7 @@
     "y": 540,
     "wires": [
       [
-        "eee84d8f12461430"
+        "sf-err-sink-95b217a0"
       ]
     ]
   },
@@ -346,16 +742,9 @@
   },
   {
     "id": "fn-parse-normalize-mqtt",
-    "type": "function",
+    "type": "subflow:sf-normalize-mqtt",
     "z": "2ab2d1d26ec6f639",
-    "name": "Parse topic + normalize",
-    "func": "const nowIso = new Date().toISOString();\n\nfunction fail(reason, details) {\n    msg.payload = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: nowIso,\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'parse-normalize-mqtt' };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction toInt(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parseTopic(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts[0] !== 'f1' || parts[1] !== 'simulation') {\n        throw new Error('unsupported topic root');\n    }\n\n    const raceId = toInt(parts[2]);\n    if (!raceId) throw new Error('invalid raceId in topic');\n\n    if (parts[3] === 'teams') {\n        if (parts.length !== 8 || parts[5] !== 'cars') {\n            throw new Error('invalid car topic shape');\n        }\n        const kindMap = { telemetry: 'telemetry', state: 'state', events: 'event' };\n        const kind = kindMap[parts[7]];\n        const carId = toInt(parts[6]);\n        if (!kind) throw new Error('unsupported car topic kind');\n        if (!parts[4]) throw new Error('missing teamId in topic');\n        if (!carId) throw new Error('invalid carId in topic');\n        return { kind, raceId, teamId: parts[4], carId, route: 'car' };\n    }\n\n    if (parts[3] === 'race-control') {\n        if (parts.length !== 5) throw new Error('invalid race-control topic shape');\n        const kindMap = { flags: 'flag', classification: 'classification' };\n        const kind = kindMap[parts[4]];\n        if (!kind) throw new Error('unsupported race-control topic kind');\n        return { kind, raceId, route: 'race-control' };\n    }\n\n    throw new Error('unsupported topic branch');\n}\n\nfunction parseTopicCached(topic) {\n    const key = String(topic || '');\n    let cache = context.get('topicMetaCache') || {};\n    if (cache[key]) return cache[key];\n\n    const meta = parseTopic(key);\n    if (Object.keys(cache).length >= 64) cache = {};\n    cache[key] = meta;\n    context.set('topicMetaCache', cache);\n    return meta;\n}\n\nfunction parsePayload(payload) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(payload)) payload = payload.toString('utf8');\n    if (typeof payload === 'string') {\n        const trimmed = payload.trim();\n        if (!trimmed) throw new Error('empty payload');\n        return JSON.parse(trimmed);\n    }\n    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {\n        return payload;\n    }\n    throw new Error('payload is not a JSON object');\n}\n\nfunction sameString(left, right) {\n    return String(left) === String(right);\n}\n\nfunction sameNumber(left, right) {\n    return Number(left) === Number(right);\n}\n\ntry {\n    const meta = parseTopicCached(msg.topic);\n    const input = parsePayload(msg.payload);\n    const conflicts = [];\n\n    if (input.raceId != null && !sameNumber(input.raceId, meta.raceId)) {\n        conflicts.push('raceId');\n    }\n    if (meta.teamId != null && input.teamId != null && !sameString(input.teamId, meta.teamId)) {\n        conflicts.push('teamId');\n    }\n    if (meta.carId != null && input.carId != null && !sameNumber(input.carId, meta.carId)) {\n        conflicts.push('carId');\n    }\n    if (conflicts.length > 0) {\n        return fail('topic/payload mismatch', { conflicts, topicMeta: meta });\n    }\n\n    const timestampCandidate = input.timestamp || nowIso;\n    const parsedTimestamp = new Date(timestampCandidate);\n    if (Number.isNaN(parsedTimestamp.getTime())) {\n        return fail('invalid timestamp', { timestamp: timestampCandidate });\n    }\n\n    const normalizedPayload = {\n        ...input,\n        timestamp: parsedTimestamp.toISOString(),\n        raceId: meta.raceId\n    };\n    if (meta.teamId != null) normalizedPayload.teamId = meta.teamId;\n    if (meta.carId != null) normalizedPayload.carId = meta.carId;\n\n    const envelope = {\n        kind: meta.kind,\n        raceId: meta.raceId,\n        teamId: meta.teamId || null,\n        carId: meta.carId || null,\n        topic: msg.topic,\n        timestamp: normalizedPayload.timestamp,\n        receivedAt: nowIso,\n        payload: normalizedPayload\n    };\n\n    msg.kind = meta.kind;\n    msg.meta = { ...meta, topic: msg.topic, receivedAt: nowIso };\n    msg.payload = envelope;\n    msg.doc = envelope;\n    const lastStatusAt = context.get('lastStatusAt') || 0;\n    const nowMs = Date.now();\n    if (nowMs - lastStatusAt >= 1000) {\n        context.set('lastStatusAt', nowMs);\n        node.status({ fill: 'green', shape: 'dot', text: `${meta.kind} race ${meta.raceId}` });\n    }\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'normalize failed');\n}\n",
-    "outputs": 2,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
+    "name": "",
     "x": 270,
     "y": 240,
     "wires": [
@@ -637,22 +1026,9 @@
     "y": 680,
     "wires": [
       [
-        "7822290c2693d687"
+        "sf-err-sink-2ab2d1d2"
       ]
     ]
-  },
-  {
-    "id": "7822290c2693d687",
-    "type": "link out",
-    "z": "2ab2d1d26ec6f639",
-    "name": "OUT - Normalization errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 375,
-    "y": 680,
-    "wires": []
   },
   {
     "id": "a51788ca9e8088b3",
@@ -754,7 +1130,7 @@
     "statusVal": "",
     "statusType": "auto",
     "x": 820,
-    "y": 360,
+    "y": 420,
     "wires": []
   },
   {
@@ -780,7 +1156,7 @@
       "cb912ea891b72741"
     ],
     "x": 725,
-    "y": 440,
+    "y": 460,
     "wires": []
   },
   {
@@ -825,8 +1201,8 @@
     "links": [
       "d79edcc3179c8214"
     ],
-    "x": 225,
-    "y": 680,
+    "x": 105,
+    "y": 620,
     "wires": [
       [
         "fn-detect-telemetry-events"
@@ -835,18 +1211,11 @@
   },
   {
     "id": "fn-detect-telemetry-events",
-    "type": "function",
+    "type": "subflow:sf-detect-telemetry-events",
     "z": "d05ff41b021f747d",
-    "name": "Detect telemetry events",
-    "func": "const LIMITS = {\n    tireTempCriticalC: 170,\n    fuelWarningKg: 5,\n    stationarySpeedKmh: 1,\n    stationaryMs: 5000,\n    trackProgressJump: 0.2,\n    trackProgressBackstep: 0.05\n};\n\nconst DEDUP_WINDOWS_MS = {\n    'tire-overheat': 10000,\n    'low-fuel': 30000,\n    'stationary-running': 10000,\n    'track-position-jump': 10000\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asFiniteNumber(value) {\n    const n = Number(value);\n    return Number.isFinite(n) ? n : null;\n}\n\nfunction round(value, digits) {\n    return Number(value.toFixed(digits));\n}\n\nfunction hottestTire(tireTemp) {\n    if (!tireTemp || typeof tireTemp !== 'object') return null;\n    return ['fl', 'fr', 'rl', 'rr'].reduce((hottest, corner) => {\n        const value = asFiniteNumber(tireTemp[corner]);\n        if (value == null) return hottest;\n        if (!hottest || value > hottest.value) return { corner, value };\n        return hottest;\n    }, null);\n}\n\nconst envelope = msg.payload || {};\nconst sample = envelope.payload || {};\nconst raceId = asInteger(sample.raceId != null ? sample.raceId : envelope.raceId);\nconst carId = asInteger(sample.carId != null ? sample.carId : envelope.carId);\nconst lap = asInteger(sample.lap);\nconst trackPos = asFiniteNumber(sample.trackPos);\nconst teamId = sample.teamId != null ? String(sample.teamId) : null;\n\nif (!raceId || !carId || !teamId || lap == null || trackPos == null) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'telemetry skipped' });\n    return [null, null];\n}\n\nconst nowMs = Date.now();\nconst nowIso = new Date(nowMs).toISOString();\nconst sampleTimestamp = new Date(sample.timestamp || envelope.timestamp || nowIso);\nconst observedMs = Number.isNaN(sampleTimestamp.getTime()) ? nowMs : sampleTimestamp.getTime();\nconst raceKey = 'race.' + raceId;\nconst detectorCarsKey = raceKey + '.eventDetection.cars';\nconst lastEventsKey = raceKey + '.lastEvents';\nconst detectorCars = flow.get(detectorCarsKey) || {};\nconst lastEvents = flow.get(lastEventsKey) || {};\nconst previous = detectorCars[String(carId)] || {};\nconst eventEnvelopes = [];\nconst mqttEvents = [];\n\nconst lastCleanupAt = context.get('lastCleanupAt') || 0;\nif (nowMs - lastCleanupAt >= 5000) {\n    for (const [key, lastSeenMs] of Object.entries(lastEvents)) {\n        if (nowMs - lastSeenMs > 120000) delete lastEvents[key];\n    }\n    context.set('lastCleanupAt', nowMs);\n}\n\nfunction shouldEmit(reason, windowMs) {\n    const key = carId + ':' + reason;\n    if (lastEvents[key] && nowMs - lastEvents[key] < windowMs) return false;\n    lastEvents[key] = nowMs;\n    return true;\n}\n\nfunction pushEvent(type, details, reason) {\n    if (!shouldEmit(reason, DEDUP_WINDOWS_MS[reason] || 10000)) return;\n\n    const eventDoc = {\n        timestamp: sample.timestamp || envelope.timestamp || nowIso,\n        raceId,\n        teamId,\n        carId,\n        type,\n        details\n    };\n    const topic = 'f1/simulation/' + raceId + '/teams/' + teamId + '/cars/' + carId + '/events';\n    const eventEnvelope = {\n        kind: 'event',\n        raceId,\n        teamId,\n        carId,\n        topic,\n        timestamp: eventDoc.timestamp,\n        receivedAt: nowIso,\n        payload: eventDoc\n    };\n\n    eventEnvelopes.push({\n        topic,\n        kind: 'event',\n        meta: { kind: 'event', raceId, teamId, carId, route: 'car', topic, receivedAt: nowIso, derived: true },\n        payload: eventEnvelope,\n        doc: eventEnvelope\n    });\n    mqttEvents.push({ topic, qos: 1, retain: false, payload: eventDoc });\n}\n\nconst tire = hottestTire(sample.tireTemp);\nif (tire && tire.value >= LIMITS.tireTempCriticalC) {\n    pushEvent('fault', {\n        reason: 'tire-overheat',\n        corner: tire.corner,\n        tireTemp: round(tire.value, 2),\n        threshold: LIMITS.tireTempCriticalC,\n        source: 'node-red-event-detection'\n    }, 'tire-overheat');\n}\n\nconst fuel = asFiniteNumber(sample.fuel);\nconst state = typeof sample.state === 'string' ? sample.state : 'RUNNING';\nconst flagDoc = flow.get(raceKey + '.flag') || {};\nconst activeFlag = String(flagDoc.flag || '').toUpperCase();\nconst flagActive = flagDoc.active !== false;\nconst raceSuspended = flagActive && activeFlag === 'RED';\nif (fuel != null && fuel <= LIMITS.fuelWarningKg && state !== 'PIT' && state !== 'RETIRED' && state !== 'FINISHED') {\n    pushEvent('state-change', {\n        from: state,\n        to: 'PIT',\n        reason: 'low-fuel'\n    }, 'low-fuel');\n}\n\nconst speed = asFiniteNumber(sample.speed);\nconst stationary = !raceSuspended && state === 'RUNNING' && speed != null && speed <= LIMITS.stationarySpeedKmh;\nconst stationarySinceMs = stationary ? (previous.stationarySinceMs || observedMs) : null;\nif (stationary && observedMs - stationarySinceMs >= LIMITS.stationaryMs) {\n    pushEvent('retirement', {\n        reason: 'stationary-running',\n        durationMs: observedMs - stationarySinceMs,\n        speed: round(speed, 3),\n        threshold: LIMITS.stationarySpeedKmh,\n        source: 'node-red-event-detection'\n    }, 'stationary-running');\n}\n\nconst progress = lap + trackPos;\nif (Number.isFinite(previous.progress)) {\n    const delta = progress - previous.progress;\n    const isRaceRestart = lap === 0 && previous.lap > 0 && delta < -1;\n    if (!isRaceRestart && (delta > LIMITS.trackProgressJump || delta < -LIMITS.trackProgressBackstep)) {\n        pushEvent('fault', {\n            reason: 'track-position-jump',\n            previousLap: previous.lap,\n            previousTrackPos: round(previous.trackPos, 5),\n            currentLap: lap,\n            currentTrackPos: round(trackPos, 5),\n            delta: round(delta, 5),\n            source: 'node-red-event-detection'\n        }, 'track-position-jump');\n    }\n}\n\ndetectorCars[String(carId)] = {\n    lap,\n    trackPos,\n    progress,\n    stationarySinceMs,\n    observedMs\n};\nflow.set(detectorCarsKey, detectorCars);\nflow.set(lastEventsKey, lastEvents);\n\nif (eventEnvelopes.length > 0) {\n    node.status({ fill: 'orange', shape: 'dot', text: eventEnvelopes.length + ' event(s)' });\n} else {\n    const lastStatusAt = context.get('lastStatusAt') || 0;\n    if (nowMs - lastStatusAt >= 1000) {\n        context.set('lastStatusAt', nowMs);\n        node.status({ fill: 'green', shape: 'ring', text: 'nominal' });\n    }\n}\nreturn [eventEnvelopes.length ? eventEnvelopes : null, mqttEvents.length ? mqttEvents : null];",
-    "outputs": 2,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 390,
-    "y": 680,
+    "name": "",
+    "x": 340,
+    "y": 620,
     "wires": [
       [
         "debug-derived-events",
@@ -872,7 +1241,7 @@
     "statusVal": "",
     "statusType": "auto",
     "x": 620,
-    "y": 600,
+    "y": 560,
     "wires": []
   },
   {
@@ -889,8 +1258,8 @@
     "correl": "",
     "expiry": "",
     "broker": "mqtt-broker-config",
-    "x": 650,
-    "y": 740,
+    "x": 620,
+    "y": 760,
     "wires": []
   },
   {
@@ -899,8 +1268,8 @@
     "z": "d05ff41b021f747d",
     "name": "Event detection from telemetry thresholds",
     "info": "Detects tire overheat, low fuel, stationary running cars and anomalous track progress; deduplicates per race/car/reason.",
-    "x": 580,
-    "y": 560,
+    "x": 200,
+    "y": 520,
     "wires": []
   },
   {
@@ -912,7 +1281,7 @@
     "links": [
       "0d702dd5e627498e"
     ],
-    "x": 575,
+    "x": 620,
     "y": 640,
     "wires": []
   },
@@ -925,8 +1294,8 @@
     "links": [
       "a93c350ee7fa4110"
     ],
-    "x": 625,
-    "y": 660,
+    "x": 620,
+    "y": 700,
     "wires": []
   },
   {
@@ -936,26 +1305,13 @@
     "name": "Catch Telemetry errors",
     "scope": null,
     "uncaught": false,
-    "x": 340,
-    "y": 880,
+    "x": 100,
+    "y": 860,
     "wires": [
       [
-        "60298cd605e7d5ad"
+        "sf-err-sink-d05ff41b"
       ]
     ]
-  },
-  {
-    "id": "60298cd605e7d5ad",
-    "type": "link out",
-    "z": "d05ff41b021f747d",
-    "name": "OUT - Telemetry errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 505,
-    "y": 880,
-    "wires": []
   },
   {
     "id": "c8c60601fead74ca",
@@ -976,7 +1332,7 @@
       "105ec43ef038d4f1"
     ],
     "x": 135,
-    "y": 180,
+    "y": 200,
     "wires": [
       [
         "fn-handle-race-control-flag"
@@ -992,24 +1348,17 @@
     "links": [
       "c058eebf5031385d"
     ],
-    "x": 485,
-    "y": 120,
+    "x": 620,
+    "y": 140,
     "wires": []
   },
   {
     "id": "fn-handle-race-control-flag",
-    "type": "function",
+    "type": "subflow:sf-race-control-flag-handler",
     "z": "dcada6f61439eccd",
-    "name": "Handle race-control flag",
-    "func": "const ALLOWED_FLAGS = {\n    GREEN: true,\n    YELLOW: true,\n    RED: true,\n    CHECKERED: true,\n    SC: true,\n    VSC: true\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction isoTimestamp(value) {\n    const parsed = new Date(value || Date.now());\n    if (Number.isNaN(parsed.getTime())) return null;\n    return parsed.toISOString();\n}\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'race-control-flag-handler' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, null, null, msg];\n}\n\nfunction rememberRaceId(raceId) {\n    const raceIds = flow.get('raceIds') || [];\n    if (!raceIds.includes(raceId)) {\n        raceIds.push(raceId);\n        flow.set('raceIds', raceIds);\n    }\n}\n\nfunction buildEffects(flagDoc) {\n    const base = {\n        mode: 'nominal',\n        speedMultiplier: 1,\n        overtakingAllowed: true,\n        raceSuspended: false,\n        safetyCar: false,\n        virtualSafetyCar: false,\n        localSector: null,\n        finish: false\n    };\n\n    if (!flagDoc.active) {\n        return { ...base, mode: 'clear' };\n    }\n\n    if (flagDoc.flag === 'YELLOW') {\n        return {\n            ...base,\n            mode: 'caution',\n            speedMultiplier: 0.65,\n            overtakingAllowed: false,\n            localSector: flagDoc.sector\n        };\n    }\n    if (flagDoc.flag === 'RED') {\n        return {\n            ...base,\n            mode: 'suspended',\n            speedMultiplier: 0,\n            overtakingAllowed: false,\n            raceSuspended: true\n        };\n    }\n    if (flagDoc.flag === 'SC') {\n        return {\n            ...base,\n            mode: 'safety-car',\n            speedMultiplier: 0.45,\n            overtakingAllowed: false,\n            safetyCar: true\n        };\n    }\n    if (flagDoc.flag === 'VSC') {\n        return {\n            ...base,\n            mode: 'virtual-safety-car',\n            speedMultiplier: 0.55,\n            overtakingAllowed: false,\n            virtualSafetyCar: true\n        };\n    }\n    if (flagDoc.flag === 'CHECKERED') {\n        return {\n            ...base,\n            mode: 'finish',\n            speedMultiplier: 0.8,\n            finish: true\n        };\n    }\n\n    return base;\n}\n\nconst envelope = msg.payload || {};\nconst source = envelope.payload || {};\nconst raceId = asInteger(source.raceId != null ? source.raceId : envelope.raceId);\nconst flag = typeof source.flag === 'string' ? source.flag.toUpperCase() : '';\nconst timestamp = isoTimestamp(source.timestamp || envelope.timestamp);\nconst active = source.active;\nlet sector = source.sector == null ? null : asInteger(source.sector);\n\nif (!raceId) return fail('invalid raceId', { raceId: source.raceId || envelope.raceId });\nif (!ALLOWED_FLAGS[flag]) return fail('invalid flag', { flag: source.flag });\nif (typeof active !== 'boolean') return fail('invalid flag active state', { active });\nif (!timestamp) return fail('invalid flag timestamp', { timestamp: source.timestamp || envelope.timestamp });\nif (flag === 'YELLOW' && sector != null && (sector < 1 || sector > 3)) {\n    return fail('invalid yellow sector', { sector: source.sector });\n}\nif (flag !== 'YELLOW') sector = null;\n\nconst flagDoc = {\n    ...source,\n    timestamp,\n    raceId,\n    flag,\n    active,\n    sector,\n    reason: source.reason == null ? null : String(source.reason)\n};\nconst effects = buildEffects(flagDoc);\nconst raceKey = 'race.' + raceId;\n\nflow.set(raceKey + '.flag', flagDoc);\nflow.set(raceKey + '.raceEffects', effects);\nrememberRaceId(raceId);\n\nconst normalizedEnvelope = {\n    kind: 'flag',\n    raceId,\n    teamId: null,\n    carId: null,\n    topic: envelope.topic || msg.topic,\n    timestamp,\n    receivedAt: envelope.receivedAt || new Date().toISOString(),\n    payload: flagDoc\n};\n\nconst dashboardMsg = {\n    ...msg,\n    kind: 'flag',\n    dashboardType: 'race-control',\n    dashboardEffects: effects,\n    payload: normalizedEnvelope,\n    doc: normalizedEnvelope\n};\nconst mongoMsg = {\n    ...msg,\n    kind: 'flag',\n    payload: normalizedEnvelope,\n    doc: normalizedEnvelope\n};\nconst effectMsg = {\n    topic: 'race-control/effects',\n    payload: {\n        type: 'race-effect',\n        timestamp,\n        raceId,\n        flag: flagDoc,\n        effects\n    }\n};\n\nnode.status({ fill: 'green', shape: 'dot', text: flag + ' race ' + raceId });\nreturn [dashboardMsg, mongoMsg, effectMsg, null];",
-    "outputs": 4,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 300,
-    "y": 180,
+    "name": "",
+    "x": 340,
+    "y": 200,
     "wires": [
       [
         "f1932dd76de281ce"
@@ -1038,8 +1387,8 @@
     "targetType": "msg",
     "statusVal": "",
     "statusType": "auto",
-    "x": 660,
-    "y": 180,
+    "x": 620,
+    "y": 260,
     "wires": []
   },
   {
@@ -1055,8 +1404,8 @@
     "targetType": "msg",
     "statusVal": "payload.error",
     "statusType": "auto",
-    "x": 600,
-    "y": 240,
+    "x": 620,
+    "y": 320,
     "wires": []
   },
   {
@@ -1068,8 +1417,8 @@
     "links": [
       "ad6005173427317b"
     ],
-    "x": 535,
-    "y": 160,
+    "x": 620,
+    "y": 200,
     "wires": []
   },
   {
@@ -1089,26 +1438,13 @@
     "name": "Catch Race Control errors",
     "scope": null,
     "uncaught": false,
-    "x": 250,
-    "y": 360,
+    "x": 200,
+    "y": 460,
     "wires": [
       [
-        "9a3a4ca87f9356a4"
+        "sf-err-sink-dcada6f6"
       ]
     ]
-  },
-  {
-    "id": "9a3a4ca87f9356a4",
-    "type": "link out",
-    "z": "dcada6f61439eccd",
-    "name": "OUT - Race Control errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 425,
-    "y": 360,
-    "wires": []
   },
   {
     "id": "af67f8d91f259634",
@@ -1143,8 +1479,8 @@
     "rap": true,
     "rh": 0,
     "inputs": 0,
-    "x": 100,
-    "y": 380,
+    "x": 80,
+    "y": 400,
     "wires": [
       [
         "fn-decrypt-secure-flag"
@@ -1165,8 +1501,8 @@
     "correl": "",
     "expiry": "",
     "broker": "mqtt-broker-config",
-    "x": 550,
-    "y": 360,
+    "x": 540,
+    "y": 380,
     "wires": []
   },
   {
@@ -1182,8 +1518,8 @@
     "targetType": "msg",
     "statusVal": "payload.error",
     "statusType": "auto",
-    "x": 560,
-    "y": 420,
+    "x": 540,
+    "y": 460,
     "wires": []
   },
   {
@@ -1194,8 +1530,8 @@
     "links": [
       "471bee7f3ff9975f"
     ],
-    "x": 115,
-    "y": 240,
+    "x": 80,
+    "y": 220,
     "wires": [
       [
         "fn-encrypt-secure-flag"
@@ -1204,18 +1540,11 @@
   },
   {
     "id": "fn-encrypt-secure-flag",
-    "type": "function",
+    "type": "subflow:sf-encrypt-secure-flag",
     "z": "c0955d3688f6f72d",
-    "name": "Encrypt secure flag",
-    "func": "const crypto = global.get('crypto');\nconst KEY_ENV = 'F1_TELEMETRY_CRYPTO_KEY_B64';\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'encrypt-secure-flag' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction keyFromEnv() {\n    const value = String(env.get(KEY_ENV) || '').trim();\n    if (!value) throw new Error(KEY_ENV + ' missing');\n    const key = Buffer.from(value, 'base64');\n    if (key.length !== 32) throw new Error(KEY_ENV + ' must decode to 32 bytes');\n    return key;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction raceIdFromTopic(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts[0] === 'f1' && parts[1] === 'simulation') {\n        const n = Number(parts[2]);\n        if (Number.isInteger(n)) return n;\n    }\n    return null;\n}\n\ntry {\n    if (!crypto) throw new Error('crypto module unavailable');\n    const payload = asObject(msg.payload);\n    const raceId = Number.isInteger(Number(payload.raceId)) ? Number(payload.raceId) : raceIdFromTopic(msg.topic);\n    if (!raceId) throw new Error('invalid raceId for secure topic');\n\n    const secureTopic = 'f1/simulation/' + raceId + '/secure/race-control/flags';\n    const iv = crypto.randomBytes(12);\n    const cipher = crypto.createCipheriv('aes-256-gcm', keyFromEnv(), iv);\n    cipher.setAAD(Buffer.from(secureTopic, 'utf8'));\n    const plaintext = Buffer.from(JSON.stringify(payload), 'utf8');\n    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);\n    const tag = cipher.getAuthTag();\n\n    msg.topic = secureTopic;\n    msg.qos = 1;\n    msg.retain = false;\n    msg.payload = {\n        iv: iv.toString('base64'),\n        ciphertext: ciphertext.toString('base64'),\n        tag: tag.toString('base64')\n    };\n    node.status({ fill: 'green', shape: 'dot', text: 'encrypted race ' + raceId });\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'encrypt failed');\n}",
-    "outputs": 2,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 290,
-    "y": 240,
+    "name": "",
+    "x": 280,
+    "y": 220,
     "wires": [
       [
         "mqtt-out-secure-flags"
@@ -1240,7 +1569,7 @@
     "expiry": "",
     "broker": "mqtt-broker-config",
     "x": 540,
-    "y": 180,
+    "y": 200,
     "wires": []
   },
   {
@@ -1252,24 +1581,17 @@
     "links": [
       "e16b8926bb534781"
     ],
-    "x": 495,
-    "y": 280,
+    "x": 540,
+    "y": 260,
     "wires": []
   },
   {
     "id": "fn-decrypt-secure-flag",
-    "type": "function",
+    "type": "subflow:sf-decrypt-secure-flag",
     "z": "c0955d3688f6f72d",
-    "name": "Decrypt secure flag",
-    "func": "const crypto = global.get('crypto');\nconst KEY_ENV = 'F1_TELEMETRY_CRYPTO_KEY_B64';\n\nfunction fail(reason, details) {\n    const err = {\n        error: reason,\n        details: details || {},\n        topic: msg.topic,\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    msg.error = { message: reason, source: 'decrypt-secure-flag' };\n    msg.payload = err;\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nfunction keyFromEnv() {\n    const value = String(env.get(KEY_ENV) || '').trim();\n    if (!value) throw new Error(KEY_ENV + ' missing');\n    const key = Buffer.from(value, 'base64');\n    if (key.length !== 32) throw new Error(KEY_ENV + ' must decode to 32 bytes');\n    return key;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction b64(value, expectedLength, name) {\n    if (typeof value !== 'string' || !value) throw new Error('missing ' + name);\n    const buf = Buffer.from(value, 'base64');\n    if (expectedLength && buf.length !== expectedLength) throw new Error('invalid ' + name + ' length');\n    return buf;\n}\n\nfunction clearTopicFromSecure(topic) {\n    const parts = String(topic || '').split('/');\n    if (parts.length !== 6 || parts[0] !== 'f1' || parts[1] !== 'simulation' || parts[3] !== 'secure' || parts[4] !== 'race-control' || parts[5] !== 'flags') {\n        throw new Error('invalid secure topic');\n    }\n    const raceId = Number(parts[2]);\n    if (!Number.isInteger(raceId)) throw new Error('invalid raceId in secure topic');\n    return 'f1/simulation/' + raceId + '/race-control/flags';\n}\n\ntry {\n    if (!crypto) throw new Error('crypto module unavailable');\n    const secureTopic = msg.topic;\n    const clearTopic = clearTopicFromSecure(secureTopic);\n    const envelope = asObject(msg.payload);\n    const iv = b64(envelope.iv, 12, 'iv');\n    const tag = b64(envelope.tag, 16, 'tag');\n    const ciphertext = b64(envelope.ciphertext, 0, 'ciphertext');\n\n    const decipher = crypto.createDecipheriv('aes-256-gcm', keyFromEnv(), iv);\n    decipher.setAAD(Buffer.from(secureTopic, 'utf8'));\n    decipher.setAuthTag(tag);\n    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');\n\n    msg.topic = clearTopic;\n    msg.qos = 1;\n    msg.retain = true;\n    msg.secure = { decrypted: true, sourceTopic: secureTopic };\n    msg.payload = JSON.parse(plaintext);\n    node.status({ fill: 'green', shape: 'dot', text: 'decrypted ' + clearTopic });\n    return [msg, null];\n} catch (err) {\n    return fail(err.message || 'decrypt failed');\n}",
-    "outputs": 2,
-    "timeout": 0,
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 330,
-    "y": 380,
+    "name": "",
+    "x": 320,
+    "y": 400,
     "wires": [
       [
         "mqtt-out-dashboard-flags"
@@ -1286,26 +1608,13 @@
     "name": "Catch Security errors",
     "scope": null,
     "uncaught": false,
-    "x": 160,
-    "y": 540,
+    "x": 140,
+    "y": 560,
     "wires": [
       [
-        "3b7d89d16e1f7c24"
+        "sf-err-sink-c0955d36"
       ]
     ]
-  },
-  {
-    "id": "3b7d89d16e1f7c24",
-    "type": "link out",
-    "z": "c0955d3688f6f72d",
-    "name": "OUT - Security errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 325,
-    "y": 540,
-    "wires": []
   },
   {
     "id": "85955d9d96f2d8e0",
@@ -1358,7 +1667,7 @@
     "type": "function",
     "z": "e0f50527daf8149a",
     "name": "Batch telemetry docs",
-    "func": "const MAX_BATCH = 50;\nlet batch = context.get('telemetryBatch') || [];\n\nfunction flush(reason) {\n    if (batch.length === 0) {\n        node.status({ fill: 'grey', shape: 'ring', text: 'empty batch' });\n        return null;\n    }\n    const payload = batch;\n    batch = [];\n    context.set('telemetryBatch', batch);\n    msg.payload = payload;\n    msg.batchSize = payload.length;\n    msg.mongoCollection = 'telemetry';\n    node.status({ fill: 'green', shape: 'dot', text: 'flush ' + payload.length + ' telemetry docs (' + reason + ')' });\n    return msg;\n}\n\nif (msg.flushTelemetry === true) {\n    return flush('timer');\n}\n\nif (!msg.payload || typeof msg.payload !== 'object') {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'invalid telemetry doc' });\n    return null;\n}\n\nbatch.push(msg.payload);\nif (batch.length >= MAX_BATCH) {\n    return flush('size');\n}\n\ncontext.set('telemetryBatch', batch);\nreturn null;",
+    "func": "const MAX_BATCH = 50;\nlet batch = context.get('telemetryBatch') || [];\n\nfunction normalizeDoc(doc) {\n    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return null;\n    const timestamp = doc.timestamp instanceof Date ? doc.timestamp : new Date(doc.timestamp);\n    if (Number.isNaN(timestamp.getTime())) return null;\n    return { ...doc, timestamp };\n}\n\nfunction flush(reason) {\n    if (batch.length === 0) {\n        node.status({ fill: 'grey', shape: 'ring', text: 'empty batch' });\n        return null;\n    }\n    const payload = batch.map(normalizeDoc).filter(Boolean);\n    const dropped = batch.length - payload.length;\n    batch = [];\n    context.set('telemetryBatch', batch);\n    if (payload.length === 0) {\n        node.status({ fill: 'yellow', shape: 'ring', text: 'dropped invalid telemetry batch' });\n        return null;\n    }\n    msg.payload = payload;\n    msg.batchSize = payload.length;\n    msg.mongoCollection = 'telemetry';\n    node.status({ fill: dropped ? 'yellow' : 'green', shape: 'dot', text: 'flush ' + payload.length + ' telemetry docs (' + reason + ')' + (dropped ? ', dropped ' + dropped : '') });\n    return msg;\n}\n\nif (msg.flushTelemetry === true) {\n    return flush('timer');\n}\n\nconst doc = normalizeDoc(msg.payload);\nif (!doc) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'invalid telemetry doc' });\n    return null;\n}\n\nbatch.push(doc);\nif (batch.length >= MAX_BATCH) {\n    return flush('size');\n}\n\ncontext.set('telemetryBatch', batch);\nreturn null;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -1639,22 +1948,9 @@
     "y": 920,
     "wires": [
       [
-        "9117cb0adb1b4d4b"
+        "sf-err-sink-e0f50527"
       ]
     ]
-  },
-  {
-    "id": "9117cb0adb1b4d4b",
-    "type": "link out",
-    "z": "e0f50527daf8149a",
-    "name": "OUT - MongoDB errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 535,
-    "y": 920,
-    "wires": []
   },
   {
     "id": "166ef81ffb310358",
@@ -1671,7 +1967,7 @@
     "type": "function",
     "z": "e0c5cc1472c1dec2",
     "name": "Build dashboard envelope",
-    "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') {\n        try {\n            return JSON.parse(value);\n        } catch (err) {\n            return null;\n        }\n    }\n    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;\n}\n\nfunction resolveType(topic, candidate) {\n    if (msg.dashboardType) return msg.dashboardType;\n    if (candidate && candidate.kind) return candidate.kind === 'flag' ? 'race-control' : candidate.kind;\n\n    const text = String(topic || '');\n    if (text.includes('/race-control/classification')) return 'classification';\n    if (text.includes('/race-control/flags')) return 'race-control';\n    if (text.endsWith('/state')) return 'state';\n    if (text.endsWith('/events')) return 'event';\n\n    return 'message';\n}\n\nfunction rememberRaceId(raceId) {\n    if (!raceId) return;\n\n    const raceIds = flow.get('raceIds') || [];\n    if (!raceIds.includes(raceId)) {\n        raceIds.push(raceId);\n        flow.set('raceIds', raceIds);\n    }\n}\n\nfunction cacheDashboardState(type, raceId, data, frame) {\n    if (!raceId) return;\n\n    rememberRaceId(raceId);\n\n    const raceKey = 'race.' + raceId;\n\n    if (type === 'race-control') {\n        const flagDoc = {\n            ...data,\n            raceId,\n            timestamp: data.timestamp || frame.timestamp,\n            receivedAt: frame.receivedAt\n        };\n\n        flow.set(raceKey + '.flag', flagDoc);\n\n        if (frame.effects && typeof frame.effects === 'object') {\n            flow.set(raceKey + '.raceEffects', frame.effects);\n        }\n\n        return;\n    }\n\n    if (type === 'classification') {\n        const classification = {\n            ...data,\n            raceId,\n            timestamp: data.timestamp || frame.timestamp,\n            receivedAt: frame.receivedAt\n        };\n\n        flow.set(raceKey + '.lastClassification', classification);\n    }\n}\n\nconst topic = msg.topic || null;\nconst candidate = asObject(msg.payload) || {};\nconst data = candidate.payload && typeof candidate.payload === 'object' ? candidate.payload : candidate;\nconst type = resolveType(topic, candidate);\nconst raceId = asInteger(candidate.raceId != null ? candidate.raceId : data.raceId);\nconst carId = asInteger(candidate.carId != null ? candidate.carId : data.carId);\n\nconst frame = {\n    type,\n    timestamp: candidate.timestamp || data.timestamp || new Date().toISOString(),\n    receivedAt: candidate.receivedAt || new Date().toISOString(),\n    raceId,\n    teamId: candidate.teamId || data.teamId || null,\n    carId,\n    topic,\n    data\n};\n\nif (msg.dashboardEffects) frame.effects = msg.dashboardEffects;\n\ncacheDashboardState(type, raceId, data, frame);\n\nmsg.topic = 'dashboard/' + type;\nmsg.payload = JSON.stringify(frame);\nnode.status({ fill: 'blue', shape: 'dot', text: type + (raceId ? ' race ' + raceId : '') });\nreturn msg;",
+    "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction asObject(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') {\n        try {\n            return JSON.parse(value);\n        } catch (err) {\n            return null;\n        }\n    }\n    return value && typeof value === 'object' && !Array.isArray(value) ? value : null;\n}\n\nfunction resolveType(topic, candidate) {\n    if (msg.dashboardType) return msg.dashboardType;\n    if (candidate && candidate.kind) return candidate.kind === 'flag' ? 'race-control' : candidate.kind;\n\n    const text = String(topic || '');\n    if (text.includes('/race-control/classification')) return 'classification';\n    if (text.includes('/race-control/flags')) return 'race-control';\n    if (text.endsWith('/state')) return 'state';\n    if (text.endsWith('/events')) return 'event';\n\n    return 'message';\n}\n\nfunction rememberRaceId(raceId) {\n    if (!raceId) return;\n\n    const raceIds = flow.get('raceIds') || [];\n    if (!raceIds.includes(raceId)) {\n        raceIds.push(raceId);\n        flow.set('raceIds', raceIds);\n    }\n}\n\nfunction isRaceStart(type, data) {\n    return type === 'race-control'\n        && data\n        && String(data.flag || '').toUpperCase() === 'GREEN'\n        && data.active !== false\n        && data.reason === 'race-start';\n}\n\nfunction resetRaceCache(raceKey) {\n    flow.set(raceKey + '.eventLog', []);\n    flow.set(raceKey + '.cars', {});\n    flow.set(raceKey + '.states', {});\n    flow.set(raceKey + '.lastClassification', null);\n}\n\nfunction cacheDashboardState(type, raceId, data, frame) {\n    if (!raceId) return;\n\n    rememberRaceId(raceId);\n\n    const raceKey = 'race.' + raceId;\n    const logKey = raceKey + '.eventLog';\n\n    if (isRaceStart(type, data)) {\n        resetRaceCache(raceKey);\n    }\n\n    if (type === 'race-control') {\n        const flagDoc = {\n            ...data,\n            raceId,\n            timestamp: data.timestamp || frame.timestamp,\n            receivedAt: frame.receivedAt\n        };\n\n        flow.set(raceKey + '.flag', flagDoc);\n\n        if (frame.effects && typeof frame.effects === 'object') {\n            flow.set(raceKey + '.raceEffects', frame.effects);\n        }\n    }\n\n    if (type === 'classification') {\n        const classification = {\n            ...data,\n            raceId,\n            timestamp: data.timestamp || frame.timestamp,\n            receivedAt: frame.receivedAt\n        };\n\n        flow.set(raceKey + '.lastClassification', classification);\n    }\n    if (type === 'event' || type === 'race-control') {\n        const eventLog = flow.get(logKey) || [];\n        eventLog.push({ ...frame });\n        if (eventLog.length > 200) eventLog.shift();\n        flow.set(logKey, eventLog);\n    }\n\n}\n\nconst topic = msg.topic || null;\nconst candidate = asObject(msg.payload) || {};\nconst data = candidate.payload && typeof candidate.payload === 'object' ? candidate.payload : candidate;\nconst type = resolveType(topic, candidate);\nconst raceId = asInteger(candidate.raceId != null ? candidate.raceId : data.raceId);\nconst carId = asInteger(candidate.carId != null ? candidate.carId : data.carId);\n\nconst frame = {\n    type,\n    timestamp: candidate.timestamp || data.timestamp || new Date().toISOString(),\n    receivedAt: candidate.receivedAt || new Date().toISOString(),\n    raceId,\n    teamId: candidate.teamId || data.teamId || null,\n    carId,\n    topic,\n    data\n};\n\nif (msg.dashboardEffects) frame.effects = msg.dashboardEffects;\n\ncacheDashboardState(type, raceId, data, frame);\n\nmsg.topic = 'dashboard/' + type;\nmsg.payload = JSON.stringify(frame);\nnode.status({ fill: 'blue', shape: 'dot', text: type + (raceId ? ' race ' + raceId : '') });\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -1757,7 +2053,7 @@
     "type": "function",
     "z": "e0c5cc1472c1dec2",
     "name": "Build dashboard snapshot",
-    "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction sortCars(a, b) {\n    const progressA = (Number(a.lap) || 0) + (Number(a.trackPos) || 0);\n    const progressB = (Number(b.lap) || 0) + (Number(b.trackPos) || 0);\n    return progressB - progressA || Number(a.carId) - Number(b.carId);\n}\n\nconst nowIso = new Date().toISOString();\nconst raceIds = (flow.get('raceIds') || [])\n    .map(asInteger)\n    .filter((raceId) => raceId != null)\n    .sort((a, b) => a - b);\nconst races = [];\n\nfor (const raceId of raceIds) {\n    const raceKey = 'race.' + raceId;\n    const carsById = flow.get(raceKey + '.cars') || {};\n    const statesById = flow.get(raceKey + '.states') || {};\n    const cars = Object.values(carsById).map((car) => {\n        const state = statesById[String(car.carId)] || {};\n        return {\n            raceId: car.raceId,\n            teamId: car.teamId,\n            carId: car.carId,\n            lap: car.lap,\n            trackPos: car.trackPos,\n            speed: car.speed,\n            avgSpeedKmh: car.avgSpeedKmh,\n            rpm: car.rpm,\n            gear: car.gear,\n            throttle: car.throttle,\n            brake: car.brake,\n            drs: car.drs,\n            tireTemp: car.tireTemp,\n            tireWear: car.tireWear,\n            fuel: car.fuel,\n            compound: car.compound,\n            state: state.state || car.state,\n            previousState: state.previousState,\n            reason: state.reason,\n            timestamp: car.timestamp,\n            receivedAt: car.receivedAt\n        };\n    }).sort(sortCars);\n\n    const flag = flow.get(raceKey + '.flag') || null;\n    const effects = flow.get(raceKey + '.raceEffects') || null;\n    const classification = flow.get(raceKey + '.lastClassification') || null;\n\n    if (cars.length === 0 && !flag && !classification) continue;\n\n    races.push({\n        raceId,\n        flag,\n        effects,\n        classification,\n        cars\n    });\n}\n\nif (races.length === 0) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'waiting data' });\n    return null;\n}\n\nmsg.topic = 'dashboard/snapshot';\nmsg.payload = JSON.stringify({\n    type: 'snapshot',\n    timestamp: nowIso,\n    races\n});\nnode.status({ fill: 'blue', shape: 'dot', text: 'snapshot ' + races.length + ' race(s)' });\nreturn msg;",
+    "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction sortCars(a, b) {\n    const progressA = (Number(a.lap) || 0) + (Number(a.trackPos) || 0);\n    const progressB = (Number(b.lap) || 0) + (Number(b.trackPos) || 0);\n    return progressB - progressA || Number(a.carId) - Number(b.carId);\n}\n\nconst nowIso = new Date().toISOString();\nconst raceIds = (flow.get('raceIds') || [])\n    .map(asInteger)\n    .filter((raceId) => raceId != null)\n    .sort((a, b) => a - b);\nconst races = [];\n\nfor (const raceId of raceIds) {\n    const raceKey = 'race.' + raceId;\n    const carsById = flow.get(raceKey + '.cars') || {};\n    const statesById = flow.get(raceKey + '.states') || {};\n    const cars = Object.values(carsById).map((car) => {\n        const state = statesById[String(car.carId)] || {};\n        return {\n            raceId: car.raceId,\n            teamId: car.teamId,\n            carId: car.carId,\n            lap: car.lap,\n            trackPos: car.trackPos,\n            speed: car.speed,\n            avgSpeedKmh: car.avgSpeedKmh,\n            rpm: car.rpm,\n            gear: car.gear,\n            throttle: car.throttle,\n            brake: car.brake,\n            drs: car.drs,\n            tireTemp: car.tireTemp,\n            tireWear: car.tireWear,\n            fuel: car.fuel,\n            compound: car.compound,\n            state: state.state || car.state,\n            previousState: state.previousState,\n            reason: state.reason,\n            timestamp: car.timestamp,\n            receivedAt: car.receivedAt\n        };\n    }).sort(sortCars);\n\n    const flag = flow.get(raceKey + '.flag') || null;\n    const effects = flow.get(raceKey + '.raceEffects') || null;\n    const classification = flow.get(raceKey + '.lastClassification') || null;\n    const eventLog = flow.get(raceKey + '.eventLog') || [];\n\n    if (cars.length === 0 && !flag && !classification) continue;\n\n    races.push({\n        raceId,\n        flag,\n        effects,\n        classification,\n        cars,\n        eventLog\n    });\n}\n\nif (races.length === 0) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'waiting data' });\n    return null;\n}\n\nmsg.topic = 'dashboard/snapshot';\nmsg.payload = JSON.stringify({\n    type: 'snapshot',\n    timestamp: nowIso,\n    races\n});\nnode.status({ fill: 'blue', shape: 'dot', text: 'snapshot ' + races.length + ' race(s)' });\nreturn msg;",
     "outputs": 1,
     "timeout": 0,
     "noerr": 0,
@@ -1890,6 +2186,16 @@
     ]
   },
   {
+    "id": "comment-dashboard-commands-section",
+    "type": "comment",
+    "z": "e0c5cc1472c1dec2",
+    "name": "Dashboard command routing (WebSocket → SF parser → MQTT / secure)",
+    "info": "SF - Dashboard Command Parser receives raw WebSocket frames and routes:\nout 1 → flag command → secure encryption → MQTT publish\nout 2 → start-scenario → MQTT publish\nout 3 → stop-race → MQTT publish\nout 4 → errors → debug",
+    "x": 260,
+    "y": 620,
+    "wires": []
+  },
+  {
     "id": "ws-in-dashboard-commands",
     "type": "websocket in",
     "z": "e0c5cc1472c1dec2",
@@ -1900,16 +2206,36 @@
     "y": 700,
     "wires": [
       [
-        "fn-dashboard-race-control-command",
-        "fn-dashboard-start-scenario-command",
-        "fn-dashboard-stop-race-command"
+        "sf-dashboard-command-parser-instance"
+      ]
+    ]
+  },
+  {
+    "id": "sf-dashboard-command-parser-instance",
+    "type": "subflow:sf-dashboard-command-parser",
+    "z": "e0c5cc1472c1dec2",
+    "name": "",
+    "x": 400,
+    "y": 700,
+    "wires": [
+      [
+        "471bee7f3ff9975f"
+      ],
+      [
+        "mqtt-out-dashboard-start"
+      ],
+      [
+        "mqtt-out-dashboard-stop"
+      ],
+      [
+        "debug-dashboard-command-errors"
       ]
     ]
   },
   {
     "id": "fn-dashboard-race-control-command",
     "type": "function",
-    "z": "e0c5cc1472c1dec2",
+    "z": "sf-dashboard-command-parser",
     "name": "Dashboard flag command",
     "func": "const ALLOWED_FLAGS = {\n    GREEN: true,\n    YELLOW: true,\n    RED: true,\n    CHECKERED: true,\n    SC: true,\n    VSC: true\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parsePayload(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction fail(reason, details) {\n    const errorMsg = {\n        topic: 'dashboard/command/error',\n        payload: {\n            error: reason,\n            details: details || {},\n            receivedAt: new Date().toISOString(),\n            originalPayload: msg.payload\n        }\n    };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, errorMsg];\n}\n\nlet input;\ntry {\n    input = parsePayload(msg.payload);\n} catch (err) {\n    return fail(err.message || 'invalid dashboard command');\n}\n\nconst command = input.data && typeof input.data === 'object' ? input.data : input;\nconst type = input.type || command.type || command.command || null;\nif (!type && !command.flag) {\n    return [null, null];\n}\nif (type && !['race-control', 'flag', 'set-flag'].includes(type)) {\n    return [null, null];\n}\n\nconst raceId = asInteger(command.raceId != null ? command.raceId : input.raceId);\nconst flag = typeof command.flag === 'string' ? command.flag.toUpperCase() : '';\nconst active = command.active == null ? true : command.active;\nlet sector = command.sector == null ? null : asInteger(command.sector);\n\nif (!raceId) return fail('invalid command raceId', { raceId: command.raceId || input.raceId });\nif (!ALLOWED_FLAGS[flag]) return fail('invalid command flag', { flag: command.flag });\nif (typeof active !== 'boolean') return fail('invalid command active state', { active });\nif (flag === 'YELLOW' && sector != null && (sector < 1 || sector > 3)) {\n    return fail('invalid command yellow sector', { sector: command.sector });\n}\nif (flag !== 'YELLOW') sector = null;\n\nmsg.topic = 'f1/simulation/' + raceId + '/race-control/flags';\nmsg.qos = 1;\nmsg.retain = true;\nmsg.payload = {\n    timestamp: command.timestamp || new Date().toISOString(),\n    raceId,\n    flag,\n    active,\n    sector,\n    reason: command.reason == null ? 'dashboard-manual' : String(command.reason)\n};\n\nnode.status({ fill: 'green', shape: 'dot', text: 'publish ' + flag + ' race ' + raceId });\nreturn [msg, null];",
     "outputs": 2,
@@ -1918,21 +2244,17 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 450,
-    "y": 740,
+    "x": 300,
+    "y": 80,
     "wires": [
-      [
-        "471bee7f3ff9975f"
-      ],
-      [
-        "debug-dashboard-command-errors"
-      ]
+      [],
+      []
     ]
   },
   {
     "id": "fn-dashboard-start-scenario-command",
     "type": "function",
-    "z": "e0c5cc1472c1dec2",
+    "z": "sf-dashboard-command-parser",
     "name": "Dashboard start scenario",
     "func": "const ALLOWED_SCENARIOS = {\n    'red-flag': true,\n    balanced: true\n};\n\nfunction asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parsePayload(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction fail(reason, details) {\n    msg.topic = 'dashboard/command/error';\n    msg.payload = {\n        error: reason,\n        details: details || {},\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nlet input;\ntry {\n    input = parsePayload(msg.payload);\n} catch (err) {\n    return fail(err.message || 'invalid dashboard command');\n}\n\nconst command = input.data && typeof input.data === 'object' ? input.data : input;\nconst type = input.type || command.type || command.command || null;\nif (type !== 'start-scenario') return [null, null];\n\nconst raceId = asInteger(command.raceId != null ? command.raceId : input.raceId);\nconst scenario = String(command.scenario || command.scenarioId || '').trim().toLowerCase();\n\nif (!raceId) return fail('invalid scenario raceId', { raceId: command.raceId || input.raceId });\nif (!ALLOWED_SCENARIOS[scenario]) return fail('invalid scenario', { scenario });\n\nmsg.topic = 'f1/simulation/' + raceId + '/control/start';\nmsg.qos = 1;\nmsg.retain = false;\nmsg.payload = {\n    timestamp: command.timestamp || new Date().toISOString(),\n    raceId,\n    scenario,\n    source: 'dashboard'\n};\n\nnode.status({ fill: 'green', shape: 'dot', text: 'start ' + scenario + ' race ' + raceId });\nreturn [msg, null];",
     "outputs": 2,
@@ -1941,15 +2263,11 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 430,
-    "y": 640,
+    "x": 300,
+    "y": 200,
     "wires": [
-      [
-        "mqtt-out-dashboard-start"
-      ],
-      [
-        "debug-dashboard-command-errors"
-      ]
+      [],
+      []
     ]
   },
   {
@@ -1965,8 +2283,8 @@
     "targetType": "msg",
     "statusVal": "payload.error",
     "statusType": "auto",
-    "x": 820,
-    "y": 680,
+    "x": 860,
+    "y": 720,
     "wires": []
   },
   {
@@ -1983,8 +2301,8 @@
     "correl": "",
     "expiry": "",
     "broker": "mqtt-broker-config",
-    "x": 720,
-    "y": 560,
+    "x": 680,
+    "y": 700,
     "wires": []
   },
   {
@@ -1996,8 +2314,8 @@
     "links": [
       "bdab490d1338878a"
     ],
-    "x": 605,
-    "y": 700,
+    "x": 680,
+    "y": 660,
     "wires": []
   },
   {
@@ -2008,8 +2326,8 @@
     "links": [
       "16cfcc539d76dc17"
     ],
-    "x": 645,
-    "y": 640,
+    "x": 480,
+    "y": 780,
     "wires": [
       [
         "debug-dashboard-command-errors"
@@ -2027,22 +2345,9 @@
     "y": 860,
     "wires": [
       [
-        "639fd0194ca8f350"
+        "sf-err-sink-e0c5cc14"
       ]
     ]
-  },
-  {
-    "id": "639fd0194ca8f350",
-    "type": "link out",
-    "z": "e0c5cc1472c1dec2",
-    "name": "OUT - Dashboard errors",
-    "mode": "link",
-    "links": [
-      "e057fadf69953eab"
-    ],
-    "x": 295,
-    "y": 860,
-    "wires": []
   },
   {
     "id": "f019bec796155870",
@@ -2134,7 +2439,7 @@
   {
     "id": "fn-dashboard-stop-race-command",
     "type": "function",
-    "z": "e0c5cc1472c1dec2",
+    "z": "sf-dashboard-command-parser",
     "name": "Dashboard stop race",
     "func": "function asInteger(value) {\n    const n = Number(value);\n    return Number.isInteger(n) ? n : null;\n}\n\nfunction parsePayload(value) {\n    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) value = value.toString('utf8');\n    if (typeof value === 'string') return JSON.parse(value);\n    if (value && typeof value === 'object' && !Array.isArray(value)) return value;\n    throw new Error('payload is not an object');\n}\n\nfunction fail(reason, details) {\n    msg.topic = 'dashboard/command/error';\n    msg.payload = {\n        error: reason,\n        details: details || {},\n        receivedAt: new Date().toISOString(),\n        originalPayload: msg.payload\n    };\n    node.status({ fill: 'red', shape: 'ring', text: reason });\n    return [null, msg];\n}\n\nlet input;\ntry {\n    input = parsePayload(msg.payload);\n} catch (err) {\n    return fail(err.message || 'invalid dashboard command');\n}\n\nconst command = input.data && typeof input.data === 'object' ? input.data : input;\nconst type = input.type || command.type || command.command || null;\nif (type !== 'stop-race') return [null, null];\n\nconst raceId = asInteger(command.raceId != null ? command.raceId : input.raceId);\nif (!raceId) return fail('invalid stop-race raceId', { raceId: command.raceId || input.raceId });\n\nmsg.topic = 'f1/simulation/' + raceId + '/control/stop';\nmsg.qos = 1;\nmsg.retain = false;\nmsg.payload = {\n    timestamp: command.timestamp || new Date().toISOString(),\n    raceId,\n    source: 'dashboard'\n};\n\nnode.status({ fill: 'yellow', shape: 'dot', text: 'stop race ' + raceId });\nreturn [msg, null];",
     "outputs": 2,
@@ -2143,11 +2448,11 @@
     "initialize": "",
     "finalize": "",
     "libs": [],
-    "x": 430,
-    "y": 760,
+    "x": 300,
+    "y": 320,
     "wires": [
-      ["mqtt-out-dashboard-stop"],
-      ["debug-dashboard-command-errors"]
+      [],
+      []
     ]
   },
   {
@@ -2164,30 +2469,71 @@
     "correl": "",
     "expiry": "",
     "broker": "mqtt-broker-config",
-    "x": 700,
-    "y": 760,
+    "x": 680,
+    "y": 740,
     "wires": []
   },
   {
-    "id": "e057fadf69953eab",
-    "type": "link in",
-    "z": "12882076995ab3d0",
-    "name": "IN - Flow errors",
-    "links": [
-      "eee84d8f12461430",
-      "7822290c2693d687",
-      "60298cd605e7d5ad",
-      "9a3a4ca87f9356a4",
-      "9117cb0adb1b4d4b",
-      "639fd0194ca8f350",
-      "3b7d89d16e1f7c24"
-    ],
-    "x": 185,
-    "y": 180,
-    "wires": [
-      [
-        "45a792e3dc997979"
-      ]
-    ]
+    "id": "sf-err-sink-95b217a0",
+    "type": "subflow:9028fe31185ea594",
+    "z": "95b217a05ca849c9",
+    "name": "SF - Flow Error Sink",
+    "x": 450,
+    "y": 540,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-2ab2d1d2",
+    "type": "subflow:9028fe31185ea594",
+    "z": "2ab2d1d26ec6f639",
+    "name": "SF - Flow Error Sink",
+    "x": 450,
+    "y": 680,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-d05ff41b",
+    "type": "subflow:9028fe31185ea594",
+    "z": "d05ff41b021f747d",
+    "name": "SF - Flow Error Sink",
+    "x": 340,
+    "y": 860,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-dcada6f6",
+    "type": "subflow:9028fe31185ea594",
+    "z": "dcada6f61439eccd",
+    "name": "SF - Flow Error Sink",
+    "x": 440,
+    "y": 460,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-c0955d36",
+    "type": "subflow:9028fe31185ea594",
+    "z": "c0955d3688f6f72d",
+    "name": "SF - Flow Error Sink",
+    "x": 380,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-e0f50527",
+    "type": "subflow:9028fe31185ea594",
+    "z": "e0f50527daf8149a",
+    "name": "SF - Flow Error Sink",
+    "x": 600,
+    "y": 920,
+    "wires": []
+  },
+  {
+    "id": "sf-err-sink-e0c5cc14",
+    "type": "subflow:9028fe31185ea594",
+    "z": "e0c5cc1472c1dec2",
+    "name": "SF - Flow Error Sink",
+    "x": 380,
+    "y": 860,
+    "wires": []
   }
 ]

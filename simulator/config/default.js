@@ -1,8 +1,8 @@
-// Parametri di configurazione del simulatore.
+// Simulator configuration parameters.
 //
-// I valori possono essere sovrascritti da variabili d'ambiente (vedi §9.1
-// dell'architettura). Qui si definiscono i default ragionevoli per una
-// 5-lap Monza test race with 10 cars.
+// Values can be overridden by environment variables. 
+// Reasonable defaults are defined here for a
+// 5-lap test race at Monza with 10 cars.
 
 function intEnvInRange(name, fallback, min, max) {
   const value = parseInt(process.env[name], 10);
@@ -14,13 +14,13 @@ function intEnvInRange(name, fallback, min, max) {
 
 const config = Object.freeze({
 
-  // --- Rete ---
+  // --- Network ---
   mqttBroker: process.env.MQTT_BROKER || 'mqtt://localhost:1883',
   mongoUrl: process.env.MONGO_URL || null,
   mongoDb: process.env.MONGO_DB || 'f1_telemetry',
   raceId: parseInt(process.env.RACE_ID, 10) || 1,
 
-  // --- Tick rate (fisica = publish) ---
+  // --- Tick rate (physics = publish) ---
   tickMs: intEnvInRange('TICK_MS', 250, 200, 500),  // 4 Hz default, clamp 2-5 Hz
 
   // --- Race ---
@@ -28,7 +28,7 @@ const config = Object.freeze({
   autoStart: process.env.AUTO_START === 'true',
   resetRaceOnStart: process.env.RESET_RACE_ON_START === 'true',
 
-  // --- Determinismo ---
+  // --- Determinism ---
   seed: process.env.SEED ? parseInt(process.env.SEED, 10) : null,
 
   // --- Logging ---
@@ -49,8 +49,8 @@ const config = Object.freeze({
   pitDurationMaxS: 3.5,
 
   // --- Tire compounds and degradation ---
-  // lifeLaps is nominal tire life; car.js derives wearPerLap = 1 / lifeLaps
-  // and applies per-car variance so pit stops are naturally staggered.
+  // lifeLaps is the nominal tire life; car.js computes wearPerLap = 1 / lifeLaps
+  // and applies per-car variance so that pit stops are naturally spread out.
   tireCompounds: {
     soft: { color: 'red', lifeLaps: 2 },
     medium: { color: 'yellow', lifeLaps: 3 },
@@ -61,43 +61,43 @@ const config = Object.freeze({
   tireWearThermalGain: 0.15,
 
   // --- Pit lane ---
-  pitEntryPos: 0.95,      // trackPos di ingresso pit-lane
-  pitBoxPos: 0.985,       // estimated pit box trackPos in the pit lane
-  pitExitPos: 0.04,       // trackPos di uscita pit-lane (giro successivo)
+  pitEntryPos: 0.95,      // trackPos at pit-lane entry
+  pitBoxPos: 0.985,       // estimated pit box position in pit lane
+  pitExitPos: 0.04,       // trackPos at pit-lane exit (next lap)
   pitLaneSpeedKmh: 80,    // pit-lane speed limit
-  refuellingAllowed: false, // modern F1 pit stops are tire-service only
+  refuellingAllowed: false, // modern F1 pit stops are tyre changes only
   tireResetTempC: 90,     // tire temperature after pit stop
 
-  // --- Settori Monza ---
+  // --- Monza sectors ---
   sectors: [
     { id: 1, start: 0.000, end: 0.330, label: 'Prima Variante / Roggia' },
     { id: 2, start: 0.330, end: 0.660, label: 'Lesmo / Serraglio' },
     { id: 3, start: 0.660, end: 1.000, label: 'Ascari / Parabolica' },
   ],
 
-  // --- DRS zones (Monza: due zone, attivazione dopo detection point) ---
-  // Zone 1: rettifilo principale, dal rilascio Parabolica alla staccata Prima Variante
-  // Zone 2: rettilineo Roggia–Lesmo, dal rilascio Roggia alla staccata Lesmo 1
+  // --- DRS zones (Monza: two zones, activated after detection point) ---
+  // Zone 1: main straight, from Parabolica exit to Prima Variante braking point
+  // Zone 2: Roggia–Lesmo straight, from Roggia exit to Lesmo 1 braking point
   drsZones: [
-    { start: 0.000, end: 0.089 },   // main straight — prima metà (dopo start/finish)
-    { start: 0.885, end: 1.000 },   // main straight — dal rilascio Parabolica alla linea
-    { start: 0.340, end: 0.415 },   // rettilineo Roggia → Lesmo 1
+    { start: 0.000, end: 0.089 },   // main straight — first half (after start/finish)
+    { start: 0.885, end: 1.000 },   // main straight — from Parabolica exit to the line
+    { start: 0.340, end: 0.415 },   // Roggia → Lesmo 1 straight
   ],
 
-  // --- Variabilita' e randomness ---
-  // Jitter su RPM (±200 rpm random per tick)
+  // --- Variability and randomness ---
+  // RPM jitter (±200 rpm random per tick)
   rpmJitterRange: 200,
-  // Target speed jitter (±3 km/h per car, fixed per session)
+  // Target speed jitter (±3 km/h per car, fixed for the session)
   speedJitterKmh: 3,
-  // Driver performance variance by carId (small fixed multiplier per car)
+  // Driver performance variance per carId (small fixed multiplier per car)
   driverPerformanceVariancePct: 0.006,
-  // Initial fuel jitter per car (±2 kg) -> effective range 36-40 kg
+  // Initial fuel jitter per car (±2 kg) → effective range 36-40 kg
   initialFuelJitterKg: 2,
   // Tire temperature jitter (left/right asymmetry, ±1.5 C)
   tireTempJitterC: 1.5,
-  // Jitter fuel rate (±5%)
+  // Fuel consumption jitter (±5%)
   fuelRateJitterPct: 0.05,
-  // Differenziale di prestazione per team (fattore moltiplicativo su target speed)
+  // Team performance differential (multiplicative factor on target speed)
   // Simulates that some cars are intrinsically faster
   teamPerformanceFactor: {
     redbull: 1.030,
@@ -123,14 +123,14 @@ const config = Object.freeze({
   virtualSafetyCarSpeedKmh: 120,
   virtualSafetyCarMinGapM: 5,
 
-  // --- Race Control trigger (Fase 4) ---
+  // --- Race Control triggers (Phase 4) ---
   raceControlTriggers: {
-    retirementScProbability: 0,      // no automatic physical Safety Car in 5-lap simulation
-    multiFaultVscThreshold: 1,       // any car in FAULT on track -> VSC
-    massIncidentThreshold: 3,        // N cars in FAULT+RETIRED -> RED FLAG
-    scMinDurationS: 30,              // durata minima SC prima di clearance
-    vscMinDurationS: 20,             // durata minima VSC prima di clearance
-    yellowMinDurationS: 10,          // durata minima YELLOW prima di clearance
+    retirementScProbability: 0,      // no automatic Safety Car in the 5-lap simulation
+    multiFaultVscThreshold: 1,       // any car in FAULT on track → VSC
+    massIncidentThreshold: 3,        // N cars in FAULT+RETIRED → RED FLAG
+    scMinDurationS: 30,              // minimum SC duration before clearance
+    vscMinDurationS: 20,             // minimum VSC duration before clearance
+    yellowMinDurationS: 10,          // minimum YELLOW duration before clearance
   },
 });
 

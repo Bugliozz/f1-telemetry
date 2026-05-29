@@ -1,10 +1,10 @@
-// PRNG seedabile (xorshift32) — cfr. docs/simulator-architecture.md §10.1.
+// Seedable PRNG (xorshift32) — see docs/simulator-architecture.md §10.1.
 //
-// Se `seed` e' un intero, produce una sequenza deterministica.
-// If `seed` is null/undefined, wraps `Math.random`.
+// If `seed` is an integer, produces a deterministic sequence.
+// If `seed` is null/undefined, falls back to `Math.random`.
 //
-// Ogni auto riceve la propria istanza seedata con `seed ^ carId`, in modo
-// so that the entire race is reproducible from a single seed.
+// Each car receives its own instance seeded with `seed ^ carId`, so that
+// the entire race is reproducible from a single seed.
 
 function xorshift32(initialSeed) {
   let state = (initialSeed | 0) || 1; // avoid state 0 (fixed point)
@@ -12,7 +12,7 @@ function xorshift32(initialSeed) {
     state ^= state << 13;
     state ^= state >> 17;
     state ^= state << 5;
-    // Converti a [0,1) — unsigned shift per evitare negativi
+    // Convert to [0,1) — unsigned shift to avoid negatives
     return (state >>> 0) / 4294967296;
   };
 }
