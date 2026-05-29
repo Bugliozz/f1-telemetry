@@ -1,0 +1,30 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title derived: track-position-jump
+participant "Car telemetry\n(5 Hz sample)" as TEL
+participant "SF-Detect\nTelemetry Events" as DET
+queue ".../cars/{id}/events\n(Broker, QoS1)" as B
+participant "Node-RED\ningest" as N
+database "MongoDB\nevents" as M
+participant "Dashboard" as D
+TEL -> DET : telemetry sample {lap, trackPos}
+DET -> DET : delta = (lap+trackPos) - previous
+DET -> DET : delta > 0.20 (forward jump) OR\ndelta < -0.05 (backstep),\nexcluding the lap-0 race restart
+DET -> DET : dedup window 10 s
+DET -> DET : build event{type:"fault",\ndetails:{reason:track-position-jump,\ndelta, previousLap, currentLap, ...}}
+DET -> B : republish car event (derived:true)
+B -> N : deliver
+N -> M : store event document
+N -> D : dashboard/event frame
+@enduml

@@ -4,6 +4,7 @@ import {
     state,
     on,
     connectWebSocket,
+    bindConnectionInfoPopup,
     carKey,
     teamColor,
     flagLabel,
@@ -27,7 +28,7 @@ import {
     TEAM_COLORS,
     TRACK_SECTORS,
     MAX_EVENT_LOG_ITEMS,
-} from '/js/core.js?v=20260529b';
+} from '/js/core.js?v=20260529c';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ function setConnectionStatus(label, kind) {
     if (!elements.connection) return;
     elements.connection.textContent = label;
     elements.connection.className = 'status-pill status-pill--' + kind;
+    elements.connection.setAttribute('aria-label', 'Connection status: ' + label);
 }
 
 function setSnapshotInfo(text) {
@@ -640,6 +642,7 @@ function bootstrap() {
         showContent(false);
     }
 
+    bindConnectionInfoPopup(elements.connection);
     connectWebSocket();
 }
 

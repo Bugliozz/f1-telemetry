@@ -1,0 +1,34 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title fault event
+participant "conditions.js\nevaluate()" as C
+participant "fsm.js\ntransition()" as F
+participant "Car.tick()" as CAR
+participant "MQTT\nPublisher" as P
+queue ".../cars/{id}/events\n(Broker, QoS1)" as B
+participant "Node-RED\ningest" as N
+database "MongoDB\nevents" as M
+participant "Dashboard\n(WebSocket)" as D
+CAR -> C : evaluate(RUNNING|PIT, obs)
+C -> C : tire-overheat (max>180C x3 ticks)\nOR engine-failure (rng<1e-4 per tick)
+C --> CAR : trigger = tire-overheat | engine-failure
+note over CAR : internal-error (exception in tick)\nalso forces FAULT from any state
+CAR -> F : transition(*, trigger) -> FAULT
+CAR -> CAR : onEnterFault() starts 5s diagnose timer
+CAR -> P : event{type:"fault",\ndetails:{reason}}
+P -> B : publish event
+B -> N : deliver
+N -> M : store event document
+N -> D : dashboard/event frame
+@enduml

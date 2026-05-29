@@ -1,0 +1,30 @@
+@startuml
+skinparam dpi 150
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 220
+skinparam sequence {
+  ArrowColor #2c3e50
+  LifeLineBorderColor #95a5a6
+  ParticipantBorderColor #2c3e50
+  ParticipantBackgroundColor #ecf0f1
+  ActorBackgroundColor #ecf0f1
+}
+hide footbox
+title pit-stop event
+participant "conditions.js\nevaluate()" as C
+participant "fsm.js\ntransition()" as F
+participant "Car.tick()" as CAR
+participant "MQTT\nPublisher" as P
+queue ".../cars/{id}/events\n(Broker, QoS1)" as B
+participant "Node-RED\ningest" as N
+database "MongoDB\nevents" as M
+participant "Dashboard\n(WebSocket)" as D
+note over CAR : in PIT, crosses pit-box\nposition (trackPos≈0.985)
+CAR -> CAR : reset tyre temp, pick a\nDIFFERENT compound, wear:=0
+CAR -> P : event{type:"pit-stop",\ndetails:{duration 2.0-3.5s,\ntyreCompound, service:tire-change,\nrefuelling:false}}
+P -> B : publish event
+B -> N : deliver
+N -> M : store event document
+N -> D : dashboard/event frame
+@enduml
